@@ -1,0 +1,20 @@
+{
+  "version": "fixture",
+  "hash": "sha256:fixture",
+  "zones": [
+    {
+      "id": "trakiya-01-west",
+      "road": "АМ Тракия",
+      "road_latin": "Trakiya",
+      "direction": "west",
+      "description": "Ihtiman – Vakarel",
+      "start": {"lat": 42.427, "lng": 23.855, "settlement": "Ихтиман"},
+      "end":   {"lat": 42.550, "lng": 23.703, "settlement": "Вакарел"},
+      "distance_m": 19160,
+      "speed_limits": {"car": 140, "truck": 90, "bus": 100, "motorcycle": 140},
+      "centerline": [[42.427, 23.855], [42.550, 23.703]],
+      "source": "test",
+      "last_verified": "2026-04-12"
+    }
+  ]
+}

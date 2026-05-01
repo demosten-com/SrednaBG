@@ -1,0 +1,72 @@
+/* Navigation */
+"navHome" = "Начало";
+"navMap" = "Карта";
+"navSettings" = "Настройки";
+
+/* HomeScreen */
+"statusNotTracking" = "Не наблюдава";
+"tapToStartHint" = "Натиснете Старт, за да започнете наблюдение на зоните за секционен контрол.";
+"statusTrackingOutside" = "Наблюдаване — няма активна зона";
+"statusInZone" = "В зона — %@";
+"statusExiting" = "Излизане %@";
+"statusOverLimit" = "Превишение";
+"statusWithinLimit" = "В норма";
+"statusNowSpeed" = "Сега %@ km/h";
+"avgSpeedLabel" = "Средна";
+"currentSpeedLabel" = "Текуща скорост";
+"speedLimit" = "Ограничение";
+"maxForRemainder" = "Макс. напред";
+"remaining" = "Остават";
+"finalAvgSpeed" = "Крайна средна %@ km/h";
+"zonesLoaded" = "%d заредени зони";
+"startTracking" = "Стартирай";
+"stopTracking" = "Спри";
+
+/* SettingsScreen */
+"settingAlertThreshold" = "Праг за предупреждение";
+"settingAlertThresholdDesc" = "Предупреждение при %d km/h от ограничението.";
+"settingVoiceAlerts" = "Гласови предупреждения";
+"settingVoiceAlertsDesc" = "Гласови съобщения през звука на колата.";
+"settingPeriodicUpdates" = "Периодични актуализации";
+"settingPeriodicUpdatesDesc" = "Повтаря средната скорост на всеки 30 секунди, докато сте в зона.";
+"settingOverspeedOnly" = "Само при превишение";
+"settingOverspeedOnlyDesc" = "Пропуска рутинните съобщения „в норма“.";
+"settingLanguage" = "Език";
+"settingLanguageDesc" = "Засяга интерфейса и гласовите съобщения.";
+"languageSystem" = "Системен";
+"languageBg" = "Български";
+"languageEn" = "English";
+"settingVehicleType" = "Тип превозно средство";
+"vehicleCar" = "Кола";
+"vehicleTruck" = "Камион";
+"vehicleBus" = "Автобус";
+"settingMapHeadingUp" = "Карта: по посока";
+"settingMapHeadingUpDesc" = "Върти картата по посоката на движение вместо север нагоре.";
+"settingMapTheme" = "Тема на картата";
+"settingMapThemeDesc" = "Светла или тъмна — автоматично според изгрева/залеза.";
+"mapThemeAuto" = "Автоматично";
+"mapThemeLight" = "Светла";
+"mapThemeDark" = "Тъмна";
+"settingSyncNow" = "Синхронизирай зоните";
+"syncUpdated" = "Зоните са обновени";
+"syncUpToDate" = "Данните вече са актуални";
+"syncFailed" = "Неуспешна синхронизация — опитайте отново";
+
+/* AboutScreen */
+"aboutTitle" = "За приложението";
+"aboutVersion" = "Версия %@";
+"aboutLicense" = "Отворен код с MIT лиценз";
+"aboutAttribution" = "Карти: © OpenMapTiles © OpenStreetMap contributors";
+"aboutZoneData" = "Данни за зони: БГ ТОЛ, TollTracker.eu";
+
+/* Map */
+"mapZoomIn" = "Приближаване";
+"mapZoomOut" = "Отдалечаване";
+"mapHeadingUp" = "По посока";
+"mapNorthUp" = "Север нагоре";
+"mapFollow" = "Следвай ме";
+"mapNoZones" = "Няма налични зони — пробвайте синхронизация.";
+"mapLoading" = "Зареждане на картата…";
+"mapLoadFailed" = "Картата не се зарежда";
+"mapLoadFailedHint" = "Проверете връзката или опитайте отново.";
+"mapRetry" = "Опитай отново";

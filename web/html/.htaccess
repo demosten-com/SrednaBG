@@ -1,0 +1,99 @@
+# SrednaBG marketing site — pre-launch hardening.
+# Served from a Namecheap addon-domain docroot (public_html/srednabg_com/).
+# The landing page lives at /indexx.html; / intentionally returns 403.
+
+# ---------------------------------------------------------------------------
+# 1. No directory listing, UTF-8 default, no server signature noise.
+# ---------------------------------------------------------------------------
+Options -Indexes
+AddDefaultCharset UTF-8
+ServerSignature Off
+
+# ---------------------------------------------------------------------------
+# 2. Force HTTPS (handles both direct TLS and proxied-front-end setups).
+# ---------------------------------------------------------------------------
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTPS} off [OR]
+    RewriteCond %{HTTP:X-Forwarded-Proto} !https
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+</IfModule>
+
+# ---------------------------------------------------------------------------
+# 3. Block dotfiles (.DS_Store, .git/*, .env, .htaccess itself, etc.)
+#    and common backup/editor droppings.
+# ---------------------------------------------------------------------------
+RedirectMatch 404 (?i)/\.(?!well-known/)
+RedirectMatch 404 (?i)\.(bak|old|orig|tmp|log|sw[op])$
+RedirectMatch 404 ~$
+
+# ---------------------------------------------------------------------------
+# 4. Security + privacy headers. `always` so they apply to 403s / 404s too.
+#    HSTS is 180 days, no preload, no includeSubDomains — conservative
+#    while the site is pre-launch.
+# ---------------------------------------------------------------------------
+<IfModule mod_headers.c>
+    Header always set Strict-Transport-Security "max-age=15552000"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "geolocation=(), camera=(), microphone=()"
+    Header always set X-Robots-Tag "noindex, nofollow"
+</IfModule>
+
+# ---------------------------------------------------------------------------
+# 5. Compression for the static text assets the page actually serves.
+# ---------------------------------------------------------------------------
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css text/plain
+    AddOutputFilterByType DEFLATE application/javascript application/json
+    AddOutputFilterByType DEFLATE image/svg+xml
+</IfModule>
+
+# ---------------------------------------------------------------------------
+# 7. Zone data API extensionless rewrites + content-type. Apps fetch
+#    GET /api/version (5min) and /api/zones (1h); the scraper cron writes
+#    both atomically. Timestamped snapshots (zones-YYYYMMDDTHHMMSSZ.json)
+#    are reachable directly under /api/ for rollback / debugging and are
+#    immutable once written.
+# ---------------------------------------------------------------------------
+<IfModule mod_rewrite.c>
+    RewriteRule ^api/zones$   api/zones.json   [L]
+    RewriteRule ^api/version$ api/version.json [L]
+</IfModule>
+
+<IfModule mod_headers.c>
+    <FilesMatch "^(zones|version|zones-[0-9TZ]+)\.json$">
+        Header set Content-Type "application/json; charset=utf-8"
+    </FilesMatch>
+
+    # Per-file Cache-Control overrides. Set directly via mod_headers because
+    # mod_expires + LSCache on Namecheap insist on the type-level 1h for
+    # application/json (observed: /api/version returned max-age=3600 even with
+    # <FilesMatch> ExpiresDefault overrides). `Header set` runs late and wins.
+    <FilesMatch "^version\.json$">
+        Header set Cache-Control "public, max-age=300"
+    </FilesMatch>
+    <FilesMatch "^zones\.json$">
+        Header set Cache-Control "public, max-age=3600"
+    </FilesMatch>
+    <FilesMatch "^zones-[0-9TZ]+\.json$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+</IfModule>
+
+# ---------------------------------------------------------------------------
+# 6. Caches. The per-file Cache-Control rules above take precedence for the
+#    API tree; this block governs the marketing-site assets.
+# ---------------------------------------------------------------------------
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/html              "access plus 5 minutes"
+    ExpiresByType text/css               "access plus 1 hour"
+    ExpiresByType application/javascript "access plus 1 hour"
+    ExpiresByType application/json       "access plus 1 hour"
+    ExpiresByType image/png              "access plus 1 hour"
+    ExpiresByType image/jpeg             "access plus 1 hour"
+    ExpiresByType image/svg+xml          "access plus 1 hour"
+    ExpiresByType image/x-icon           "access plus 1 day"
+</IfModule>

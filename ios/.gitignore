@@ -1,0 +1,28 @@
+## SwiftPM
+.build/
+.swiftpm/
+Package.resolved
+
+## Xcode — user-specific IDE state (window layout, breakpoints, scheme selection)
+**/*.xcodeproj/xcuserdata/
+**/*.xcworkspace/xcuserdata/
+*.xcuserstate
+
+## Xcode — build outputs
+DerivedData/
+build/
+
+## Xcode — legacy metadata
+*.xcscmblueprint
+*.xccheckout
+
+## Bundled offline map (staged from backend/data/map-bundle/ by the
+## "Map Bundle" Run Script phase; shipped inside SrednaBG.app).
+SrednaBG/App/Resources/OfflineMap/
+
+## Bundled zones JSON (staged from backend/data/zones.json by the
+## "Bundled Zones" Run Script phase; shipped inside SrednaBG.app).
+SrednaBG/App/Resources/bundled-zones.json
+
+## macOS
+.DS_Store

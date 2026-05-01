@@ -1,0 +1,105 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2026 SrednaBG Contributors
+//
+// SrednaBG — android / app
+
+package com.demosten.srednabg.app.ui.viewmodel
+
+import com.demosten.srednabg.app.data.SettingsRepository
+import com.demosten.srednabg.app.data.ZoneRepository
+import io.mockk.coVerify
+import io.mockk.every
+import io.mockk.mockk
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class SettingsViewModelTest {
+
+    private val testDispatcher = UnconfinedTestDispatcher()
+    private lateinit var settingsRepository: SettingsRepository
+    private lateinit var zoneRepository: ZoneRepository
+    private lateinit var viewModel: SettingsViewModel
+
+    @BeforeEach
+    fun setUp() {
+        Dispatchers.setMain(testDispatcher)
+        settingsRepository = mockk(relaxed = true)
+        zoneRepository = mockk(relaxed = true)
+
+        every { settingsRepository.alertThreshold } returns flowOf(5)
+        every { settingsRepository.voiceEnabled } returns flowOf(true)
+        every { settingsRepository.periodicVoiceUpdates } returns flowOf(true)
+        every { settingsRepository.announceOnlyWhenOver } returns flowOf(true)
+        every { settingsRepository.appLanguage } returns flowOf("system")
+        every { settingsRepository.vehicleType } returns flowOf("car")
+
+        viewModel = SettingsViewModel(settingsRepository, zoneRepository)
+    }
+
+    @AfterEach
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
+    @Test
+    fun `initial state reflects repository defaults`() {
+        assertEquals(5, viewModel.alertThreshold.value)
+        assertEquals(true, viewModel.voiceEnabled.value)
+        assertEquals(true, viewModel.periodicVoiceUpdates.value)
+        assertEquals(true, viewModel.announceOnlyWhenOver.value)
+        assertEquals("system", viewModel.appLanguage.value)
+        assertEquals("car", viewModel.vehicleType.value)
+    }
+
+    @Test
+    fun `setAlertThreshold delegates to repository`() = runTest {
+        viewModel.setAlertThreshold(10)
+        coVerify { settingsRepository.setAlertThreshold(10) }
+    }
+
+    @Test
+    fun `setVoiceEnabled delegates to repository`() = runTest {
+        viewModel.setVoiceEnabled(false)
+        coVerify { settingsRepository.setVoiceEnabled(false) }
+    }
+
+    @Test
+    fun `setPeriodicVoiceUpdates delegates to repository`() = runTest {
+        viewModel.setPeriodicVoiceUpdates(false)
+        coVerify { settingsRepository.setPeriodicVoiceUpdates(false) }
+    }
+
+    @Test
+    fun `setAnnounceOnlyWhenOver delegates to repository`() = runTest {
+        viewModel.setAnnounceOnlyWhenOver(false)
+        coVerify { settingsRepository.setAnnounceOnlyWhenOver(false) }
+    }
+
+    @Test
+    fun `setAppLanguage delegates to repository`() = runTest {
+        viewModel.setAppLanguage("en")
+        coVerify { settingsRepository.setAppLanguage("en") }
+    }
+
+    @Test
+    fun `setVehicleType delegates to repository`() = runTest {
+        viewModel.setVehicleType("truck")
+        coVerify { settingsRepository.setVehicleType("truck") }
+    }
+
+    @Test
+    fun `syncNow delegates to zone repository`() = runTest {
+        viewModel.syncNow()
+        coVerify { zoneRepository.syncFromServer() }
+    }
+}

@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SrednaBG</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Начало</string>
+    <string name="nav_map">Карта</string>
+    <string name="nav_settings">Настройки</string>
+    <string name="nav_history">История</string>
+
+    <!-- Home screen -->
+    <string name="zones_loaded">%d заредени зони</string>
+    <string name="status_not_tracking">Не наблюдава</string>
+    <string name="status_tracking_outside">Наблюдение на зони</string>
+    <string name="status_in_zone">В зона: %s</string>
+    <string name="status_exiting">Излизане от зона: %s</string>
+    <string name="start_tracking">Стартирай</string>
+    <string name="stop_tracking">Спри</string>
+    <string name="tap_to_start_hint">Натиснете ▶ за начало</string>
+    <string name="avg_speed_label">средна km/h</string>
+    <string name="current_speed_label">km/h</string>
+    <string name="status_now_speed">Сега %1$s km/h</string>
+    <string name="speed_limit">Ограничение</string>
+    <string name="max_for_remainder">Макс. сега</string>
+    <string name="remaining">Остават</string>
+    <string name="status_within_limit">В норма</string>
+    <string name="status_over_limit">Превишение!</string>
+    <string name="final_avg_speed">Средна скорост: %s km/h</string>
+
+    <!-- Map screen -->
+    <string name="no_zones_loaded">Няма заредени зони — свържете се с интернет</string>
+    <string name="map_zoom_in">Приближаване</string>
+    <string name="map_zoom_out">Отдалечаване</string>
+    <string name="map_user_position">Текущо местоположение</string>
+    <string name="map_recenter">Центрирай</string>
+    <string name="map_follow_user_on">Следване включено</string>
+    <string name="map_follow_user_off">Следване изключено</string>
+    <string name="map_orientation_north_up">Ориентация: север</string>
+    <string name="map_orientation_heading_up">Ориентация: посока на движение</string>
+    <string name="zone_complete">Зоната завърши</string>
+    <string name="max_for_remainder_format">Макс: %d km/h</string>
+    <string name="retry_sync">Опитай отново</string>
+
+    <!-- Settings screen -->
+    <string name="setting_alert_threshold">Праг за предупреждение</string>
+    <string name="setting_alert_threshold_desc">Предупреждение при %d km/h от ограничението</string>
+    <string name="setting_voice_alerts">Гласови предупреждения</string>
+    <string name="setting_voice_alerts_desc">Обявяване при влизане, излизане и актуализации на скоростта</string>
+    <string name="setting_periodic_updates">Периодични гласови актуализации</string>
+    <string name="setting_periodic_updates_desc">Напомня средната скорост на всеки 30 сек, докато сте в зона</string>
+    <string name="setting_overspeed_only">Само при превишение</string>
+    <string name="setting_overspeed_only_desc">Пропускай \"в норма\" — само при превишение</string>
+    <string name="setting_language">Език</string>
+    <string name="setting_language_desc">Език на интерфейса и гласа</string>
+    <string name="language_system">Системна настройка</string>
+    <string name="language_bg">Български</string>
+    <string name="language_en">English</string>
+    <string name="setting_vehicle_type">Тип превозно средство</string>
+    <string name="vehicle_car">Кола</string>
+    <string name="vehicle_truck">Камион</string>
+    <string name="vehicle_bus">Автобус</string>
+    <string name="setting_map_theme">Тема на картата</string>
+    <string name="setting_map_theme_desc">Светла или тъмна — автоматично според изгрева/залеза</string>
+    <string name="map_theme_auto">Автоматично</string>
+    <string name="map_theme_light">Светла</string>
+    <string name="map_theme_dark">Тъмна</string>
+    <string name="setting_sync_now">Синхронизирай зоните</string>
+    <string name="sync_updated">Зоните са обновени</string>
+    <string name="sync_up_to_date">Зоните вече са актуални</string>
+    <string name="sync_failed">Неуспешна синхронизация — проверете връзката</string>
+    <string name="about_title">За приложението</string>
+    <string name="about_version">Версия %s</string>
+    <string name="about_license">Отворен код — MIT лиценз</string>
+    <string name="about_attribution">Карти: \u00A9 OpenMapTiles \u00A9 OpenStreetMap contributors</string>
+    <string name="about_zone_data">Данни за зони: БГ ТОЛ, TollTracker.eu</string>
+
+    <!-- Trip history -->
+    <string name="trip_history_coming_soon">Историята на пътуванията идва скоро</string>
+
+    <!-- Notifications -->
+    <string name="notification_channel_tracking">Проследяване на местоположение</string>
+    <string name="notification_channel_tracking_description">Показва се докато SrednaBG наблюдава скоростта ви</string>
+    <string name="notification_tracking_title">SrednaBG наблюдава</string>
+    <string name="notification_tracking_text">Наблюдение на зони за средна скорост</string>
+
+    <!-- Accessibility -->
+    <string name="accessibility_in_zone">Средна скорост %1$s километра в час. Ограничение %2$d. %3$s.</string>
+    <string name="accessibility_exiting">Зоната завърши. Крайна средна скорост %1$s километра в час на %2$s.</string>
+
+    <!-- Android Auto -->
+    <string name="auto_routing_cue">Средна: %1$s km/h | Ограничение: %2$d</string>
+    <string name="auto_final_speed">Крайна средна: %s km/h</string>
+    <string name="auto_zone_end">Край на зона</string>
+    <string name="auto_settings">Настройки</string>
+    <string name="auto_monitoring_hint">Наблюдение на зони</string>
+</resources>

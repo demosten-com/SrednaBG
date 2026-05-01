@@ -1,0 +1,52 @@
+{
+  "sourceLanguage" : "bg",
+  "strings" : {
+    "CFBundleName" : {
+      "comment" : "Bundle name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "bg" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "SrednaBG"
+          }
+        }
+      }
+    },
+    "NSLocationAlwaysAndWhenInUseUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SrednaBG следи средната ви скорост в зоните за секционен контрол — дори когато приложението е във фон или екранът е изключен — за да ви предупреди преди камерата да отчете нарушение."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SrednaBG tracks your average speed inside section-control camera zones — even when the app is in the background or the screen is off — so it can warn you before the camera flags an offence."
+          }
+        }
+      }
+    },
+    "NSLocationWhenInUseUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SrednaBG използва местоположението ви, за да определи в коя зона за секционен контрол навлизате и да изчислява текущата средна скорост."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SrednaBG needs your location to know which section-control zone you're entering and to compute your running average speed."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

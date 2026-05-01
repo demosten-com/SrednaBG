@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="bg" data-theme="carbon" data-fontset="geometric">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="meta.title">SrednaBG</title>
+  <meta name="description" data-i18n="meta.description" content="">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#07090b">
+  <link rel="alternate" hreflang="bg" href="/?lang=bg">
+  <link rel="alternate" hreflang="en" href="/?lang=en">
+  <link rel="alternate" hreflang="x-default" href="/?lang=bg">
+  <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
+  <link rel="stylesheet" href="assets/css/site.css">
+  <script type="application/json" id="i18n-bg">
+{
+  "meta.title": "SrednaBG — средна скорост в секционен контрол",
+  "meta.description": "Безплатно Android и Android Auto приложение, което показва средната ви скорост в зоните за секционен контрол в България. Без реклами, без акаунт, без следене.",
+
+  "nav.features": "Функции",
+  "nav.how": "Как работи",
+  "nav.privacy": "Поверителност",
+  "nav.download": "Свали",
+  "nav.source": "Изходен код",
+  "nav.lang_bg": "Български",
+  "nav.lang_en": "English",
+
+  "hero.eyebrow": "Безплатно. Отворен код. Само за България.",
+  "hero.title": "Винаги знай средната си скорост.",
+  "hero.subtitle": "SrednaBG изчислява средната ви скорост в реално време вътре в зоните за секционен контрол и ви казва точно колко бързо можете да карате до края на отсечката.",
+  "hero.cta_primary": "Свали приложението",
+  "hero.cta_secondary": "Виж изходния код",
+  "hero.aa_placeholder": "Android Auto",
+  "hero.aa_soon": "(визуализация скоро)",
+
+  "features.headline": "Какво прави SrednaBG",
+  "features.feat_avg.title": "Средна скорост в реално време",
+  "features.feat_avg.body": "Веднага щом влезете в зона, средната скорост става главното число. Без закъснение, без джитър — обновява се на всяка секунда.",
+  "features.feat_max.title": "Макс. сега — единственият инструмент, който го показва",
+  "features.feat_max.body": "„Макс. сега“ е максималната скорост, с която можете да карате до края на отсечката, без да превишите ограничението. Waze показва само зоната — SrednaBG ви казва какво да правите.",
+  "features.feat_status.title": "Зелено, жълто, червено — с един поглед",
+  "features.feat_status.body": "Цветът на екрана отговаря на състоянието. Зелено — в норма. Жълто — внимание, забавете. Червено — вече сте в превишение.",
+  "features.feat_voice.title": "Гласови съобщения на БГ и EN",
+  "features.feat_voice.body": "Не откъсвайте очи от пътя. Приложението ви съобщава на глас кога влизате в зона, кога напускате и кога трябва да забавите — на езика, който изберете.",
+  "features.feat_offline.title": "Работи офлайн",
+  "features.feat_offline.body": "Картата на България и списъкът със зони са вградени в приложението. Няма нужда от интернет в колата. Обновленията пристигат тихо, когато сте на Wi-Fi.",
+  "features.feat_dual.title": "До Waze или вместо него — ваш избор",
+  "features.feat_dual.body": "Използвайте SrednaBG като пълноценен навигатор в Android Auto или го оставете да работи във фон до Waze / Google Maps — ще чуете гласа му, когато е важно.",
+
+  "how.headline": "Как работи",
+  "how.step1": "Отваряте приложението. То наблюдава за зони във фонов режим.",
+  "how.step2": "Влязохте в зона. Средната скорост е главното число.",
+  "how.step3": "В превишение? „Макс. сега“ ви казва колко бавно да карате, за да се измъкнете.",
+  "how.step_label": "Стъпка",
+
+  "legend.headline": "Цветовете означават",
+  "legend.green": "В норма",
+  "legend.amber": "Забавете сега",
+  "legend.red": "Превишение!",
+
+  "screens.headline": "Всеки екран",
+  "screens.idle": "Готов за старт.",
+  "screens.map": "Разгледайте всяка зона в България.",
+  "screens.map_live": "Жива карта, докато сте в зона.",
+  "screens.settings": "Настройки на български или английски.",
+  "screens.more": "Още екрани",
+
+  "privacy.headline": "Какво НЕ правим",
+  "priv.no_cookies": "Този сайт не използва бисквитки. Няма тракери никъде.",
+  "priv.no_account": "Без акаунт, без имейл, без регистрация. Инсталирате и карате.",
+  "priv.no_ads": "Без реклами. Без покупки вътре. Безплатно завинаги.",
+  "priv.no_sdk": "Без SDK-та на трети страни. Без Google Analytics. Без Firebase.",
+  "priv.no_cloud": "Местоположението ви никога не напуска телефона.",
+  "priv.open_source": "Отворен код — MIT лиценз.",
+  "priv.open_source_cta": "Прочетете сорса на GitHub.",
+
+  "download.headline": "Свалете приложението",
+  "download.play.title": "Google Play",
+  "download.play.sub": "Препоръчано за повечето потребители.",
+  "download.fdroid.title": "F-Droid",
+  "download.fdroid.sub": "За привърженици на отворения код.",
+  "download.apk.title": "APK от GitHub",
+  "download.apk.sub": "Директно сваляне. Странично инсталиране.",
+  "download.apk.how": "Как се прави странично инсталиране",
+  "download.apk.step1": "Свалете файла .apk върху телефона.",
+  "download.apk.step2": "Отворете го. Android ще поиска разрешение за този източник — дайте го.",
+  "download.apk.step3": "Потвърдете инсталацията. Готово.",
+  "download.src.title": "Сорс код в GitHub",
+  "download.src.sub": "Прочетете. Построете. Форкнете.",
+  "download.cta": "Отвори",
+
+  "footer.map_attr": "Карти: © OpenMapTiles, © OpenStreetMap contributors.",
+  "footer.zone_attr": "Данни за зони: БГ ТОЛ, TollTracker.eu, OpenStreetMap.",
+  "footer.license": "MIT лиценз",
+  "footer.copyright": "© 2026 SrednaBG contributors",
+  "footer.no_cookies": "Тази страница не записва нищо на устройството ви.",
+
+  "a11y.skip_to_content": "Към съдържанието",
+  "a11y.toggle_lang": "Смени езика",
+  "a11y.github": "SrednaBG в GitHub",
+
+  "img_alt.phone_home_idle": "Началният екран на SrednaBG в режим „не проследява“.",
+  "img_alt.phone_home_monitoring": "Началният екран наблюдава за зони.",
+  "img_alt.phone_home_in_zone_ok": "В зона, средната скорост е в зелено („в норма“).",
+  "img_alt.phone_home_in_zone_over": "В зона, средната скорост е в червено („превишение!“).",
+  "img_alt.phone_map_overview": "Карта на всички зони за секционен контрол в България.",
+  "img_alt.phone_map_in_zone": "Жива карта в зона, ориентирана по посока на движение.",
+  "img_alt.phone_settings_top": "Настройки — горна половина.",
+  "img_alt.phone_settings_bottom": "Настройки — долна половина.",
+  "img_alt.phone_settings_language": "Настройки с отворено меню за избор на език.",
+  "img_alt.aa_hero": "SrednaBG, показан в Android Auto."
+}
+  </script>
+  <script type="application/json" id="i18n-en">
+{
+  "meta.title": "SrednaBG — average speed for section control",
+  "meta.description": "Free Android and Android Auto app that shows your running average speed inside Bulgaria's section-control zones. No ads, no account, no tracking.",
+
+  "nav.features": "Features",
+  "nav.how": "How it works",
+  "nav.privacy": "Privacy",
+  "nav.download": "Download",
+  "nav.source": "Source",
+  "nav.lang_bg": "Bulgarian",
+  "nav.lang_en": "English",
+
+  "hero.eyebrow": "Free. Open source. Bulgaria only.",
+  "hero.title": "Always know your average speed.",
+  "hero.subtitle": "SrednaBG computes your running average inside section-control zones in real time and tells you exactly how fast you can drive for the rest of the section.",
+  "hero.cta_primary": "Download the app",
+  "hero.cta_secondary": "View the source",
+  "hero.aa_placeholder": "Android Auto",
+  "hero.aa_soon": "(preview coming soon)",
+
+  "features.headline": "What SrednaBG does",
+  "features.feat_avg.title": "Running average, live",
+  "features.feat_avg.body": "The second you enter a zone, your running average becomes the hero number. No lag, no jitter — it updates once a second.",
+  "features.feat_max.title": "Max now — the only tool that shows it",
+  "features.feat_max.body": "\"Max now\" is the top speed you can drive for the rest of the zone without breaking the limit. Waze shows the zone — SrednaBG tells you what to do.",
+  "features.feat_status.title": "Green, amber, red — at a glance",
+  "features.feat_status.body": "The screen color matches your state. Green — within limit. Amber — careful, slow down. Red — you're already over.",
+  "features.feat_voice.title": "Voice alerts in Bulgarian and English",
+  "features.feat_voice.body": "Keep your eyes on the road. SrednaBG speaks zone entries, exits, and slowdown warnings in the language you pick.",
+  "features.feat_offline.title": "Works fully offline",
+  "features.feat_offline.body": "The Bulgaria map and zone list are bundled inside the app. No internet needed in the car. Updates arrive quietly when you're on Wi-Fi.",
+  "features.feat_dual.title": "Alongside Waze, or instead of it",
+  "features.feat_dual.body": "Run SrednaBG as a full navigator on Android Auto, or let it sit quietly behind Waze / Google Maps — you'll hear its voice when it matters.",
+
+  "how.headline": "How it works",
+  "how.step1": "Open the app. It watches for zones in the background.",
+  "how.step2": "Entered a zone. The running average is the hero number.",
+  "how.step3": "Over the limit? \"Max now\" tells you how slow to drive to recover.",
+  "how.step_label": "Step",
+
+  "legend.headline": "What the colors mean",
+  "legend.green": "Within limit",
+  "legend.amber": "Slow down now",
+  "legend.red": "Over limit!",
+
+  "screens.headline": "Every screen",
+  "screens.idle": "Idle, ready to start.",
+  "screens.map": "Browse every zone in Bulgaria.",
+  "screens.map_live": "Live map while inside a zone.",
+  "screens.settings": "Settings in Bulgarian or English.",
+  "screens.more": "More screens",
+
+  "privacy.headline": "What we don't do",
+  "priv.no_cookies": "No cookies on this site. No trackers anywhere.",
+  "priv.no_account": "No account, no email, no signup. Install and drive.",
+  "priv.no_ads": "No ads. No in-app purchases. Free forever.",
+  "priv.no_sdk": "No third-party SDKs. No Google Analytics. No Firebase.",
+  "priv.no_cloud": "Your location never leaves your phone.",
+  "priv.open_source": "Open source — MIT License.",
+  "priv.open_source_cta": "Read the source on GitHub.",
+
+  "download.headline": "Get the app",
+  "download.play.title": "Google Play",
+  "download.play.sub": "Recommended for most users.",
+  "download.fdroid.title": "F-Droid",
+  "download.fdroid.sub": "For an open-source store.",
+  "download.apk.title": "APK from GitHub",
+  "download.apk.sub": "Direct download. Sideload it.",
+  "download.apk.how": "How to sideload",
+  "download.apk.step1": "Download the .apk file to your phone.",
+  "download.apk.step2": "Open it. Android will ask for permission to install from this source — grant it.",
+  "download.apk.step3": "Confirm the install. Done.",
+  "download.src.title": "Source on GitHub",
+  "download.src.sub": "Read it. Build it. Fork it.",
+  "download.cta": "Open",
+
+  "footer.map_attr": "Map data: © OpenMapTiles, © OpenStreetMap contributors.",
+  "footer.zone_attr": "Zone data: BG TOLL, TollTracker.eu, OpenStreetMap.",
+  "footer.license": "MIT License",
+  "footer.copyright": "© 2026 SrednaBG contributors",
+  "footer.no_cookies": "This page stores nothing on your device.",
+
+  "a11y.skip_to_content": "Skip to content",
+  "a11y.toggle_lang": "Change language",
+  "a11y.github": "SrednaBG on GitHub",
+
+  "img_alt.phone_home_idle": "SrednaBG home screen in the idle, not-tracking state.",
+  "img_alt.phone_home_monitoring": "SrednaBG home screen actively watching for zones.",
+  "img_alt.phone_home_in_zone_ok": "Inside a zone, running average in green (within limit).",
+  "img_alt.phone_home_in_zone_over": "Inside a zone, running average in red (over limit).",
+  "img_alt.phone_map_overview": "Map of every section-control zone in Bulgaria.",
+  "img_alt.phone_map_in_zone": "Live map inside a zone, oriented heading-up.",
+  "img_alt.phone_settings_top": "Settings screen, top half.",
+  "img_alt.phone_settings_bottom": "Settings screen, bottom half.",
+  "img_alt.phone_settings_language": "Settings with the language picker open.",
+  "img_alt.aa_hero": "SrednaBG running on Android Auto."
+}
+  </script>
+</head>
+<body>
+
+<a href="#main" class="skip" data-i18n="a11y.skip_to_content">Skip to content</a>
+
+<!-- =========================================================== HEADER === -->
+<header class="site-header" id="top">
+  <div class="wrap header-row">
+    <a href="#top" class="brand" aria-label="SrednaBG">
+      <svg viewBox="26 38 56 56" fill="none" aria-hidden="true">
+        <path d="M54,74 m-26,0 a26,26 0 1,1 52,0" stroke="currentColor" stroke-width="4" fill="none"/>
+        <path d="M54,74 L68,50" stroke="currentColor" stroke-width="3" stroke-linecap="round" fill="none"/>
+        <path d="M54,74 m-3,0 a3,3 0 1,1 6,0 a3,3 0 1,1 -6,0" fill="currentColor"/>
+        <path d="M28,74 L32,74" stroke="currentColor" stroke-width="2" fill="none"/>
+        <path d="M35.5,53.5 L38.3,56.3" stroke="currentColor" stroke-width="2" fill="none"/>
+        <path d="M54,44 L54,48" stroke="currentColor" stroke-width="2" fill="none"/>
+        <path d="M72.5,53.5 L69.7,56.3" stroke="currentColor" stroke-width="2" fill="none"/>
+        <path d="M80,74 L76,74" stroke="currentColor" stroke-width="2" fill="none"/>
+        <text x="54" y="88" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="900" text-anchor="middle" fill="currentColor">BG</text>
+      </svg>
+      <span>SrednaBG</span>
+      <span class="wm-sub">/ Средна БГ</span>
+    </a>
+
+    <nav aria-label="Primary">
+      <ul class="nav-links">
+        <li><a href="#features" data-i18n="nav.features">Features</a></li>
+        <li><a href="#how"      data-i18n="nav.how">How it works</a></li>
+        <li><a href="#privacy"  data-i18n="nav.privacy">Privacy</a></li>
+        <li><a href="#download" data-i18n="nav.download">Download</a></li>
+      </ul>
+    </nav>
+
+    <div class="header-right">
+      <div class="lang-pill" role="group" aria-label="Language">
+        <button type="button" data-lang="bg" aria-pressed="true" data-i18n-aria-label="a11y.toggle_lang">BG</button>
+        <button type="button" data-lang="en" aria-pressed="false" data-i18n-aria-label="a11y.toggle_lang">EN</button>
+      </div>
+      <a href="{{GH_REPO_URL}}" class="icon-btn" data-i18n-aria-label="a11y.github" aria-label="SrednaBG on GitHub">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.58.11.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.68-1.28-1.68-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.68 0-1.25.45-2.28 1.18-3.08-.12-.29-.51-1.46.11-3.04 0 0 .97-.31 3.18 1.17a11 11 0 0 1 5.8 0c2.2-1.48 3.17-1.17 3.17-1.17.63 1.58.24 2.75.12 3.04.74.8 1.18 1.83 1.18 3.08 0 4.41-2.7 5.38-5.27 5.66.41.36.78 1.07.78 2.16v3.2c0 .31.21.68.8.56A11.5 11.5 0 0 0 23.5 12 11.5 11.5 0 0 0 12 .5z"/>
+        </svg>
+      </a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- =========================================================== HERO === -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <span class="eyebrow" data-i18n="hero.eyebrow">Free. Open source. Bulgaria only.</span>
+        <h1 data-i18n="hero.title">Always know your average speed.</h1>
+        <p class="lede" data-i18n="hero.subtitle">…</p>
+
+        <div class="hero-ctas">
+          <a class="btn btn-primary" href="#download">
+            <span data-i18n="hero.cta_primary">Download the app</span>
+            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M8 2v10m0 0-4-4m4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </a>
+          <a class="btn btn-secondary" href="{{GH_REPO_URL}}">
+            <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path d="M8 .3A7.7 7.7 0 0 0 .3 8a7.7 7.7 0 0 0 5.27 7.32c.39.07.53-.17.53-.38v-1.34c-2.15.47-2.6-.92-2.6-.92-.35-.89-.86-1.12-.86-1.12-.7-.48.06-.47.06-.47.78.05 1.19.8 1.19.8.69 1.19 1.81.84 2.25.64.07-.5.27-.84.49-1.03-1.7-.2-3.5-.86-3.5-3.8 0-.84.3-1.53.79-2.07-.08-.2-.34-.98.08-2.04 0 0 .65-.2 2.13.78a7.4 7.4 0 0 1 3.88 0c1.48-.98 2.13-.78 2.13-.78.42 1.06.16 1.84.08 2.04.5.54.79 1.23.79 2.07 0 2.95-1.8 3.6-3.52 3.79.28.23.52.71.52 1.44v2.13c0 .21.14.46.54.38A7.7 7.7 0 0 0 15.7 8 7.7 7.7 0 0 0 8 .3z"/>
+            </svg>
+            <span data-i18n="hero.cta_secondary">View the source</span>
+          </a>
+        </div>
+
+        <div class="hero-meta">
+          <span class="chip"><span class="dot" style="background:var(--green)"></span><span data-i18n="legend.green">Within limit</span></span>
+          <span class="chip"><span class="dot" style="background:var(--amber)"></span><span data-i18n="legend.amber">Slow down now</span></span>
+          <span class="chip"><span class="dot" style="background:var(--red)"></span><span data-i18n="legend.red">Over limit!</span></span>
+        </div>
+      </div>
+
+      <div>
+        <div class="aa-slot" id="aa-slot"
+             data-src="screenshots/aa_hero.png"
+             data-alt-key="img_alt.aa_hero">
+          <div class="aa-placeholder">
+            <svg class="mini-logo" viewBox="26 38 56 56" fill="none" aria-hidden="true">
+              <path d="M54,74 m-26,0 a26,26 0 1,1 52,0" stroke="currentColor" stroke-width="4" fill="none"/>
+              <path d="M54,74 L68,50" stroke="currentColor" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <path d="M54,74 m-3,0 a3,3 0 1,1 6,0 a3,3 0 1,1 -6,0" fill="currentColor"/>
+              <path d="M28,74 L32,74" stroke="currentColor" stroke-width="2" fill="none"/>
+              <path d="M35.5,53.5 L38.3,56.3" stroke="currentColor" stroke-width="2" fill="none"/>
+              <path d="M54,44 L54,48" stroke="currentColor" stroke-width="2" fill="none"/>
+              <path d="M72.5,53.5 L69.7,56.3" stroke="currentColor" stroke-width="2" fill="none"/>
+              <path d="M80,74 L76,74" stroke="currentColor" stroke-width="2" fill="none"/>
+              <text x="54" y="88" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="900" text-anchor="middle" fill="currentColor">BG</text>
+            </svg>
+            <span class="aa-title" data-i18n="hero.aa_placeholder">Android Auto</span>
+            <span class="aa-sub" data-i18n="hero.aa_soon">(preview coming soon)</span>
+            <span class="badge">DASHBOARD · 16:9</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ======================================================= FEATURES === -->
+  <section id="features">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">01 · FEATURES</span>
+        <h2 data-i18n="features.headline">What SrednaBG does</h2>
+      </div>
+
+      <div class="features-grid">
+        <article class="feature">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="13" r="8"/><path d="M12 13 L16 9"/><path d="M12 5V3M4.5 7l-1.5-1.5M19.5 7l1.5-1.5"/>
+          </svg>
+          <h3 data-i18n="features.feat_avg.title">Running average, live</h3>
+          <p data-i18n="features.feat_avg.body">…</p>
+        </article>
+
+        <article class="feature">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 17h18"/><path d="M6 17V9"/><path d="M11 17V6"/><path d="M16 17v-5"/><path d="M21 17V3"/>
+          </svg>
+          <h3 data-i18n="features.feat_max.title">Max now</h3>
+          <p data-i18n="features.feat_max.body">…</p>
+        </article>
+
+        <article class="feature">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+            <rect x="7" y="3" width="10" height="18" rx="3"/>
+            <circle cx="12" cy="7"  r="1.4" fill="var(--green)" stroke="none"/>
+            <circle cx="12" cy="12" r="1.4" fill="var(--amber)" stroke="none"/>
+            <circle cx="12" cy="17" r="1.4" fill="var(--red)" stroke="none"/>
+          </svg>
+          <h3 data-i18n="features.feat_status.title">Green, amber, red</h3>
+          <p data-i18n="features.feat_status.body">…</p>
+        </article>
+
+        <article class="feature">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 4v16"/><path d="M8 8v8"/><path d="M16 8v8"/><path d="M4 11v2"/><path d="M20 11v2"/>
+          </svg>
+          <h3 data-i18n="features.feat_voice.title">Voice alerts</h3>
+          <p data-i18n="features.feat_voice.body">…</p>
+        </article>
+
+        <article class="feature">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2z"/><path d="M9 4v16"/><path d="M15 6v16"/>
+          </svg>
+          <h3 data-i18n="features.feat_offline.title">Works fully offline</h3>
+          <p data-i18n="features.feat_offline.body">…</p>
+        </article>
+
+        <article class="feature">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="5" width="8" height="14" rx="1.5"/>
+            <rect x="13" y="5" width="8" height="14" rx="1.5"/>
+            <path d="M7 9h0M17 9h0"/>
+          </svg>
+          <h3 data-i18n="features.feat_dual.title">Alongside Waze, or instead</h3>
+          <p data-i18n="features.feat_dual.body">…</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- =========================================================== HOW === -->
+  <section id="how">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">02 · FLOW</span>
+        <h2 data-i18n="how.headline">How it works</h2>
+      </div>
+
+      <div class="how-strip">
+        <article class="step-card">
+          <div class="step-num">01 / <span data-i18n="how.step_label">Step</span></div>
+          <div class="step-shot">
+            <img src="screenshots/phone_home_monitoring.png"
+                 width="1080" height="2400" loading="lazy"
+                 data-i18n-alt="img_alt.phone_home_monitoring"
+                 data-fallback-label="Home — monitoring"
+                 alt="Monitoring for zones."
+                 onerror="__ssFallback(this)">
+          </div>
+          <p class="step-caption" data-i18n="how.step1">…</p>
+        </article>
+
+        <article class="step-card">
+          <div class="step-num">02 / <span data-i18n="how.step_label">Step</span></div>
+          <div class="step-shot">
+            <img src="screenshots/phone_home_in_zone_ok.png"
+                 width="1080" height="2400" loading="lazy"
+                 data-i18n-alt="img_alt.phone_home_in_zone_ok"
+                 data-fallback-label="In zone — green"
+                 alt="Inside a zone, within limit."
+                 onerror="__ssFallback(this)">
+          </div>
+          <p class="step-caption" data-i18n="how.step2">…</p>
+        </article>
+
+        <article class="step-card">
+          <div class="step-num">03 / <span data-i18n="how.step_label">Step</span></div>
+          <div class="step-shot">
+            <img src="screenshots/phone_home_in_zone_over.png"
+                 width="1080" height="2400" loading="lazy"
+                 data-i18n-alt="img_alt.phone_home_in_zone_over"
+                 data-fallback-label="In zone — over"
+                 alt="Inside a zone, over limit."
+                 onerror="__ssFallback(this)">
+          </div>
+          <p class="step-caption" data-i18n="how.step3">…</p>
+        </article>
+      </div>
+
+      <div class="legend" aria-label="Color legend">
+        <span class="legend-head" data-i18n="legend.headline">What the colors mean</span>
+        <span class="legend-item green"><span class="legend-swatch"></span><span data-i18n="legend.green">Within limit</span></span>
+        <span class="legend-item amber"><span class="legend-swatch"></span><span data-i18n="legend.amber">Slow down now</span></span>
+        <span class="legend-item red"><span class="legend-swatch"></span><span data-i18n="legend.red">Over limit!</span></span>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ======================================================= SCREENS === -->
+  <section id="screens">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">03 · GALLERY</span>
+        <h2 data-i18n="screens.headline">Every screen</h2>
+      </div>
+
+      <div class="screens-grid">
+        <article class="screen-card">
+          <div class="step-shot">
+            <img src="screenshots/phone_home_idle.png" width="1080" height="2400" loading="lazy"
+                 data-i18n-alt="img_alt.phone_home_idle" data-fallback-label="Idle"
+                 alt="Idle." onerror="__ssFallback(this)">
+          </div>
+          <div class="caption">
+            <span class="label">phone_home_idle</span>
+            <span data-i18n="screens.idle">Idle, ready to start.</span>
+          </div>
+        </article>
+
+        <article class="screen-card">
+          <div class="step-shot">
+            <img src="screenshots/phone_map_overview.png" width="1080" height="2400" loading="lazy"
+                 data-i18n-alt="img_alt.phone_map_overview" data-fallback-label="Map overview"
+                 alt="Map overview." onerror="__ssFallback(this)">
+          </div>
+          <div class="caption">
+            <span class="label">phone_map_overview</span>
+            <span data-i18n="screens.map">Browse every zone in Bulgaria.</span>
+          </div>
+        </article>
+
+        <article class="screen-card">
+          <div class="step-shot">
+            <img src="screenshots/phone_map_in_zone.png" width="1080" height="2400" loading="lazy"
+                 data-i18n-alt="img_alt.phone_map_in_zone" data-fallback-label="Map live"
+                 alt="Live map." onerror="__ssFallback(this)">
+          </div>
+          <div class="caption">
+            <span class="label">phone_map_in_zone</span>
+            <span data-i18n="screens.map_live">Live map while inside a zone.</span>
+          </div>
+        </article>
+
+        <article class="screen-card">
+          <div class="step-shot">
+            <img src="screenshots/phone_settings_language.png" width="1080" height="2400" loading="lazy"
+                 data-i18n-alt="img_alt.phone_settings_language" data-fallback-label="Language picker"
+                 alt="Language picker." onerror="__ssFallback(this)">
+          </div>
+          <div class="caption">
+            <span class="label">phone_settings_language</span>
+            <span data-i18n="screens.settings">Settings in Bulgarian or English.</span>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================= PRIVACY === -->
+  <section id="privacy" class="privacy">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">04 · PRIVACY</span>
+        <h2 data-i18n="privacy.headline">What we don't do</h2>
+      </div>
+
+      <ul class="privacy-list">
+        <li>
+          <svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>
+          <span data-i18n="priv.no_cookies">No cookies. No trackers anywhere.</span>
+        </li>
+        <li>
+          <svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>
+          <span data-i18n="priv.no_account">No account, no email, no signup.</span>
+        </li>
+        <li>
+          <svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>
+          <span data-i18n="priv.no_ads">No ads. No IAP. Free forever.</span>
+        </li>
+        <li>
+          <svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>
+          <span data-i18n="priv.no_sdk">No third-party SDKs.</span>
+        </li>
+        <li>
+          <svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>
+          <span data-i18n="priv.no_cloud">Your location never leaves your phone.</span>
+        </li>
+      </ul>
+
+      <div class="privacy-foot">
+        <span class="mit-badge"><span class="dot"></span><span data-i18n="footer.license">MIT License</span></span>
+        <span data-i18n="priv.open_source">Open source — MIT License.</span>
+        <a href="{{GH_REPO_URL}}" data-i18n="priv.open_source_cta">Read the source on GitHub.</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================== DOWNLOAD === -->
+  <section id="download">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">05 · GET THE APP</span>
+        <h2 data-i18n="download.headline">Get the app</h2>
+      </div>
+
+      <div class="download-grid">
+        <a class="dl-card" href="{{PLAY_URL}}">
+          <svg class="mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 3.2v17.6a.6.6 0 0 0 .95.48l13-8.8a.6.6 0 0 0 0-.96l-13-8.8A.6.6 0 0 0 4 3.2z"/>
+          </svg>
+          <h3 data-i18n="download.play.title">Google Play</h3>
+          <p data-i18n="download.play.sub">Recommended for most users.</p>
+          <span class="open-link"><span data-i18n="download.cta">Open</span> <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M3 3h6v6" stroke-linecap="round"/><path d="M3 9l6-6" stroke-linecap="round"/></svg></span>
+        </a>
+
+        <a class="dl-card" href="{{FDROID_URL}}">
+          <svg class="mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="4" y="3" width="16" height="18" rx="2"/>
+            <circle cx="9" cy="9" r="1.2"/><circle cx="15" cy="9" r="1.2"/>
+            <path d="M9 14s1 2 3 2 3-2 3-2"/>
+          </svg>
+          <h3 data-i18n="download.fdroid.title">F-Droid</h3>
+          <p data-i18n="download.fdroid.sub">For an open-source store.</p>
+          <span class="open-link"><span data-i18n="download.cta">Open</span> <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M3 3h6v6" stroke-linecap="round"/><path d="M3 9l6-6" stroke-linecap="round"/></svg></span>
+        </a>
+
+        <a class="dl-card" href="{{GH_RELEASES_URL}}">
+          <svg class="mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/>
+          </svg>
+          <h3 data-i18n="download.apk.title">APK from GitHub</h3>
+          <p data-i18n="download.apk.sub">Direct download. Sideload it.</p>
+          <details>
+            <summary data-i18n="download.apk.how">How to sideload</summary>
+            <ol>
+              <li data-i18n="download.apk.step1">Download the .apk file to your phone.</li>
+              <li data-i18n="download.apk.step2">Open it. Android will ask permission — grant it.</li>
+              <li data-i18n="download.apk.step3">Confirm the install. Done.</li>
+            </ol>
+          </details>
+          <span class="open-link"><span data-i18n="download.cta">Open</span> <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M3 3h6v6" stroke-linecap="round"/><path d="M3 9l6-6" stroke-linecap="round"/></svg></span>
+        </a>
+
+        <a class="dl-card" href="{{GH_REPO_URL}}">
+          <svg class="mark" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 1.5A10.5 10.5 0 0 0 1.5 12a10.5 10.5 0 0 0 7.17 9.97c.52.1.71-.22.71-.5v-1.8c-2.9.64-3.52-1.25-3.52-1.25-.48-1.2-1.17-1.52-1.17-1.52-.95-.65.07-.64.07-.64 1.06.07 1.62 1.08 1.62 1.08.93 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.32-.26-4.76-1.16-4.76-5.16 0-1.14.4-2.08 1.07-2.8-.11-.27-.47-1.34.1-2.78 0 0 .88-.28 2.9 1.07a9.96 9.96 0 0 1 5.27 0c2.02-1.35 2.9-1.07 2.9-1.07.57 1.44.21 2.51.1 2.78.67.72 1.07 1.66 1.07 2.8 0 4.01-2.45 4.9-4.78 5.15.38.33.71.97.71 1.96v2.9c0 .28.19.61.72.5A10.5 10.5 0 0 0 22.5 12 10.5 10.5 0 0 0 12 1.5z"/>
+          </svg>
+          <h3 data-i18n="download.src.title">Source on GitHub</h3>
+          <p data-i18n="download.src.sub">Read it. Build it. Fork it.</p>
+          <span class="open-link"><span data-i18n="download.cta">Open</span> <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M3 3h6v6" stroke-linecap="round"/><path d="M3 9l6-6" stroke-linecap="round"/></svg></span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============================================================ FOOTER === -->
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="foot-row">
+      <p data-i18n="footer.map_attr">Map data.</p>
+      <span class="spacer"></span>
+      <p data-i18n="footer.zone_attr">Zone data.</p>
+      <span class="mit-badge"><span class="dot"></span><span data-i18n="footer.license">MIT License</span></span>
+    </div>
+    <div class="foot-row">
+      <p data-i18n="footer.copyright">© 2026 SrednaBG contributors</p>
+      <span class="spacer"></span>
+      <p data-i18n="footer.no_cookies">This page stores nothing on your device.</p>
+      <div class="lang-pill" role="group" aria-label="Language">
+        <button type="button" data-lang="bg" aria-pressed="true" data-i18n-aria-label="a11y.toggle_lang">BG</button>
+        <button type="button" data-lang="en" aria-pressed="false" data-i18n-aria-label="a11y.toggle_lang">EN</button>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/site.js" defer></script>
+</body>
+</html>

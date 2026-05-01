@@ -1,0 +1,8 @@
+# This is the official list of SrednaBG authors for copyright purposes.
+#
+# Names are sorted alphabetically by surname. To see the full list of people
+# who have contributed code, run `git log --format='%aN <%aE>' | sort -u`.
+#
+# Contributors: add your name and email below in a pull request.
+
+Stanimir Karoserov <demosten@gmail.com>

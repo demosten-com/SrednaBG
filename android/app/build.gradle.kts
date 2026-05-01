@@ -1,0 +1,177 @@
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
+}
+
+android {
+    namespace = "com.demosten.srednabg"
+    compileSdk = 35
+
+    defaultConfig {
+        applicationId = "com.demosten.srednabg"
+        minSdk = 26
+        targetSdk = 35
+        versionCode = 1
+        versionName = "0.1.0"
+        resourceConfigurations += listOf("bg", "en")
+
+        // Both debug and release hit the production Namecheap host so dev
+        // builds always test against real zone data.
+        buildConfigField("String", "ZONE_API_BASE_URL", "\"https://srednabg.com\"")
+        buildConfigField("String", "MAP_STYLE_URL", "\"https://srednabg.com/tiles/styles/basic-preview/style.json\"")
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
+}
+
+dependencies {
+    implementation(project(":core"))
+
+    // AndroidX Core
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.appcompat)
+
+    // Compose
+    implementation(platform(libs.compose.bom))
+    implementation(libs.compose.ui)
+    implementation(libs.compose.ui.graphics)
+    implementation(libs.compose.ui.tooling.preview)
+    implementation(libs.compose.material3)
+    debugImplementation(libs.compose.ui.tooling)
+    debugImplementation(libs.compose.ui.test.manifest)
+
+    // Lifecycle
+    implementation(libs.lifecycle.runtime.ktx)
+    implementation(libs.lifecycle.viewmodel.compose)
+    implementation(libs.lifecycle.service)
+
+    // Car App Library
+    implementation(libs.car.app)
+    implementation(libs.car.app.projected)
+
+    // Room
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+    ksp(libs.room.compiler)
+
+    // Hilt
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.hilt.navigation.compose)
+    implementation(libs.hilt.work)
+    ksp(libs.hilt.work.compiler)
+
+    // WorkManager
+    implementation(libs.work.runtime.ktx)
+
+    // Navigation
+    implementation(libs.navigation.compose)
+
+    // DataStore
+    implementation(libs.datastore.preferences)
+
+    // Google Play Services
+    implementation(libs.play.services.location)
+
+    // Network / JSON
+    implementation(libs.okhttp)
+    implementation(libs.gson)
+
+    // Coroutines
+    implementation(libs.coroutines.core)
+    implementation(libs.coroutines.android)
+
+    // MapLibre
+    implementation(libs.maplibre.android)
+
+    // Compose extras
+    implementation(libs.compose.material.icons.extended)
+
+    // Testing
+    testImplementation(libs.junit5.api)
+    testRuntimeOnly(libs.junit5.engine)
+    testImplementation(libs.junit5.params)
+    testImplementation(libs.coroutines.test)
+    testImplementation(libs.mockk)
+    testImplementation(libs.turbine)
+}
+
+tasks.withType<Test> {
+    useJUnitPlatform()
+}
+
+// Stages the generated map bundle (from backend/data/map-bundle/) into the APK's
+// assets/map/ directory. The bundle is produced by `backend/scripts/build-map-bundle.sh`
+// and intentionally kept out of git. The build FAILS if the bundle is missing or
+// incomplete — the app is designed offline-first and shipping without the bundle
+// would hand users a blank map on first launch.
+val mapBundleSource = rootProject.file("../backend/data/map-bundle")
+val mapAssetsDest = layout.projectDirectory.dir("src/main/assets/map")
+val requiredMapFiles = listOf("style-light.json", "style-dark.json", "bulgaria.mbtiles")
+
+// Separate validation task — Gradle's Copy short-circuits with NO-SOURCE when
+// `from()` resolves to an empty collection, which skips any `doFirst`. Running
+// the check in a plain task ahead of the Copy guarantees it always fires.
+val validateMapBundle by tasks.registering {
+    group = "build"
+    description = "Fail the build when the offline map bundle is missing or incomplete"
+    outputs.upToDateWhen { false }
+    doLast {
+        if (!mapBundleSource.exists()) {
+            throw GradleException(
+                "[validateMapBundle] offline map bundle not found at $mapBundleSource. " +
+                    "Run `bash backend/scripts/build-map-bundle.sh` to generate it."
+            )
+        }
+        val missing = requiredMapFiles.filterNot { File(mapBundleSource, it).exists() }
+        if (missing.isNotEmpty()) {
+            throw GradleException(
+                "[validateMapBundle] offline map bundle at $mapBundleSource is missing: " +
+                    missing.joinToString(", ") +
+                    ". Regenerate it with `bash backend/scripts/build-map-bundle.sh`."
+            )
+        }
+    }
+}
+
+val prepareMapAssets by tasks.registering(Copy::class) {
+    group = "build"
+    description = "Stage generated map bundle into assets/map/"
+    dependsOn(validateMapBundle)
+    from(mapBundleSource)
+    into(mapAssetsDest)
+    doFirst {
+        mapAssetsDest.asFile.deleteRecursively()
+    }
+}
+
+tasks.named("preBuild") {
+    dependsOn(prepareMapAssets)
+}

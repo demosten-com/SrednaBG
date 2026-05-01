@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.demosten.srednabg.zonesync</string>
+		<string>com.demosten.srednabg.mapsync</string>
+	</array>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>bg</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>bg</string>
+		<string>en</string>
+	</array>
+	<!-- MapLibre fetches vector tiles from our loopback HTTP tile server at
+	     http://127.0.0.1:<ephemeral>. Default ATS blocks HTTP; this exception
+	     allows only local-network HTTP traffic. No arbitrary-internet HTTP
+	     is permitted (the release style URL is HTTPS). -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<!-- Localized BG/EN overrides live in InfoPlist.xcstrings; the BG values
+	     below are the dev-region fallback for locales the catalog doesn't cover. -->
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>SrednaBG следи средната ви скорост в зоните за секционен контрол — дори когато приложението е във фон или екранът е изключен — за да ви предупреди преди камерата да отчете нарушение.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>SrednaBG използва местоположението ви, за да определи в коя зона за секционен контрол навлизате и да изчислява текущата средна скорост.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>audio</string>
+		<string>fetch</string>
+		<string>processing</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~iphone</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+</dict>
+</plist>

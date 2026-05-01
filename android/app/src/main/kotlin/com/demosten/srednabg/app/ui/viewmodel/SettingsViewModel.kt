@@ -1,0 +1,103 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2026 SrednaBG Contributors
+//
+// SrednaBG — android / app
+
+package com.demosten.srednabg.app.ui.viewmodel
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.demosten.srednabg.app.data.SettingsRepository
+import com.demosten.srednabg.app.data.SyncResult
+import com.demosten.srednabg.app.data.ZoneRepository
+import com.demosten.srednabg.core.MapThemeMode
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+@HiltViewModel
+class SettingsViewModel @Inject constructor(
+    private val settingsRepository: SettingsRepository,
+    private val zoneRepository: ZoneRepository,
+) : ViewModel() {
+
+    val alertThreshold: StateFlow<Int> = settingsRepository.alertThreshold
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SettingsRepository.DEFAULT_ALERT_THRESHOLD)
+
+    val voiceEnabled: StateFlow<Boolean> = settingsRepository.voiceEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val periodicVoiceUpdates: StateFlow<Boolean> = settingsRepository.periodicVoiceUpdates
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            SettingsRepository.DEFAULT_PERIODIC_VOICE_UPDATES,
+        )
+
+    val announceOnlyWhenOver: StateFlow<Boolean> = settingsRepository.announceOnlyWhenOver
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            SettingsRepository.DEFAULT_ANNOUNCE_ONLY_WHEN_OVER,
+        )
+
+    val appLanguage: StateFlow<String> = settingsRepository.appLanguage
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SettingsRepository.DEFAULT_APP_LANGUAGE)
+
+    val vehicleType: StateFlow<String> = settingsRepository.vehicleType
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SettingsRepository.DEFAULT_VEHICLE_TYPE)
+
+    val mapThemeMode: StateFlow<MapThemeMode> = settingsRepository.mapThemeMode
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SettingsRepository.DEFAULT_MAP_THEME_MODE)
+
+    private val _isSyncing = MutableStateFlow(false)
+    val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
+
+    private val _syncEvents = Channel<SyncResult>(Channel.BUFFERED)
+    val syncEvents = _syncEvents.receiveAsFlow()
+
+    fun setAlertThreshold(value: Int) {
+        viewModelScope.launch { settingsRepository.setAlertThreshold(value) }
+    }
+
+    fun setVoiceEnabled(value: Boolean) {
+        viewModelScope.launch { settingsRepository.setVoiceEnabled(value) }
+    }
+
+    fun setPeriodicVoiceUpdates(value: Boolean) {
+        viewModelScope.launch { settingsRepository.setPeriodicVoiceUpdates(value) }
+    }
+
+    fun setAnnounceOnlyWhenOver(value: Boolean) {
+        viewModelScope.launch { settingsRepository.setAnnounceOnlyWhenOver(value) }
+    }
+
+    fun setAppLanguage(value: String) {
+        viewModelScope.launch { settingsRepository.setAppLanguage(value) }
+    }
+
+    fun setVehicleType(value: String) {
+        viewModelScope.launch { settingsRepository.setVehicleType(value) }
+    }
+
+    fun setMapThemeMode(value: MapThemeMode) {
+        viewModelScope.launch { settingsRepository.setMapThemeMode(value) }
+    }
+
+    fun syncNow() {
+        if (_isSyncing.value) return
+        viewModelScope.launch {
+            _isSyncing.value = true
+            val result = zoneRepository.syncFromServer()
+            _syncEvents.trySend(result)
+            _isSyncing.value = false
+        }
+    }
+}

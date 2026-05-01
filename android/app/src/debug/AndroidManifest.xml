@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- Debug-only sync trigger; see DebugSyncReceiver for adb usage. -->
+        <receiver
+            android:name="com.demosten.srednabg.app.debug.DebugSyncReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.demosten.srednabg.debug.SYNC_MAP" />
+                <action android:name="com.demosten.srednabg.debug.SYNC_ZONES" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Debug-only QA harness control surface; see DebugControlReceiver
+             for adb usage. Exposes settings injection + tracking lifecycle. -->
+        <receiver
+            android:name="com.demosten.srednabg.app.debug.DebugControlReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.demosten.srednabg.debug.SET_SETTING" />
+                <action android:name="com.demosten.srednabg.debug.START_TRACKING" />
+                <action android:name="com.demosten.srednabg.debug.STOP_TRACKING" />
+                <action android:name="com.demosten.srednabg.debug.FEED_POINT" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

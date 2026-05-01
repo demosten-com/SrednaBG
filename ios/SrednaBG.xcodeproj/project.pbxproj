@@ -1,0 +1,727 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		DA1AA88F2F9B147500A68948 /* SrednaBGCore in Frameworks */ = {isa = PBXBuildFile; productRef = DA1AA88E2F9B147500A68948 /* SrednaBGCore */; };
+		DA1AA8912F9B147500A68948 /* SrednaBGData in Frameworks */ = {isa = PBXBuildFile; productRef = DA1AA8902F9B147500A68948 /* SrednaBGData */; };
+		DA1AA8932F9B147500A68948 /* SrednaBGTracking in Frameworks */ = {isa = PBXBuildFile; productRef = DA1AA8922F9B147500A68948 /* SrednaBGTracking */; };
+		DA1AA8952F9B147500A68948 /* SrednaBGUI in Frameworks */ = {isa = PBXBuildFile; productRef = DA1AA8942F9B147500A68948 /* SrednaBGUI */; };
+		DA1AA8A22F9B166A00A68948 /* OfflineMap in Resources */ = {isa = PBXBuildFile; fileRef = DA1AA8A12F9B166A00A68948 /* OfflineMap */; };
+		DA1AA8B02F9B166A00A68948 /* bundled-zones.json in Resources */ = {isa = PBXBuildFile; fileRef = DA1AA8AF2F9B166A00A68948 /* bundled-zones.json */; };
+		DAC4FA112FAA00000CA20001 /* SrednaBGMapCore in Frameworks */ = {isa = PBXBuildFile; productRef = DAC4FA102FAA00000CA20001 /* SrednaBGMapCore */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		DA42E40A2F9B0D91008DC6AB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DA42E3F42F9B0D90008DC6AB /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = DA42E3FB2F9B0D90008DC6AB;
+			remoteInfo = SrednaBG;
+		};
+		DA42E4142F9B0D91008DC6AB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DA42E3F42F9B0D90008DC6AB /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = DA42E3FB2F9B0D90008DC6AB;
+			remoteInfo = SrednaBG;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		DA1AA8A12F9B166A00A68948 /* OfflineMap */ = {isa = PBXFileReference; lastKnownFileType = folder; name = OfflineMap; path = SrednaBG/App/Resources/OfflineMap; sourceTree = "<group>"; };
+		DA1AA8AF2F9B166A00A68948 /* bundled-zones.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "bundled-zones.json"; path = "SrednaBG/App/Resources/bundled-zones.json"; sourceTree = "<group>"; };
+		DA42E3FC2F9B0D90008DC6AB /* SrednaBG.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SrednaBG.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DA42E4092F9B0D91008DC6AB /* SrednaBGTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SrednaBGTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		DA42E4132F9B0D91008DC6AB /* SrednaBGUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SrednaBGUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		DA1AA8A32F9B166A00A68948 /* Exceptions for "SrednaBG" folder in "SrednaBG" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"App/Resources/bundled-zones.json",
+				Info.plist,
+			);
+			target = DA42E3FB2F9B0D90008DC6AB /* SrednaBG */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		DA42E3FE2F9B0D90008DC6AB /* SrednaBG */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				DA1AA8A32F9B166A00A68948 /* Exceptions for "SrednaBG" folder in "SrednaBG" target */,
+			);
+			path = SrednaBG;
+			sourceTree = "<group>";
+		};
+		DA42E40C2F9B0D91008DC6AB /* SrednaBGTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SrednaBGTests;
+			sourceTree = "<group>";
+		};
+		DA42E4162F9B0D91008DC6AB /* SrednaBGUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SrednaBGUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		DA42E3F92F9B0D90008DC6AB /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DA1AA8932F9B147500A68948 /* SrednaBGTracking in Frameworks */,
+				DA1AA8912F9B147500A68948 /* SrednaBGData in Frameworks */,
+				DA1AA8952F9B147500A68948 /* SrednaBGUI in Frameworks */,
+				DA1AA88F2F9B147500A68948 /* SrednaBGCore in Frameworks */,
+				DAC4FA112FAA00000CA20001 /* SrednaBGMapCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DA42E4062F9B0D91008DC6AB /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DA42E4102F9B0D91008DC6AB /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		DA42E3F32F9B0D90008DC6AB = {
+			isa = PBXGroup;
+			children = (
+				DA42E3FE2F9B0D90008DC6AB /* SrednaBG */,
+				DA1AA8A12F9B166A00A68948 /* OfflineMap */,
+				DA1AA8AF2F9B166A00A68948 /* bundled-zones.json */,
+				DA42E40C2F9B0D91008DC6AB /* SrednaBGTests */,
+				DA42E4162F9B0D91008DC6AB /* SrednaBGUITests */,
+				DA42E3FD2F9B0D90008DC6AB /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		DA42E3FD2F9B0D90008DC6AB /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				DA42E3FC2F9B0D90008DC6AB /* SrednaBG.app */,
+				DA42E4092F9B0D91008DC6AB /* SrednaBGTests.xctest */,
+				DA42E4132F9B0D91008DC6AB /* SrednaBGUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		DA42E3FB2F9B0D90008DC6AB /* SrednaBG */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DA42E41D2F9B0D91008DC6AB /* Build configuration list for PBXNativeTarget "SrednaBG" */;
+			buildPhases = (
+				DA1AA8962F9B166900A68948 /* Map Bundle */,
+				DA1AA8AE2F9B166900A68948 /* Bundled Zones */,
+				DA5114012F9B166900A68948 /* SwiftLint */,
+				DA42E3F82F9B0D90008DC6AB /* Sources */,
+				DA42E3F92F9B0D90008DC6AB /* Frameworks */,
+				DA42E3FA2F9B0D90008DC6AB /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				DA42E3FE2F9B0D90008DC6AB /* SrednaBG */,
+			);
+			name = SrednaBG;
+			packageProductDependencies = (
+				DA1AA88E2F9B147500A68948 /* SrednaBGCore */,
+				DA1AA8902F9B147500A68948 /* SrednaBGData */,
+				DA1AA8922F9B147500A68948 /* SrednaBGTracking */,
+				DA1AA8942F9B147500A68948 /* SrednaBGUI */,
+				DAC4FA102FAA00000CA20001 /* SrednaBGMapCore */,
+			);
+			productName = SrednaBG;
+			productReference = DA42E3FC2F9B0D90008DC6AB /* SrednaBG.app */;
+			productType = "com.apple.product-type.application";
+		};
+		DA42E4082F9B0D91008DC6AB /* SrednaBGTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DA42E4202F9B0D91008DC6AB /* Build configuration list for PBXNativeTarget "SrednaBGTests" */;
+			buildPhases = (
+				DA42E4052F9B0D91008DC6AB /* Sources */,
+				DA42E4062F9B0D91008DC6AB /* Frameworks */,
+				DA42E4072F9B0D91008DC6AB /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DA42E40B2F9B0D91008DC6AB /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				DA42E40C2F9B0D91008DC6AB /* SrednaBGTests */,
+			);
+			name = SrednaBGTests;
+			packageProductDependencies = (
+			);
+			productName = SrednaBGTests;
+			productReference = DA42E4092F9B0D91008DC6AB /* SrednaBGTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		DA42E4122F9B0D91008DC6AB /* SrednaBGUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DA42E4232F9B0D91008DC6AB /* Build configuration list for PBXNativeTarget "SrednaBGUITests" */;
+			buildPhases = (
+				DA42E40F2F9B0D91008DC6AB /* Sources */,
+				DA42E4102F9B0D91008DC6AB /* Frameworks */,
+				DA42E4112F9B0D91008DC6AB /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DA42E4152F9B0D91008DC6AB /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				DA42E4162F9B0D91008DC6AB /* SrednaBGUITests */,
+			);
+			name = SrednaBGUITests;
+			packageProductDependencies = (
+			);
+			productName = SrednaBGUITests;
+			productReference = DA42E4132F9B0D91008DC6AB /* SrednaBGUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		DA42E3F42F9B0D90008DC6AB /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2640;
+				LastUpgradeCheck = 2640;
+				TargetAttributes = {
+					DA42E3FB2F9B0D90008DC6AB = {
+						CreatedOnToolsVersion = 26.4.1;
+					};
+					DA42E4082F9B0D91008DC6AB = {
+						CreatedOnToolsVersion = 26.4.1;
+						TestTargetID = DA42E3FB2F9B0D90008DC6AB;
+					};
+					DA42E4122F9B0D91008DC6AB = {
+						CreatedOnToolsVersion = 26.4.1;
+						TestTargetID = DA42E3FB2F9B0D90008DC6AB;
+					};
+				};
+			};
+			buildConfigurationList = DA42E3F72F9B0D90008DC6AB /* Build configuration list for PBXProject "SrednaBG" */;
+			developmentRegion = bg;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				bg,
+				en,
+				Base,
+			);
+			mainGroup = DA42E3F32F9B0D90008DC6AB;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				DA1AA88D2F9B147500A68948 /* XCLocalSwiftPackageReference "../ios" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = DA42E3FD2F9B0D90008DC6AB /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				DA42E3FB2F9B0D90008DC6AB /* SrednaBG */,
+				DA42E4082F9B0D91008DC6AB /* SrednaBGTests */,
+				DA42E4122F9B0D91008DC6AB /* SrednaBGUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		DA42E3FA2F9B0D90008DC6AB /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DA1AA8A22F9B166A00A68948 /* OfflineMap in Resources */,
+				DA1AA8B02F9B166A00A68948 /* bundled-zones.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DA42E4072F9B0D91008DC6AB /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DA42E4112F9B0D91008DC6AB /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		DA1AA8962F9B166900A68948 /* Map Bundle */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/../backend/data/map-bundle",
+			);
+			name = "Map Bundle";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(SRCROOT)/SrednaBG/App/Resources/OfflineMap",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -euo pipefail\n\nSRC=\"${SRCROOT}/../backend/data/map-bundle\"\nDEST=\"${SRCROOT}/SrednaBG/App/Resources/OfflineMap\"\n\nif [ ! -d \"$SRC\" ]; then\n    echo \"error: offline map bundle not found at $SRC\" 1>&2\n    echo \"error: run \\`bash backend/scripts/build-map-bundle.sh\\` to generate it\" 1>&2\n    exit 1\nfi\n\nfor f in style-light.json style-dark.json bulgaria.mbtiles; do\n    if [ ! -f \"$SRC/$f\" ]; then\n        echo \"error: offline map bundle is missing $f at $SRC\" 1>&2\n        echo \"error: regenerate it with \\`bash backend/scripts/build-map-bundle.sh\\`\" 1>&2\n        exit 1\n    fi\ndone\n\nmkdir -p \"$DEST\"\nrsync -a --delete \"$SRC/\" \"$DEST/\"\n";
+		};
+		DA1AA8AE2F9B166900A68948 /* Bundled Zones */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/../backend/data/zones.json",
+			);
+			name = "Bundled Zones";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(SRCROOT)/SrednaBG/App/Resources/bundled-zones.json",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -euo pipefail\n\nSRC=\"${SRCROOT}/../backend/data/zones.json\"\nDEST=\"${SRCROOT}/SrednaBG/App/Resources/bundled-zones.json\"\n\nif [ ! -f \"$SRC\" ]; then\n    echo \"error: bundled zones JSON not found at $SRC\" 1>&2\n    echo \"error: regenerate it with \\`python -m src.output\\` from scrapers/ (or copy scrapers/data/zones.json into backend/data/)\" 1>&2\n    exit 1\nfi\n\nmkdir -p \"$(dirname \"$DEST\")\"\ncp \"$SRC\" \"$DEST\"\n";
+		};
+		DA5114012F9B166900A68948 /* SwiftLint */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/.swiftlint.yml",
+			);
+			name = SwiftLint;
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -euo pipefail\n\n# Homebrew's arm64 install path is not on Xcode's default PATH.\nif [ -x /opt/homebrew/bin/swiftlint ]; then\n    SWIFTLINT=/opt/homebrew/bin/swiftlint\nelif [ -x /usr/local/bin/swiftlint ]; then\n    SWIFTLINT=/usr/local/bin/swiftlint\nelse\n    echo \"error: SwiftLint is required but was not found. Install it with \\`brew install swiftlint\\`.\" 1>&2\n    exit 1\nfi\n\ncd \"${SRCROOT}\"\n\"$SWIFTLINT\" lint --strict --quiet\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		DA42E3F82F9B0D90008DC6AB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DA42E4052F9B0D91008DC6AB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DA42E40F2F9B0D91008DC6AB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		DA42E40B2F9B0D91008DC6AB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = DA42E3FB2F9B0D90008DC6AB /* SrednaBG */;
+			targetProxy = DA42E40A2F9B0D91008DC6AB /* PBXContainerItemProxy */;
+		};
+		DA42E4152F9B0D91008DC6AB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = DA42E3FB2F9B0D90008DC6AB /* SrednaBG */;
+			targetProxy = DA42E4142F9B0D91008DC6AB /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		DA42E41B2F9B0D91008DC6AB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 4W2677KEN2;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		DA42E41C2F9B0D91008DC6AB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 4W2677KEN2;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		DA42E41E2F9B0D91008DC6AB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4W2677KEN2;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SrednaBG/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.demosten.srednabg;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		DA42E41F2F9B0D91008DC6AB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4W2677KEN2;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SrednaBG/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.demosten.srednabg;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		DA42E4212F9B0D91008DC6AB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4W2677KEN2;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.demosten.srednabgTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SrednaBG.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SrednaBG";
+			};
+			name = Debug;
+		};
+		DA42E4222F9B0D91008DC6AB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4W2677KEN2;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.demosten.srednabgTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SrednaBG.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SrednaBG";
+			};
+			name = Release;
+		};
+		DA42E4242F9B0D91008DC6AB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4W2677KEN2;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.demosten.srednabgUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = SrednaBG;
+			};
+			name = Debug;
+		};
+		DA42E4252F9B0D91008DC6AB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4W2677KEN2;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.demosten.srednabgUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = SrednaBG;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		DA42E3F72F9B0D90008DC6AB /* Build configuration list for PBXProject "SrednaBG" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DA42E41B2F9B0D91008DC6AB /* Debug */,
+				DA42E41C2F9B0D91008DC6AB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		DA42E41D2F9B0D91008DC6AB /* Build configuration list for PBXNativeTarget "SrednaBG" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DA42E41E2F9B0D91008DC6AB /* Debug */,
+				DA42E41F2F9B0D91008DC6AB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		DA42E4202F9B0D91008DC6AB /* Build configuration list for PBXNativeTarget "SrednaBGTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DA42E4212F9B0D91008DC6AB /* Debug */,
+				DA42E4222F9B0D91008DC6AB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		DA42E4232F9B0D91008DC6AB /* Build configuration list for PBXNativeTarget "SrednaBGUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DA42E4242F9B0D91008DC6AB /* Debug */,
+				DA42E4252F9B0D91008DC6AB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		DA1AA88D2F9B147500A68948 /* XCLocalSwiftPackageReference "../ios" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../ios;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		DA1AA88E2F9B147500A68948 /* SrednaBGCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SrednaBGCore;
+		};
+		DA1AA8902F9B147500A68948 /* SrednaBGData */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SrednaBGData;
+		};
+		DA1AA8922F9B147500A68948 /* SrednaBGTracking */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SrednaBGTracking;
+		};
+		DA1AA8942F9B147500A68948 /* SrednaBGUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SrednaBGUI;
+		};
+		DAC4FA102FAA00000CA20001 /* SrednaBGMapCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SrednaBGMapCore;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = DA42E3F42F9B0D90008DC6AB /* Project object */;
+}

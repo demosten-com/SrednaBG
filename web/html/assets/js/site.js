@@ -1,0 +1,104 @@
+/* SrednaBG site.js — no cookies, no storage, vanilla. */
+
+(function () {
+  "use strict";
+
+  /* ------------------------------------------------------ i18n (inlined) */
+  const I18N = { bg: null, en: null };
+  function loadLang(code) {
+    if (I18N[code]) return Promise.resolve(I18N[code]);
+    const tag = document.getElementById("i18n-" + code);
+    if (tag) { try { I18N[code] = JSON.parse(tag.textContent); return Promise.resolve(I18N[code]); } catch (_) {} }
+    // Fallback to fetch for dev servers that serve the raw JSON files
+    return fetch("assets/i18n/" + code + ".json", { cache: "no-store" })
+      .then((r) => r.json()).then((j) => (I18N[code] = j));
+  }
+  function apply(dict) {
+    document.querySelectorAll("[data-i18n]").forEach((el) => {
+      const v = dict[el.getAttribute("data-i18n")];
+      if (v != null) el.textContent = v;
+    });
+    document.querySelectorAll("[data-i18n-alt]").forEach((el) => {
+      const v = dict[el.getAttribute("data-i18n-alt")];
+      if (v != null) el.setAttribute("alt", v);
+    });
+    document.querySelectorAll("[data-i18n-aria-label]").forEach((el) => {
+      const v = dict[el.getAttribute("data-i18n-aria-label")];
+      if (v != null) el.setAttribute("aria-label", v);
+    });
+    const meta = document.querySelector('meta[name="description"]');
+    if (meta && dict["meta.description"]) meta.setAttribute("content", dict["meta.description"]);
+    if (dict["meta.title"]) document.title = dict["meta.title"];
+  }
+  function pickLang() {
+    const url = new URL(location.href);
+    const q = url.searchParams.get("lang");
+    if (q === "bg" || q === "en") return q;
+    const list = (navigator.languages || [navigator.language || "bg"]);
+    for (const t of list) { const p = (t || "").toLowerCase().split("-")[0]; if (p === "bg") return "bg"; if (p === "en") return "en"; }
+    return "bg";
+  }
+  async function setLang(code, pushHistory) {
+    const dict = await loadLang(code);
+    document.documentElement.lang = code;
+    apply(dict);
+    document.querySelectorAll(".lang-pill button").forEach((b) => {
+      b.setAttribute("aria-pressed", String(b.dataset.lang === code));
+    });
+    document.body.classList.remove("i18n-swap"); void document.body.offsetWidth; document.body.classList.add("i18n-swap");
+    if (pushHistory) {
+      const u = new URL(location.href); u.searchParams.set("lang", code);
+      history.pushState({}, "", u);
+    }
+  }
+
+  /* ------------------------------- screenshot onerror -> dark fallback tile */
+  window.__ssFallback = function (img) {
+    const label = img.getAttribute("data-fallback-label") || "Screen";
+    const box = document.createElement("div");
+    box.className = "ss-fallback";
+    box.innerHTML =
+      '<svg viewBox="0 0 48 48" fill="none" aria-hidden="true">' +
+      '<circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="2.5"/>' +
+      '<path d="M24 24 L34 15" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>' +
+      '<circle cx="24" cy="24" r="2.5" fill="currentColor"/>' +
+      "</svg>" +
+      '<div class="ss-label">SrednaBG</div>' +
+      '<div class="ss-label" style="color:var(--text-mid)">' + label + "</div>";
+    img.replaceWith(box);
+  };
+
+  /* ------------------- hero AA slot: hydrate real image if the file exists */
+  function hydrateAaSlot() {
+    const slot = document.getElementById("aa-slot");
+    if (!slot) return;
+    const src = slot.getAttribute("data-src");
+    const key = slot.getAttribute("data-alt-key");
+    if (!src) return;
+    const probe = new Image();
+    probe.onload = () => {
+      const dict = I18N[document.documentElement.lang] || {};
+      const placeholder = slot.querySelector(".aa-placeholder");
+      if (placeholder) placeholder.remove();
+      const real = document.createElement("img");
+      real.src = src;
+      real.setAttribute("width", "1920");
+      real.setAttribute("height", "1080");
+      real.setAttribute("loading", "lazy");
+      real.setAttribute("data-i18n-alt", key);
+      real.alt = dict[key] || "";
+      slot.appendChild(real);
+    };
+    probe.src = src;
+  }
+
+  /* ----------------------------------------------------------------- init */
+  window.addEventListener("DOMContentLoaded", () => {
+    setLang(pickLang(), false);
+    hydrateAaSlot();
+    document.querySelectorAll(".lang-pill button").forEach((b) => {
+      b.addEventListener("click", () => setLang(b.dataset.lang, true));
+    });
+    window.addEventListener("popstate", () => setLang(pickLang(), false));
+  });
+})();

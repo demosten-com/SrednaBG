@@ -1,0 +1,72 @@
+/* Navigation */
+"navHome" = "Home";
+"navMap" = "Map";
+"navSettings" = "Settings";
+
+/* HomeScreen */
+"statusNotTracking" = "Not tracking";
+"tapToStartHint" = "Tap Start to begin monitoring section-control zones.";
+"statusTrackingOutside" = "Tracking — no active zone";
+"statusInZone" = "In zone — %@";
+"statusExiting" = "Exiting %@";
+"statusOverLimit" = "Over limit";
+"statusWithinLimit" = "Within limit";
+"statusNowSpeed" = "Now %@ km/h";
+"avgSpeedLabel" = "Average";
+"currentSpeedLabel" = "Current speed";
+"speedLimit" = "Limit";
+"maxForRemainder" = "Max ahead";
+"remaining" = "Remaining";
+"finalAvgSpeed" = "Final average %@ km/h";
+"zonesLoaded" = "%d zones loaded";
+"startTracking" = "Start tracking";
+"stopTracking" = "Stop tracking";
+
+/* SettingsScreen */
+"settingAlertThreshold" = "Alert threshold";
+"settingAlertThresholdDesc" = "Warn me when current speed is within %d km/h of the limit.";
+"settingVoiceAlerts" = "Voice alerts";
+"settingVoiceAlertsDesc" = "Spoken announcements through the car's audio.";
+"settingPeriodicUpdates" = "Periodic updates";
+"settingPeriodicUpdatesDesc" = "Repeat the average speed every 30 seconds while in a zone.";
+"settingOverspeedOnly" = "Only when over limit";
+"settingOverspeedOnlyDesc" = "Skip routine \"within limit\" announcements.";
+"settingLanguage" = "Language";
+"settingLanguageDesc" = "Affects both UI and voice prompts.";
+"languageSystem" = "System";
+"languageBg" = "Български";
+"languageEn" = "English";
+"settingVehicleType" = "Vehicle type";
+"vehicleCar" = "Car";
+"vehicleTruck" = "Truck";
+"vehicleBus" = "Bus";
+"settingMapHeadingUp" = "Map: heading up";
+"settingMapHeadingUpDesc" = "Rotate the map to your heading instead of north up.";
+"settingMapTheme" = "Map theme";
+"settingMapThemeDesc" = "Light or dark — auto-switches at sunrise/sunset.";
+"mapThemeAuto" = "Automatic";
+"mapThemeLight" = "Light";
+"mapThemeDark" = "Dark";
+"settingSyncNow" = "Sync zones now";
+"syncUpdated" = "Zones updated";
+"syncUpToDate" = "Already up to date";
+"syncFailed" = "Sync failed — try again";
+
+/* AboutScreen */
+"aboutTitle" = "About";
+"aboutVersion" = "Version %@";
+"aboutLicense" = "MIT licensed open source";
+"aboutAttribution" = "Map data: © OpenMapTiles © OpenStreetMap contributors";
+"aboutZoneData" = "Zone data: BG TOLL, TollTracker.eu";
+
+/* Map */
+"mapZoomIn" = "Zoom in";
+"mapZoomOut" = "Zoom out";
+"mapHeadingUp" = "Heading up";
+"mapNorthUp" = "North up";
+"mapFollow" = "Follow me";
+"mapNoZones" = "No zones available — try syncing.";
+"mapLoading" = "Loading map…";
+"mapLoadFailed" = "Map couldn't load";
+"mapLoadFailedHint" = "Check your connection and try again.";
+"mapRetry" = "Retry";

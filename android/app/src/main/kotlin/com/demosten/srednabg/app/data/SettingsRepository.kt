@@ -1,0 +1,141 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2026 SrednaBG Contributors
+//
+// SrednaBG — android / app
+
+package com.demosten.srednabg.app.data
+
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
+import com.demosten.srednabg.core.MapThemeMode
+import java.util.Locale
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class SettingsRepository @Inject constructor(
+    private val dataStore: DataStore<Preferences>,
+) {
+    companion object {
+        private val KEY_ALERT_THRESHOLD = intPreferencesKey("alert_threshold_kmh")
+        private val KEY_VOICE_ENABLED = booleanPreferencesKey("voice_enabled")
+        private val KEY_PERIODIC_VOICE_UPDATES = booleanPreferencesKey("periodic_voice_updates")
+        private val KEY_ANNOUNCE_ONLY_WHEN_OVER = booleanPreferencesKey("announce_only_when_over")
+        private val KEY_APP_LANGUAGE = stringPreferencesKey("app_language")
+        private val KEY_VEHICLE_TYPE = stringPreferencesKey("vehicle_type")
+        private val KEY_ZONE_HASH = stringPreferencesKey("cached_zone_hash")
+        private val KEY_MAP_HASH = stringPreferencesKey("cached_map_hash")
+        private val KEY_MAP_HEADING_UP = booleanPreferencesKey("map_heading_up")
+        private val KEY_MAP_THEME_MODE = stringPreferencesKey("map_theme_mode")
+
+        const val DEFAULT_ALERT_THRESHOLD = 5
+        const val DEFAULT_APP_LANGUAGE = "system"
+        const val DEFAULT_VEHICLE_TYPE = "car"
+        const val DEFAULT_PERIODIC_VOICE_UPDATES = true
+        const val DEFAULT_ANNOUNCE_ONLY_WHEN_OVER = true
+        val DEFAULT_MAP_THEME_MODE: MapThemeMode = MapThemeMode.AUTO
+
+        const val LANG_SYSTEM = "system"
+        const val LANG_BG = "bg"
+        const val LANG_EN = "en"
+    }
+
+    val alertThreshold: Flow<Int> = dataStore.data.map { prefs ->
+        prefs[KEY_ALERT_THRESHOLD] ?: DEFAULT_ALERT_THRESHOLD
+    }
+
+    val voiceEnabled: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[KEY_VOICE_ENABLED] ?: true
+    }
+
+    val periodicVoiceUpdates: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[KEY_PERIODIC_VOICE_UPDATES] ?: DEFAULT_PERIODIC_VOICE_UPDATES
+    }
+
+    val announceOnlyWhenOver: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[KEY_ANNOUNCE_ONLY_WHEN_OVER] ?: DEFAULT_ANNOUNCE_ONLY_WHEN_OVER
+    }
+
+    val appLanguage: Flow<String> = dataStore.data.map { prefs ->
+        prefs[KEY_APP_LANGUAGE] ?: DEFAULT_APP_LANGUAGE
+    }
+
+    val voiceLanguage: Flow<String> = appLanguage.map { resolveVoiceLanguage(it) }
+
+    val vehicleType: Flow<String> = dataStore.data.map { prefs ->
+        prefs[KEY_VEHICLE_TYPE] ?: DEFAULT_VEHICLE_TYPE
+    }
+
+    val cachedZoneHash: Flow<String> = dataStore.data.map { prefs ->
+        prefs[KEY_ZONE_HASH] ?: ""
+    }
+
+    val cachedMapHash: Flow<String> = dataStore.data.map { prefs ->
+        prefs[KEY_MAP_HASH] ?: ""
+    }
+
+    val mapHeadingUp: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[KEY_MAP_HEADING_UP] ?: false
+    }
+
+    val mapThemeMode: Flow<MapThemeMode> = dataStore.data.map { prefs ->
+        prefs[KEY_MAP_THEME_MODE]?.let { runCatching { MapThemeMode.valueOf(it) }.getOrNull() }
+            ?: DEFAULT_MAP_THEME_MODE
+    }
+
+    suspend fun setAlertThreshold(value: Int) {
+        dataStore.edit { it[KEY_ALERT_THRESHOLD] = value }
+    }
+
+    suspend fun setVoiceEnabled(value: Boolean) {
+        dataStore.edit { it[KEY_VOICE_ENABLED] = value }
+    }
+
+    suspend fun setPeriodicVoiceUpdates(value: Boolean) {
+        dataStore.edit { it[KEY_PERIODIC_VOICE_UPDATES] = value }
+    }
+
+    suspend fun setAnnounceOnlyWhenOver(value: Boolean) {
+        dataStore.edit { it[KEY_ANNOUNCE_ONLY_WHEN_OVER] = value }
+    }
+
+    suspend fun setAppLanguage(value: String) {
+        dataStore.edit { it[KEY_APP_LANGUAGE] = value }
+    }
+
+    suspend fun setVehicleType(value: String) {
+        dataStore.edit { it[KEY_VEHICLE_TYPE] = value }
+    }
+
+    suspend fun setCachedZoneHash(value: String) {
+        dataStore.edit { it[KEY_ZONE_HASH] = value }
+    }
+
+    suspend fun setCachedMapHash(value: String) {
+        dataStore.edit { it[KEY_MAP_HASH] = value }
+    }
+
+    suspend fun setMapHeadingUp(value: Boolean) {
+        dataStore.edit { it[KEY_MAP_HEADING_UP] = value }
+    }
+
+    suspend fun setMapThemeMode(value: MapThemeMode) {
+        dataStore.edit { it[KEY_MAP_THEME_MODE] = value.name }
+    }
+}
+
+private fun resolveVoiceLanguage(app: String): String = when (app) {
+    SettingsRepository.LANG_BG -> SettingsRepository.LANG_BG
+    SettingsRepository.LANG_EN -> SettingsRepository.LANG_EN
+    else -> if (Locale.getDefault().language == SettingsRepository.LANG_BG) {
+        SettingsRepository.LANG_BG
+    } else {
+        SettingsRepository.LANG_EN
+    }
+}

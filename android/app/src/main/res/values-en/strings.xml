@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SrednaBG</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_map">Map</string>
+    <string name="nav_settings">Settings</string>
+    <string name="nav_history">History</string>
+
+    <!-- Home screen -->
+    <string name="zones_loaded">%d zones loaded</string>
+    <string name="status_not_tracking">Not tracking</string>
+    <string name="status_tracking_outside">Monitoring zones</string>
+    <string name="status_in_zone">In zone: %s</string>
+    <string name="status_exiting">Leaving zone: %s</string>
+    <string name="start_tracking">Start tracking</string>
+    <string name="stop_tracking">Stop tracking</string>
+    <string name="tap_to_start_hint">Tap ▶ to start</string>
+    <string name="avg_speed_label">avg km/h</string>
+    <string name="current_speed_label">km/h</string>
+    <string name="status_now_speed">Now %1$s km/h</string>
+    <string name="speed_limit">Limit</string>
+    <string name="max_for_remainder">Max now</string>
+    <string name="remaining">Remaining</string>
+    <string name="status_within_limit">Within limit</string>
+    <string name="status_over_limit">Over limit!</string>
+    <string name="final_avg_speed">Average speed: %s km/h</string>
+
+    <!-- Map screen -->
+    <string name="no_zones_loaded">No zones loaded — connect to internet to sync</string>
+    <string name="map_zoom_in">Zoom in</string>
+    <string name="map_zoom_out">Zoom out</string>
+    <string name="map_user_position">Your current location</string>
+    <string name="map_recenter">Recenter</string>
+    <string name="map_follow_user_on">Follow on</string>
+    <string name="map_follow_user_off">Follow off</string>
+    <string name="map_orientation_north_up">Orientation: north up</string>
+    <string name="map_orientation_heading_up">Orientation: heading up</string>
+    <string name="zone_complete">Zone complete</string>
+    <string name="max_for_remainder_format">Max: %d km/h</string>
+    <string name="retry_sync">Try again</string>
+
+    <!-- Settings screen -->
+    <string name="setting_alert_threshold">Alert threshold</string>
+    <string name="setting_alert_threshold_desc">Warn when within %d km/h of limit</string>
+    <string name="setting_voice_alerts">Voice alerts</string>
+    <string name="setting_voice_alerts_desc">Announce zone entry, exit, and speed updates</string>
+    <string name="setting_periodic_updates">Periodic voice updates</string>
+    <string name="setting_periodic_updates_desc">Every 30s while inside a zone, announces the current average</string>
+    <string name="setting_overspeed_only">Only when over limit</string>
+    <string name="setting_overspeed_only_desc">Skip in-limit updates, announce only overspeed</string>
+    <string name="setting_language">Language</string>
+    <string name="setting_language_desc">Language for UI and voice</string>
+    <string name="language_system">System default</string>
+    <string name="language_bg">Български</string>
+    <string name="language_en">English</string>
+    <string name="setting_vehicle_type">Vehicle type</string>
+    <string name="vehicle_car">Car</string>
+    <string name="vehicle_truck">Truck</string>
+    <string name="vehicle_bus">Bus</string>
+    <string name="setting_map_theme">Map theme</string>
+    <string name="setting_map_theme_desc">Light or dark — auto-switches at sunrise/sunset</string>
+    <string name="map_theme_auto">Automatic</string>
+    <string name="map_theme_light">Light</string>
+    <string name="map_theme_dark">Dark</string>
+    <string name="setting_sync_now">Sync zones now</string>
+    <string name="sync_updated">Zones updated</string>
+    <string name="sync_up_to_date">Zones already up to date</string>
+    <string name="sync_failed">Sync failed — check your connection</string>
+    <string name="about_title">About</string>
+    <string name="about_version">Version %s</string>
+    <string name="about_license">Open source — MIT License</string>
+    <string name="about_attribution">Map data: \u00A9 OpenMapTiles \u00A9 OpenStreetMap contributors</string>
+    <string name="about_zone_data">Zone data: BG TOLL, TollTracker.eu</string>
+
+    <!-- Trip history -->
+    <string name="trip_history_coming_soon">Trip history coming soon</string>
+
+    <!-- Notifications -->
+    <string name="notification_channel_tracking">Location tracking</string>
+    <string name="notification_channel_tracking_description">Shows while SrednaBG is tracking your speed</string>
+    <string name="notification_tracking_title">SrednaBG is tracking</string>
+    <string name="notification_tracking_text">Monitoring average speed zones</string>
+
+    <!-- Accessibility -->
+    <string name="accessibility_in_zone">Average speed %1$s kilometers per hour. Speed limit %2$d. %3$s.</string>
+    <string name="accessibility_exiting">Zone complete. Final average speed %1$s kilometers per hour on %2$s.</string>
+
+    <!-- Android Auto -->
+    <string name="auto_routing_cue">Avg: %1$s km/h | Limit: %2$d</string>
+    <string name="auto_final_speed">Final avg: %s km/h</string>
+    <string name="auto_zone_end">Zone end</string>
+    <string name="auto_settings">Settings</string>
+    <string name="auto_monitoring_hint">Monitoring zones</string>
+</resources>

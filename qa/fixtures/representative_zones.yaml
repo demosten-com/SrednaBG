@@ -1,0 +1,17 @@
+# Hand-picked zones for the `representative` suite — one per major motorway
+# direction. Used by qa/scenarios/representative/*.yaml when generated.
+# Edit freely; the suite runner reads zone_id and applies the standard tier
+# settings combos to each.
+zones:
+  - id: trakiya-01-east       # AM Trakiya — busiest east-west corridor
+    speed_kmh: 130
+  - id: hemus-01-east         # AM Hemus — newer mountainous section
+    speed_kmh: 120
+  - id: europa-01-north       # AM Europa — short urban-edge zone
+    speed_kmh: 120
+  - id: maritsa-01-east       # AM Maritsa — flat plain section
+    speed_kmh: 130
+  - id: i2-01-east            # I-2 trunk road — short non-motorway section
+    speed_kmh: 90
+  - id: struma-01-south       # AM Struma — tunnels expected
+    speed_kmh: 110

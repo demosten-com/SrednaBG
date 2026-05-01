@@ -1,0 +1,88 @@
+# SwiftLint config for the iOS monorepo (SrednaBG / Средна БГ).
+#
+# Scope: everything under ios/ that we own. Build artifacts, SwiftPM scratch
+# directories, and Xcode-generated code are excluded so lint runs stay
+# deterministic across machines.
+
+included:
+  - Packages
+  - SrednaBG
+  - SrednaBGTests
+  - SrednaBGUITests
+
+excluded:
+  - .build
+  - .swiftpm
+  - DerivedData
+  - build
+  - Package.swift
+  - "**/.build"
+  - "**/DerivedData"
+
+# Rules we intentionally turn off, with the reason.
+disabled_rules:
+  # Tracked TODOs (vehicle-type backport, MapLibre wiring) are already
+  # recorded in CLAUDE.md's "Remaining Work" section. No value in a
+  # duplicate warning on every lint run.
+  - todo
+
+analyzer_rules: []
+
+# --- Rule-specific tuning ---
+
+identifier_name:
+  # Short names are meaningful in this codebase: language codes (`bg`,
+  # `en`), loop indices (`i`, `j`), math scratch (`u1`, `z0`, `t`),
+  # low-level handles (`db`, `fd`, `rc`, `gz`). The rule still catches
+  # non-alpha characters, excessive length, and UPPER_SNAKE — which is
+  # what actually matters here.
+  min_length:
+    warning: 1
+    error: 1
+  max_length:
+    warning: 50
+    error: 60
+  excluded:
+    - id
+
+line_length:
+  warning: 140
+  error: 200
+  ignores_comments: true
+  ignores_urls: true
+  ignores_interpolated_strings: true
+
+file_length:
+  warning: 500
+  error: 800
+  ignore_comment_only_lines: true
+
+type_body_length:
+  warning: 400
+  error: 600
+
+function_body_length:
+  warning: 80
+  error: 120
+
+cyclomatic_complexity:
+  warning: 15
+  error: 25
+  ignores_case_statements: true
+
+function_parameter_count:
+  warning: 7
+  error: 9
+
+large_tuple:
+  warning: 3
+  error: 4
+
+nesting:
+  type_level:
+    warning: 3
+  function_level:
+    warning: 5
+
+# Reporter defaults to Xcode-style output, which the build phase parses.
+reporter: "xcode"
