@@ -5,6 +5,7 @@
 
 package com.demosten.srednabg.app.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,6 +18,9 @@ import androidx.compose.foundation.layout.width
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.core.os.LocaleListCompat
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -365,6 +369,17 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
             text = stringResource(R.string.about_title),
             style = MaterialTheme.typography.titleMedium,
         )
+        Spacer(modifier = Modifier.height(8.dp))
+        Image(
+            painter = painterResource(R.drawable.ic_logo_horizontal),
+            contentDescription = "SrednaBG",
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(80.dp),
+            contentScale = ContentScale.Fit,
+            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary),
+        )
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = stringResource(R.string.about_version, "0.1.0"),
             style = MaterialTheme.typography.bodyMedium,

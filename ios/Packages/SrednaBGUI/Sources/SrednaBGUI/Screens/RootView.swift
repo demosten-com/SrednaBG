@@ -49,7 +49,13 @@ public struct RootView: View {
                     .toolbar(.hidden, for: .navigationBar)
                     #endif
             }
-            .tabItem { Label(L10n.navHome, systemImage: "speedometer") }
+            .tabItem {
+                Label {
+                    Text(L10n.navHome)
+                } icon: {
+                    Image("HomeTabIcon", bundle: .module)
+                }
+            }
 
             NavigationStack {
                 ZoneMapScreen(

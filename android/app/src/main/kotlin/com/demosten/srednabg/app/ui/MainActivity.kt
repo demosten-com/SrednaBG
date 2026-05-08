@@ -13,7 +13,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -87,7 +86,7 @@ class MainActivity : AppCompatActivity() {
                         NavigationBar {
                             NavRoute.all.forEach { route ->
                                 NavigationBarItem(
-                                    icon = { Icon(route.icon, contentDescription = stringResource(route.titleResId)) },
+                                    icon = { route.TabIcon(contentDescription = stringResource(route.titleResId)) },
                                     label = { Text(stringResource(route.titleResId)) },
                                     selected = currentDestination?.hierarchy?.any {
                                         it.route == route.route

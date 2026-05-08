@@ -132,7 +132,7 @@ public struct SettingsScreen: View {
     }
 
     private var aboutSection: some View {
-        Section(L10n.aboutTitle) {
+        Section {
             Text(String(format: L10n.aboutVersion, "0.1.0"))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
@@ -145,6 +145,17 @@ public struct SettingsScreen: View {
             Text(L10n.aboutZoneData)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        } header: {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(L10n.aboutTitle)
+                Image("SrednaBGLogoHorizontal", bundle: .module)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: .infinity, maxHeight: 80)
+                    .foregroundStyle(Color.accentColor)
+                    .accessibilityLabel("SrednaBG")
+                    .padding(.bottom, 4)
+            }
         }
     }
 
