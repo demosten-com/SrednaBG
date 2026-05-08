@@ -14,6 +14,12 @@
 -keepattributes Signature
 -keepattributes *Annotation*
 
+# Android Auto CarAppService (keep entry point for manifest-reflected classes)
+-keep class com.demosten.srednabg.app.auto.SrednaBGCarAppService { *; }
+-keep class com.demosten.srednabg.app.auto.SrednaBGSession { *; }
+-keep class com.demosten.srednabg.app.auto.NavigationScreen { *; }
+-keep class com.demosten.srednabg.app.auto.AutoEntryPoint { *; }
+
 # OkHttp
 -dontwarn okhttp3.internal.platform.**
 -dontwarn org.bouncycastle.**
