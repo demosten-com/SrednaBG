@@ -215,6 +215,7 @@ public struct ZoneMapScreen: View {
                     settings.mapHeadingUp ? L10n.mapHeadingUp : L10n.mapNorthUp,
                     systemImage: settings.mapHeadingUp ? "location.north.line" : "compass.drawing"
                 )
+                .labelStyle(.iconOnly)
             }
             .toggleStyle(.button)
 
@@ -248,6 +249,7 @@ public struct ZoneMapScreen: View {
                 }
             )) {
                 Label(L10n.mapFollow, systemImage: mapSession.isFollowing ? "scope" : "location.viewfinder")
+                    .labelStyle(.iconOnly)
             }
             .toggleStyle(.button)
             #endif
