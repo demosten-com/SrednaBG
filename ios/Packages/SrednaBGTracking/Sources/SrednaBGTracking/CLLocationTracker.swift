@@ -20,6 +20,11 @@ import SrednaBGCore
 ///     alive in the dash-mounted use case where the screen may be off.
 ///   * `pausesLocationUpdatesAutomatically = false` so the system doesn't
 ///     decide we're "stationary" while sitting at a red light inside a zone.
+///   * Authorization uses a two-step flow — `requestAuthorization()` triggers
+///     `requestWhenInUseAuthorization()` from `.notDetermined` and only
+///     `requestAlwaysAuthorization()` from `.authorizedWhenInUse`. iOS 13+
+///     refuses to surface the "Always" option on the first prompt; the second
+///     call after a When-In-Use grant is what surfaces it.
 public final class CLLocationTracker: NSObject, LocationProviding, @unchecked Sendable {
 
     private let manager = CLLocationManager()
@@ -27,6 +32,7 @@ public final class CLLocationTracker: NSObject, LocationProviding, @unchecked Se
     private var continuation: AsyncStream<GpsPoint>.Continuation?
     private var stream: AsyncStream<GpsPoint>?
     private var builder = GpsPointBuilder()
+    private var authContinuation: CheckedContinuation<LocationAuthorization, Never>?
 
     public override init() {
         super.init()
@@ -39,15 +45,7 @@ public final class CLLocationTracker: NSObject, LocationProviding, @unchecked Se
     }
 
     public var authorization: LocationAuthorization {
-        get async {
-            switch manager.authorizationStatus {
-            case .notDetermined: return .notDetermined
-            case .denied, .restricted: return .denied
-            case .authorizedWhenInUse: return .authorizedWhenInUse
-            case .authorizedAlways: return .authorizedAlways
-            @unknown default: return .unknown
-            }
-        }
+        get async { Self.map(manager.authorizationStatus) }
     }
 
     public func updates() async -> AsyncStream<GpsPoint> {
@@ -96,8 +94,47 @@ public final class CLLocationTracker: NSObject, LocationProviding, @unchecked Se
             : kCLLocationAccuracyBest
     }
 
-    public func requestAuthorization() async {
-        manager.requestAlwaysAuthorization()
+    public func requestAuthorization() async -> LocationAuthorization {
+        let current = manager.authorizationStatus
+        switch current {
+        case .notDetermined:
+            return await awaitAuthChange { [manager] in
+                manager.requestWhenInUseAuthorization()
+            }
+        case .authorizedWhenInUse:
+            return await awaitAuthChange { [manager] in
+                manager.requestAlwaysAuthorization()
+            }
+        default:
+            // Already terminal (`.denied`, `.restricted`, `.authorizedAlways`):
+            // iOS won't show another prompt — return the current state.
+            return Self.map(current)
+        }
+    }
+
+    private func awaitAuthChange(_ trigger: @Sendable () -> Void) async -> LocationAuthorization {
+        await withCheckedContinuation { (cont: CheckedContinuation<LocationAuthorization, Never>) in
+            // Replace any prior continuation. Only one prompt is in flight at
+            // a time per Apple's UI; if the previous caller is still waiting,
+            // resume it with the current state so it can fall through.
+            let prior: CheckedContinuation<LocationAuthorization, Never>? = lock.withLock {
+                let p = authContinuation
+                authContinuation = cont
+                return p
+            }
+            prior?.resume(returning: Self.map(manager.authorizationStatus))
+            trigger()
+        }
+    }
+
+    private static func map(_ status: CLAuthorizationStatus) -> LocationAuthorization {
+        switch status {
+        case .notDetermined: return .notDetermined
+        case .denied, .restricted: return .denied
+        case .authorizedWhenInUse: return .authorizedWhenInUse
+        case .authorizedAlways: return .authorizedAlways
+        @unknown default: return .unknown
+        }
     }
 }
 
@@ -132,8 +169,18 @@ extension CLLocationTracker: CLLocationManagerDelegate {
     }
 
     public func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        switch manager.authorizationStatus {
-        case .denied, .restricted:
+        let mapped = Self.map(manager.authorizationStatus)
+
+        // Resume any in-flight `requestAuthorization()` caller waiting on the
+        // user's prompt response.
+        let pending: CheckedContinuation<LocationAuthorization, Never>? = lock.withLock {
+            let prior = authContinuation
+            authContinuation = nil
+            return prior
+        }
+        pending?.resume(returning: mapped)
+
+        if mapped == .denied {
             let c: AsyncStream<GpsPoint>.Continuation? = lock.withLock {
                 let prior = continuation
                 continuation = nil
@@ -141,8 +188,6 @@ extension CLLocationTracker: CLLocationManagerDelegate {
                 return prior
             }
             c?.finish()
-        default:
-            break
         }
     }
 }

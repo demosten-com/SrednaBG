@@ -36,13 +36,13 @@
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "SrednaBG използва местоположението ви, за да определи в коя зона за секционен контрол навлизате и да изчислява текущата средна скорост."
+            "value" : "SrednaBG използва местоположението ви, за да определи в коя зона за секционен контрол навлизате и да изчислява текущата средна скорост.\n\nЗа да работи приложението, моля изберете „Разреши при ползване на приложението“."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "SrednaBG needs your location to know which section-control zone you're entering and to compute your running average speed."
+            "value" : "SrednaBG needs your location to know which section-control zone you're entering and to compute your running average speed.\n\nFor the app to work, please tap \"Allow While Using App\"."
           }
         }
       }

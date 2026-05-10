@@ -116,14 +116,25 @@ final class AppContainer {
 
         #if os(iOS)
         let provider: any LocationProviding = CLLocationTracker()
+        // The LiveActivityManager keeps an ActivityKit Live Activity in sync
+        // with `ZoneState`. Beyond surfacing tracking on the Lock Screen, an
+        // active Live Activity is what convinces iOS to keep the process
+        // resident in the background for the duration of a drive — the
+        // single biggest fix for "GPS stopped while screen was locked".
+        let liveActivity = LiveActivityManager()
+        let zoneStateSink: @Sendable (ZoneState) async -> Void = { state in
+            await liveActivity.update(state: state)
+        }
         #else
         let provider: any LocationProviding = SilentLocationProvider()
+        let zoneStateSink: @Sendable (ZoneState) async -> Void = { _ in }
         #endif
         self.tracking = ZoneTrackingService(
             zones: [],
             provider: provider,
             alerts: alerts,
-            settings: settings
+            settings: settings,
+            zoneStateSink: zoneStateSink
         )
     }
 
@@ -300,7 +311,7 @@ struct SilentLocationProvider: LocationProviding {
     func start() async throws {}
     func stop() async {}
     func setIntervalMs(_ ms: Int) async {}
-    func requestAuthorization() async {}
+    func requestAuthorization() async -> LocationAuthorization { .unknown }
 }
 
 struct SilentTTSEngine: TTSEngine {

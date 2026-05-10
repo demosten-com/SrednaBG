@@ -2,8 +2,6 @@
 
 Free, open-source Android + iOS phone app for tracking average speed in Bulgaria's section control camera zones. Android Auto and CarPlay surfaces exist in the codebase as WIP and are not part of the initial release.
 
-See [plan.md](plan.md) for the full development plan and architecture.
-
 ## Quick Start
 
 ```bash

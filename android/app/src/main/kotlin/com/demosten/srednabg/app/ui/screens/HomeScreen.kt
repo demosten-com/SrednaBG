@@ -5,6 +5,15 @@
 
 package com.demosten.srednabg.app.ui.screens
 
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,13 +32,19 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.LocationOff
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -37,8 +52,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.demosten.srednabg.R
+import com.demosten.srednabg.app.permissions.PermissionState
 import com.demosten.srednabg.app.ui.theme.SpeedAmber
 import com.demosten.srednabg.app.ui.theme.SpeedGreen
 import com.demosten.srednabg.app.ui.theme.SpeedRed
@@ -52,6 +71,31 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
     val isTracking by viewModel.isTracking.collectAsStateWithLifecycle()
     val zoneCount by viewModel.zoneCount.collectAsStateWithLifecycle()
     val currentSpeedKmh by viewModel.currentSpeedKmh.collectAsStateWithLifecycle()
+    val permissionState by viewModel.permissionState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    // Notification permission is requested from inside the NotificationCard
+    // (not the global permission handler) so the user sees the in-app rationale
+    // before the system dialog appears.
+    val notificationLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { viewModel.refreshPermissions() }
+    val onRequestNotification: () -> Unit = onRequestNotification@{
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return@onRequestNotification
+        notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    // Pick up changes the user made in app-Settings while we were
+    // backgrounded — flipping a permission or whitelisting battery
+    // optimization should clear the relevant card the moment they return.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) viewModel.refreshPermissions()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     Scaffold { padding ->
         Column(
@@ -69,40 +113,59 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                 isTracking = isTracking,
                 zoneCount = zoneCount,
                 currentSpeedKmh = currentSpeedKmh,
+                permissionState = permissionState,
+                onOpenAppSettings = { openAppSettings(context) },
+                onRequestNotification = onRequestNotification,
+                onRequestBatteryOptOut = { requestIgnoreBatteryOptimizations(context) },
             )
 
-            val buttonLabel = if (isTracking) {
-                stringResource(R.string.stop_tracking)
-            } else {
-                stringResource(R.string.start_tracking)
-            }
-            Button(
-                onClick = {
-                    if (isTracking) viewModel.stopTracking() else viewModel.startTracking()
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(72.dp),
-                colors = if (isTracking) {
-                    ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                    )
-                } else {
-                    ButtonDefaults.buttonColors()
-                },
-            ) {
-                Icon(
-                    imageVector = if (isTracking) Icons.Default.Stop else Icons.Default.PlayArrow,
-                    contentDescription = null,
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = buttonLabel,
-                    style = MaterialTheme.typography.titleMedium,
+            // Hide the Start button while the location-permission card is up —
+            // it has its own primary action (Open Settings). The notification
+            // and battery-opt cards are advisory, so the Start button stays
+            // visible alongside them. Stop button is always available so an
+            // active session can be ended.
+            val showStartStop = isTracking || permissionState.canStartTracking
+            if (showStartStop) {
+                StartStopButton(
+                    isTracking = isTracking,
+                    onStart = { viewModel.startTracking() },
+                    onStop = { viewModel.stopTracking() },
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun StartStopButton(isTracking: Boolean, onStart: () -> Unit, onStop: () -> Unit) {
+    val buttonLabel = if (isTracking) {
+        stringResource(R.string.stop_tracking)
+    } else {
+        stringResource(R.string.start_tracking)
+    }
+    Button(
+        onClick = { if (isTracking) onStop() else onStart() },
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(72.dp),
+        colors = if (isTracking) {
+            ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+            )
+        } else {
+            ButtonDefaults.buttonColors()
+        },
+    ) {
+        Icon(
+            imageVector = if (isTracking) Icons.Default.Stop else Icons.Default.PlayArrow,
+            contentDescription = null,
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = buttonLabel,
+            style = MaterialTheme.typography.titleMedium,
+        )
     }
 }
 
@@ -113,12 +176,187 @@ private fun StateContent(
     isTracking: Boolean,
     zoneCount: Int,
     currentSpeedKmh: Double?,
+    permissionState: PermissionState,
+    onOpenAppSettings: () -> Unit,
+    onRequestNotification: () -> Unit,
+    onRequestBatteryOptOut: () -> Unit,
 ) {
     when {
-        !isTracking -> NotTrackingCard(modifier)
-        zoneState is ZoneState.InZone -> InZoneCard(modifier, zoneState, currentSpeedKmh)
-        zoneState is ZoneState.Exiting -> ExitingCard(modifier, zoneState, currentSpeedKmh)
-        else -> OutsideCard(modifier, currentSpeedKmh, zoneCount)
+        // Active tracking always wins — never gate the live display on
+        // permission state changes mid-trip.
+        isTracking && zoneState is ZoneState.InZone ->
+            InZoneCard(modifier, zoneState, currentSpeedKmh)
+        isTracking && zoneState is ZoneState.Exiting ->
+            ExitingCard(modifier, zoneState, currentSpeedKmh)
+        isTracking ->
+            OutsideCard(modifier, currentSpeedKmh, zoneCount)
+        !permissionState.canStartTracking ->
+            PermissionCard(modifier, permissionState, onOpenAppSettings)
+        !permissionState.notificationGranted ->
+            NotificationCard(modifier, onRequestNotification, onOpenAppSettings)
+        !permissionState.ignoringBatteryOptimizations ->
+            BatteryOptimizationCard(modifier, onRequestBatteryOptOut)
+        else ->
+            NotTrackingCard(modifier)
+    }
+}
+
+@Composable
+private fun PermissionCard(
+    modifier: Modifier,
+    state: PermissionState,
+    onOpenAppSettings: () -> Unit,
+) {
+    val title = if (!state.fineLocationGranted) {
+        stringResource(R.string.permission_denied_title)
+    } else {
+        stringResource(R.string.permission_required_title)
+    }
+    val body = if (!state.fineLocationGranted) {
+        stringResource(R.string.permission_denied_body)
+    } else {
+        stringResource(R.string.permission_required_body)
+    }
+
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = SpeedRed.copy(alpha = 0.15f)),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Icon(
+                    imageVector = Icons.Default.LocationOff,
+                    contentDescription = null,
+                    tint = SpeedRed,
+                )
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Text(
+                text = body,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Button(
+                onClick = onOpenAppSettings,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+            ) {
+                Icon(imageVector = Icons.Default.Settings, contentDescription = null)
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = stringResource(R.string.permission_open_settings),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NotificationCard(
+    modifier: Modifier,
+    onAllow: () -> Unit,
+    onOpenAppSettings: () -> Unit,
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = SpeedAmber.copy(alpha = 0.15f)),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Icon(
+                    imageVector = Icons.Default.Notifications,
+                    contentDescription = null,
+                    tint = SpeedAmber,
+                )
+                Text(
+                    text = stringResource(R.string.notification_recommended_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Text(
+                text = stringResource(R.string.notification_recommended_body),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Button(
+                onClick = onAllow,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = SpeedAmber),
+            ) {
+                Text(
+                    text = stringResource(R.string.notification_recommended_allow),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
+            // Fallback when the system suppresses the dialog (user previously
+            // chose "Don't ask again" — `RequestPermission` returns denied
+            // immediately and the card stays put). Open Settings is the only
+            // recovery path in that case.
+            TextButton(
+                onClick = onOpenAppSettings,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = stringResource(R.string.permission_open_settings),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BatteryOptimizationCard(modifier: Modifier, onRequestOptOut: () -> Unit) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = SpeedAmber.copy(alpha = 0.15f)),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.battery_opt_title),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = SpeedAmber,
+            )
+            Text(
+                text = stringResource(R.string.battery_opt_body),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Button(
+                onClick = onRequestOptOut,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = SpeedAmber),
+            ) {
+                Text(
+                    text = stringResource(R.string.battery_opt_action),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
+        }
     }
 }
 
@@ -329,4 +567,40 @@ private fun InfoItem(label: String, value: String) {
         Text(text = value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Text(text = label, style = MaterialTheme.typography.bodySmall)
     }
+}
+
+private fun openAppSettings(context: Context) {
+    val intent = Intent(
+        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+        Uri.fromParts("package", context.packageName, null),
+    ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    context.startActivity(intent)
+}
+
+// `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` opens a confirmation dialog
+// inline (no Settings excursion) when the manifest declares the matching
+// permission. The lint warning is benign here — declaring this permission is
+// documented as acceptable for active GPS-tracking apps. Falling back to the
+// generic battery-opt list keeps the older API path open if the targeted
+// dialog isn't available.
+@SuppressLint("BatteryLife")
+private fun requestIgnoreBatteryOptimizations(context: Context) {
+    val pkg = context.packageName
+    val direct = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+        data = Uri.parse("package:$pkg")
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    val resolved = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        direct.resolveActivity(context.packageManager)
+    } else {
+        @Suppress("DEPRECATION") direct.resolveActivity(context.packageManager)
+    }
+    if (resolved != null) {
+        context.startActivity(direct)
+        return
+    }
+    context.startActivity(
+        Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+    )
 }

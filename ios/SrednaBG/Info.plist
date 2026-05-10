@@ -28,7 +28,9 @@
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>SrednaBG следи средната ви скорост в зоните за секционен контрол — дори когато приложението е във фон или екранът е изключен — за да ви предупреди преди камерата да отчете нарушение.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>SrednaBG използва местоположението ви, за да определи в коя зона за секционен контрол навлизате и да изчислява текущата средна скорост.</string>
+	<string>SrednaBG използва местоположението ви, за да определи в коя зона за секционен контрол навлизате и да изчислява текущата средна скорост.
+
+За да работи приложението, моля изберете „Разреши при ползване на приложението“.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>

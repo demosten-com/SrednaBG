@@ -74,6 +74,19 @@
     <string name="about_attribution">Map data: \u00A9 OpenMapTiles \u00A9 OpenStreetMap contributors</string>
     <string name="about_zone_data">Zone data: BG TOLL, TollTracker.eu</string>
 
+    <!-- Permission gating -->
+    <string name="permission_required_title">"Always" location permission needed</string>
+    <string name="permission_required_body">SrednaBG needs background location to keep tracking your average speed when the screen is off or you\'re using another navigation app. Without it, GPS stops on a locked phone and the running average becomes wrong.</string>
+    <string name="permission_denied_title">Location access is off</string>
+    <string name="permission_denied_body">SrednaBG can\'t track section-control zones without your location. Open Settings and grant "Precise location".</string>
+    <string name="permission_open_settings">Open Settings</string>
+    <string name="notification_recommended_title">Allow notifications</string>
+    <string name="notification_recommended_body">The active-tracking notification tells the system SrednaBG is working. Without it, some phones stop the app when the screen locks and the running average becomes wrong. You can start without it, but tracking won\'t be reliable.</string>
+    <string name="notification_recommended_allow">Allow notifications</string>
+    <string name="battery_opt_title">Battery optimization is on</string>
+    <string name="battery_opt_body">Some Android phones aggressively kill background apps to save battery. To make sure SrednaBG keeps tracking through the whole drive, ask the system to skip optimizing it.</string>
+    <string name="battery_opt_action">Disable optimization</string>
+
     <!-- Trip history -->
     <string name="trip_history_coming_soon">Trip history coming soon</string>
 

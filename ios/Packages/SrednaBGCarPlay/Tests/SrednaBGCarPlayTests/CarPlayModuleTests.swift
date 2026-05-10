@@ -106,7 +106,7 @@ private struct InertLocationProvider: LocationProviding {
     func start() async throws {}
     func stop() async {}
     func setIntervalMs(_ ms: Int) async {}
-    func requestAuthorization() async {}
+    func requestAuthorization() async -> LocationAuthorization { .unknown }
 }
 
 private struct InertTTSEngine: TTSEngine {

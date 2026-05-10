@@ -6,78 +6,46 @@
 package com.demosten.srednabg.app.ui.components
 
 import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.ContextCompat
+import com.demosten.srednabg.app.permissions.PermissionRepository
 
-data class PermissionState(
-    val fineLocationGranted: Boolean = false,
-    val backgroundLocationGranted: Boolean = false,
-    val notificationGranted: Boolean = false,
-) {
-    val locationReady: Boolean get() = fineLocationGranted
-}
-
+/**
+ * First-launch permission prompt sequence. Auto-chains the location pair
+ * (fine → background) because they're conceptually one permission split by
+ * Android into two prompts; firing them back-to-back keeps the user in
+ * "answer the location questions" mode.
+ *
+ * Notifications are intentionally NOT auto-chained from here. Surfacing the
+ * `POST_NOTIFICATIONS` system dialog with no in-app context confused users —
+ * they'd assume it was unrelated to tracking, decline, and end up stranded.
+ * The Home screen now drives notification grant via a dedicated card whose
+ * body explains why it matters; the user taps Allow there to fire the system
+ * dialog with full context.
+ */
 @Composable
-fun rememberPermissionHandler(): PermissionState {
-    val context = LocalContext.current
-    var state by remember { mutableStateOf(PermissionState()) }
-
-    fun checkPermissions() {
-        state = PermissionState(
-            fineLocationGranted = ContextCompat.checkSelfPermission(
-                context, Manifest.permission.ACCESS_FINE_LOCATION,
-            ) == PackageManager.PERMISSION_GRANTED,
-            backgroundLocationGranted = ContextCompat.checkSelfPermission(
-                context, Manifest.permission.ACCESS_BACKGROUND_LOCATION,
-            ) == PackageManager.PERMISSION_GRANTED,
-            notificationGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                ContextCompat.checkSelfPermission(
-                    context, Manifest.permission.POST_NOTIFICATIONS,
-                ) == PackageManager.PERMISSION_GRANTED
-            } else {
-                true
-            },
-        )
-    }
+fun rememberPermissionHandler(repository: PermissionRepository) {
+    fun refresh() = repository.refresh()
 
     val backgroundLocationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
-    ) { checkPermissions() }
+    ) { refresh() }
 
-    val notificationLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
+    val locationLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
     ) {
-        checkPermissions()
+        refresh()
+        val state = repository.state.value
         if (state.fineLocationGranted && !state.backgroundLocationGranted) {
             backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
         }
     }
 
-    val locationLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions(),
-    ) {
-        checkPermissions()
-        if (state.fineLocationGranted) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !state.notificationGranted) {
-                notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            } else if (!state.backgroundLocationGranted) {
-                backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-            }
-        }
-    }
-
     LaunchedEffect(Unit) {
-        checkPermissions()
+        refresh()
+        val state = repository.state.value
         if (!state.fineLocationGranted) {
             locationLauncher.launch(
                 arrayOf(
@@ -85,12 +53,8 @@ fun rememberPermissionHandler(): PermissionState {
                     Manifest.permission.ACCESS_COARSE_LOCATION,
                 ),
             )
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !state.notificationGranted) {
-            notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         } else if (!state.backgroundLocationGranted) {
             backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
         }
     }
-
-    return state
 }

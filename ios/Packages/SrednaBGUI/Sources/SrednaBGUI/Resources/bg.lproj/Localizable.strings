@@ -22,6 +22,14 @@
 "startTracking" = "Стартирай";
 "stopTracking" = "Спри";
 
+/* Permission gating */
+"permissionAlwaysRequiredTitle" = "Нужно е разрешение „Винаги“ за местоположение";
+"permissionAlwaysRequiredBody" = "SrednaBG се нуждае от разрешение „Винаги“ за местоположение, за да следи средната ви скорост, докато екранът е изключен или приложението е във фон — иначе GPS спира при заключен телефон и средната скорост става грешна.\n\nОтворете Настройки → SrednaBG → Местоположение и изберете „Винаги“.";
+"permissionDeniedTitle" = "Достъпът до местоположение е изключен";
+"permissionDeniedBody" = "SrednaBG не може да следи зоните за секционен контрол без достъп до местоположението ви. Отворете Настройки → SrednaBG → Местоположение и изберете „Винаги“.";
+"permissionOpenSettings" = "Отвори настройките";
+"permissionTryAgain" = "Опитай отново";
+
 /* SettingsScreen */
 "settingAlertThreshold" = "Праг за предупреждение";
 "settingAlertThresholdDesc" = "Предупреждение при %d km/h от ограничението.";

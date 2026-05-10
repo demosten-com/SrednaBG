@@ -47,6 +47,14 @@ public enum L10n {
     public static var startTracking: String { loc("startTracking") }
     public static var stopTracking: String { loc("stopTracking") }
 
+    // MARK: Permission gating
+    public static var permissionAlwaysRequiredTitle: String { loc("permissionAlwaysRequiredTitle") }
+    public static var permissionAlwaysRequiredBody: String { loc("permissionAlwaysRequiredBody") }
+    public static var permissionDeniedTitle: String { loc("permissionDeniedTitle") }
+    public static var permissionDeniedBody: String { loc("permissionDeniedBody") }
+    public static var permissionOpenSettings: String { loc("permissionOpenSettings") }
+    public static var permissionTryAgain: String { loc("permissionTryAgain") }
+
     // MARK: SettingsScreen
     public static var settingAlertThreshold: String { loc("settingAlertThreshold") }
     public static var settingAlertThresholdDesc: String { loc("settingAlertThresholdDesc") } // "%d"

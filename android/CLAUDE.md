@@ -1,12 +1,18 @@
 # android/
 
-Kotlin app using Jetpack Compose, Car App Library, MapLibre, Room, Hilt. ~36 Kotlin files in `main/` + 7 test files + 2 debug-only sources (`DebugSyncReceiver`, `DebugControlReceiver`). Phone app is the shipping surface: Home, ZoneMap, and Settings screens (TripHistory commented out pending implementation), running as a foreground location service that also doubles as a background audio service alongside Waze/Google Maps. The Car App Library / Android Auto target is WIP — kept in-tree for developer testing on DHU and AAOS, excluded from the Play Store release (see `test-data/android-release.md`).
+Kotlin app using Jetpack Compose, Car App Library, MapLibre, Room, Hilt. ~37 Kotlin files in `main/` + 8 test files + 2 debug-only sources (`DebugSyncReceiver`, `DebugControlReceiver`). Phone app is the shipping surface: Home, ZoneMap, and Settings screens (TripHistory commented out pending implementation), running as a foreground location service that also doubles as a background audio service alongside Waze/Google Maps. The Car App Library / Android Auto target is WIP — kept in-tree for developer testing on DHU and AAOS, excluded from the Play Store release (see `test-data/android-release.md`).
 
 ## Runtime
 
 `LocationTrackingService` (foreground, adaptive 1s/5s GPS via `FusedLocationProviderClient`) feeds the core engine (`core/`). Phone-side `ZoneMapScreen` uses MapLibre against a fully-offline bundled map; `ZoneMapViewModel.styleUri` = `MapRepository.localStyleUri()`, falling back to `BuildConfig.MAP_STYLE_URL` only when no bundle is installed. `AudioAlertManager` uses TTS with navigation audio focus for background mode. *(WIP / dev-only)* On the Android Auto surface, `NavigationScreen` renders a canvas-based zone map (`MapRenderer` + custom `MercatorProjection`) with `SpeedOverlay`; `NavigationTemplate.mapActionStrip` carries +/- zoom controls that flow into `MapRenderer.draw(zoomOverride)`.
 
 `ZoneRepository.syncFromServer()` returns `SyncResult` (`Updated | UpToDate | Failed`) consumed by `ZoneSyncWorker` (WorkManager, 6h) and surfaced as Snackbars + retry CTA; falls back to bundled `zones.json`. Parallel `MapSyncWorker` (6h, unmetered-only) pulls `/api/map/bundle.zip` when `map_hash` from `/api/version` changes. Room (`ZoneDatabase`/`ZoneDao`/`ZoneEntity`) for local persistence. Full Hilt DI.
+
+## Permission gate
+
+`PermissionRepository` (singleton, Hilt) is the single source of truth for `ACCESS_FINE_LOCATION`, `ACCESS_BACKGROUND_LOCATION`, `POST_NOTIFICATIONS`, and `isIgnoringBatteryOptimizations`. `rememberPermissionHandler` (called from `MainActivity`) drives the first-launch prompt sequence, auto-chaining fine → background only — `POST_NOTIFICATIONS` is intentionally NOT auto-chained because surfacing it without context confused users into denying it. `HomeScreen` observes the repository's `StateFlow` and calls `refresh()` on every `Lifecycle.Event.ON_RESUME` so changes the user makes in app-Settings show up immediately on return.
+
+The HomeScreen state machine swaps the StartStop button for one of three advisory cards in priority order: **PermissionCard** (fine or background missing — only blocker; "Open Settings" is the recovery path), **NotificationCard** (T+ POST_NOTIFICATIONS missing — fires the system dialog inline, with Open Settings as the fallback for "Don't ask again"), **BatteryOptimizationCard** (whitelist nudge — fires `Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` directly via `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` permission, no Settings excursion). `HomeViewModel.startTracking()` re-checks `PermissionState.canStartTracking` server-side as a defense-in-depth gate. `MainActivity` toggles `FLAG_KEEP_SCREEN_ON` on the activity window while `LocationTrackingService.isTracking` is true (any tab); it's cleared on dispose to avoid leaking the flag.
 
 UI has BG + EN (`res/values/strings.xml`, `res/values-bg/strings.xml`).
 
@@ -64,7 +70,9 @@ Exercises the full GPS pipeline without a real car. For manual exploration; for 
 - Android Auto (WIP, dev-only target): `NavigationScreen.kt`, `SpeedOverlay.kt`, `MapRenderer.kt`, `MercatorProjection.kt`, `SrednaBGSession.kt`
 - Services: `LocationTrackingService.kt`, `AudioAlertManager.kt`
 - Data: `ZoneRepository.kt` (+`SyncResult`), `ZoneDatabase.kt`, `ZoneSyncWorker.kt`, `MapRepository.kt`, `MapSyncWorker.kt`; remote: `ZoneApi.kt` (`map_hash` in `VersionResponse`), `MapApi.kt` (`/api/map/bundle.zip`)
-- Phone UI: `HomeScreen.kt`, `ZoneMapScreen.kt`, `SettingsScreen.kt`; DI: `AppModule.kt`, `SrednaBGApp.kt` (schedules both sync workers)
+- Permissions: `permissions/PermissionRepository.kt` (+`PermissionState`), `ui/components/PermissionHandler.kt` (first-launch prompt chain)
+- Phone UI: `HomeScreen.kt` (+ `PermissionCard` / `NotificationCard` / `BatteryOptimizationCard`), `ZoneMapScreen.kt`, `SettingsScreen.kt`; DI: `AppModule.kt`, `SrednaBGApp.kt` (schedules both sync workers)
+- Tests: `app/src/test/kotlin/.../HomeViewModelTest.kt` covers the permission gate (notification + battery-opt are advisory, not blockers)
 - Debug (`src/debug/`): `DebugSyncReceiver.kt`, `DebugControlReceiver.kt` + manifest overlay
 - Config: `res/drawable/ic_add.xml` / `ic_remove.xml` (AA zoom icons). No `network_security_config.xml` — both debug and release use HTTPS, so the platform default (cleartext denied) applies.
 - Build: `app/build.gradle.kts` `prepareMapAssets` Copy task stages `backend/data/map-bundle/` → `assets/map/` before `preBuild`

@@ -12,6 +12,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.demosten.srednabg.app.data.MapRepository
 import com.demosten.srednabg.app.data.ZoneRepository
+import com.demosten.srednabg.app.permissions.PermissionRepository
+import com.demosten.srednabg.app.permissions.PermissionState
 import com.demosten.srednabg.app.service.LocationTrackingService
 import com.demosten.srednabg.core.ZoneState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -27,6 +29,7 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     zoneRepository: ZoneRepository,
     private val mapRepository: MapRepository,
+    private val permissionRepository: PermissionRepository,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -42,12 +45,30 @@ class HomeViewModel @Inject constructor(
         .map { it.size }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
+    val permissionState: StateFlow<PermissionState> = permissionRepository.state
+
     init {
         viewModelScope.launch { zoneRepository.ensureLoaded() }
         viewModelScope.launch { mapRepository.ensureLoaded() }
     }
 
+    /** Re-check OS permission + battery-opt state. Hooked to `ON_RESUME` from
+     *  `HomeScreen` so a user toggling the permission in Settings sees the
+     *  permission card disappear the moment they return to the app. */
+    fun refreshPermissions() {
+        permissionRepository.refresh()
+    }
+
+    /**
+     * Start the foreground service if (and only if) the OS permissions a
+     * sustained tracking session needs are all granted. The HomeScreen
+     * normally hides the Start button in the missing-permission state, but
+     * the gate is also enforced here so a debug intent or a future caller
+     * can't bypass it and bring up a tracking session that silently dies
+     * the moment the screen locks.
+     */
     fun startTracking() {
+        if (!permissionRepository.state.value.canStartTracking) return
         val intent = Intent(context, LocationTrackingService::class.java)
         ContextCompat.startForegroundService(context, intent)
     }

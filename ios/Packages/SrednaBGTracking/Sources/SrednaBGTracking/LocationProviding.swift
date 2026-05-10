@@ -21,7 +21,14 @@ public protocol LocationProviding: Sendable {
     func start() async throws
     func stop() async
     func setIntervalMs(_ ms: Int) async
-    func requestAuthorization() async
+
+    /// Triggers the iOS location-permission prompt appropriate to the current
+    /// state and returns the resolved authorization once the user answers (or
+    /// immediately, if the state is already terminal). The two-step flow used
+    /// by `ZoneTrackingService` calls this twice — once from `.notDetermined`
+    /// to obtain When-In-Use, then again from `.authorizedWhenInUse` to drive
+    /// the Always upgrade prompt.
+    func requestAuthorization() async -> LocationAuthorization
 }
 
 public enum LocationAuthorization: Sendable, Equatable {

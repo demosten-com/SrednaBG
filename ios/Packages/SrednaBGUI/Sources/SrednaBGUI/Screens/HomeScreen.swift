@@ -15,6 +15,8 @@ public struct HomeScreen: View {
 
     @Bindable public var tracking: ZoneTrackingService
 
+    @Environment(\.scenePhase) private var scenePhase
+
     public init(tracking: ZoneTrackingService) {
         self.tracking = tracking
     }
@@ -26,11 +28,23 @@ public struct HomeScreen: View {
             startStopButton
         }
         .padding(16)
+        // Pick up authorization changes the user made in Settings while the
+        // app was suspended. SwiftUI delivers `.active` on initial appear too,
+        // which doubles as the initial seed — `permission` was `.unknown`
+        // before any system query.
+        .task { await tracking.refreshPermission() }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                Task { await tracking.refreshPermission() }
+            }
+        }
     }
 
     @ViewBuilder
     private var content: some View {
-        if !tracking.isTracking {
+        if !tracking.isTracking, tracking.permission == .whenInUse || tracking.permission == .denied {
+            permissionCard
+        } else if !tracking.isTracking {
             notTrackingCard
         } else {
             switch tracking.zoneState {
@@ -58,6 +72,43 @@ public struct HomeScreen: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(24)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 20))
+    }
+
+    private var permissionCard: some View {
+        let isDenied = tracking.permission == .denied
+        let title = isDenied ? L10n.permissionDeniedTitle : L10n.permissionAlwaysRequiredTitle
+        let body = isDenied ? L10n.permissionDeniedBody : L10n.permissionAlwaysRequiredBody
+
+        return VStack(alignment: .leading, spacing: 16) {
+            Spacer(minLength: 0)
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "location.slash.fill")
+                    .font(.title)
+                    .foregroundStyle(Theme.statusRed)
+                Text(title)
+                    .font(.title3.weight(.bold))
+            }
+            Text(body)
+                .font(.body)
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
+            #if os(iOS)
+            Button {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            } label: {
+                Label(L10n.permissionOpenSettings, systemImage: "gearshape")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity, minHeight: 48)
+            }
+            .buttonStyle(.borderedProminent)
+            #endif
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(24)
+        .background(Theme.statusRed.opacity(0.10), in: RoundedRectangle(cornerRadius: 20))
+        .accessibilityElement(children: .combine)
     }
 
     private var outsideCard: some View {
@@ -144,7 +195,16 @@ public struct HomeScreen: View {
     }
 
     private var startStopButton: some View {
-        Button {
+        let blocked = !tracking.isTracking
+            && (tracking.permission == .denied || tracking.permission == .whenInUse)
+        let label = blocked
+            ? L10n.permissionTryAgain
+            : (tracking.isTracking ? L10n.stopTracking : L10n.startTracking)
+        let icon = blocked
+            ? "arrow.clockwise"
+            : (tracking.isTracking ? "stop.fill" : "play.fill")
+
+        return Button {
             Task {
                 if tracking.isTracking {
                     await tracking.stop()
@@ -153,12 +213,9 @@ public struct HomeScreen: View {
                 }
             }
         } label: {
-            Label(
-                tracking.isTracking ? L10n.stopTracking : L10n.startTracking,
-                systemImage: tracking.isTracking ? "stop.fill" : "play.fill"
-            )
-            .font(.title3.weight(.semibold))
-            .frame(maxWidth: .infinity, minHeight: 56)
+            Label(label, systemImage: icon)
+                .font(.title3.weight(.semibold))
+                .frame(maxWidth: .infinity, minHeight: 56)
         }
         .buttonStyle(.borderedProminent)
         .tint(tracking.isTracking ? Theme.statusRed : .accentColor)

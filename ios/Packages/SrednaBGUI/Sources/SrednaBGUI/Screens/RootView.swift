@@ -78,6 +78,10 @@ public struct RootView: View {
         // Toggle (and other tinted controls) under the tab view so they pick
         // up the brand green.
         .tint(.accentColor)
+        // Keep the screen awake while tracking is active, regardless of which
+        // tab the user is on. iOS resets `isIdleTimerDisabled` on background;
+        // the modifier re-asserts the current value on return to foreground.
+        .keepScreenAwake(while: tracking.isTracking)
         // View-scoped locale override for SwiftUI's own formatters. Does NOT
         // mutate Bundle.main or Locale.current, so AudioAlertManager's TTS
         // voice selection stays on its own path.

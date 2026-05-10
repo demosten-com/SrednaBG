@@ -6,6 +6,7 @@
 package com.demosten.srednabg.app.ui
 
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -17,23 +18,30 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.demosten.srednabg.app.permissions.PermissionRepository
+import com.demosten.srednabg.app.service.LocationTrackingService
 import com.demosten.srednabg.app.ui.components.rememberPermissionHandler
 import com.demosten.srednabg.app.ui.navigation.NavRoute
 import com.demosten.srednabg.app.ui.navigation.SrednaBGNavHost
 import com.demosten.srednabg.app.ui.theme.SrednaBGTheme
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
+
+    @Inject lateinit var permissionRepository: PermissionRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,7 +68,7 @@ class MainActivity : AppCompatActivity() {
                     it.route == NavRoute.Map.route
                 } == true
 
-                rememberPermissionHandler()
+                rememberPermissionHandler(permissionRepository)
 
                 // Drive status-bar icon contrast from the device theme on
                 // Home/Settings. Map overrides this from its resolved MapTheme
@@ -72,6 +80,27 @@ class MainActivity : AppCompatActivity() {
                         val window = (view.context as android.app.Activity).window
                         WindowCompat.getInsetsController(window, view)
                             .isAppearanceLightStatusBars = !darkTheme
+                    }
+                }
+
+                // Keep the screen awake while tracking is active, on any tab.
+                // Tied to the activity window so tab switches don't introduce a
+                // brief sleep window. Cleared on dispose so the flag never
+                // outlives the activity if tracking is still on at teardown.
+                val isTracking by LocationTrackingService.isTracking.collectAsStateWithLifecycle()
+                DisposableEffect(isTracking, view) {
+                    val activity = view.context as? android.app.Activity
+                    if (activity != null && !view.isInEditMode) {
+                        if (isTracking) {
+                            activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        } else {
+                            activity.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        }
+                    }
+                    onDispose {
+                        if (activity != null && !view.isInEditMode) {
+                            activity.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        }
                     }
                 }
 

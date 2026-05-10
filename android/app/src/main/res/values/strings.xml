@@ -74,6 +74,19 @@
     <string name="about_attribution">Карти: \u00A9 OpenMapTiles \u00A9 OpenStreetMap contributors</string>
     <string name="about_zone_data">Данни за зони: БГ ТОЛ, TollTracker.eu</string>
 
+    <!-- Permission gating -->
+    <string name="permission_required_title">Нужно е разрешение \"Винаги\" за местоположение</string>
+    <string name="permission_required_body">SrednaBG се нуждае от достъп до местоположение във фон, за да следи средната ви скорост, докато екранът е изключен или ползвате друго навигационно приложение. Без него GPS спира при заключен телефон и средната скорост става грешна.</string>
+    <string name="permission_denied_title">Достъпът до местоположение е изключен</string>
+    <string name="permission_denied_body">SrednaBG не може да следи зоните за секционен контрол без достъп до местоположението ви. Отворете настройките и разрешете \"Точно местоположение\".</string>
+    <string name="permission_open_settings">Отвори настройките</string>
+    <string name="notification_recommended_title">Разрешете известията</string>
+    <string name="notification_recommended_body">Известието за активно проследяване е сигнал към системата, че SrednaBG работи. Без него някои телефони спират приложението при заключен екран и средната скорост става грешна. Можете да започнете и без него, но проследяването няма да е надеждно.</string>
+    <string name="notification_recommended_allow">Разреши известията</string>
+    <string name="battery_opt_title">Оптимизация на батерията е включена</string>
+    <string name="battery_opt_body">Някои Android телефони агресивно спират фоновите приложения, за да пестят батерия. За да сте сигурни, че SrednaBG ще следи цялото пътуване, изключете оптимизацията.</string>
+    <string name="battery_opt_action">Изключи оптимизацията</string>
+
     <!-- Trip history -->
     <string name="trip_history_coming_soon">Историята на пътуванията идва скоро</string>
 

@@ -22,6 +22,14 @@
 "startTracking" = "Start tracking";
 "stopTracking" = "Stop tracking";
 
+/* Permission gating */
+"permissionAlwaysRequiredTitle" = "Always location permission needed";
+"permissionAlwaysRequiredBody" = "SrednaBG needs the \"Always\" location permission so it can keep tracking your average speed when the screen is off or the app is in the background — otherwise GPS updates stop on a locked phone and the running average becomes wrong.\n\nOpen Settings → SrednaBG → Location and choose \"Always\".";
+"permissionDeniedTitle" = "Location access is off";
+"permissionDeniedBody" = "SrednaBG can't track section-control zones without your location. Open Settings → SrednaBG → Location and choose \"Always\".";
+"permissionOpenSettings" = "Open Settings";
+"permissionTryAgain" = "Try again";
+
 /* SettingsScreen */
 "settingAlertThreshold" = "Alert threshold";
 "settingAlertThresholdDesc" = "Warn me when current speed is within %d km/h of the limit.";
