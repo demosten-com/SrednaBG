@@ -14,6 +14,11 @@
 		DA1AA8A22F9B166A00A68948 /* OfflineMap in Resources */ = {isa = PBXBuildFile; fileRef = DA1AA8A12F9B166A00A68948 /* OfflineMap */; };
 		DA1AA8B02F9B166A00A68948 /* bundled-zones.json in Resources */ = {isa = PBXBuildFile; fileRef = DA1AA8AF2F9B166A00A68948 /* bundled-zones.json */; };
 		DAC4FA112FAA00000CA20001 /* SrednaBGMapCore in Frameworks */ = {isa = PBXBuildFile; productRef = DAC4FA102FAA00000CA20001 /* SrednaBGMapCore */; };
+		DAF7E29B2FB0A22900C0DE2D /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DAF7E29A2FB0A22900C0DE2D /* WidgetKit.framework */; };
+		DAF7E29D2FB0A22900C0DE2D /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DAF7E29C2FB0A22900C0DE2D /* SwiftUI.framework */; };
+		DAF7E2AC2FB0A22A00C0DE2D /* SrednaBGWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = DAF7E2982FB0A22900C0DE2D /* SrednaBGWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		DAF7EAA12FB0B00000C0DE2D /* SrednaBGTracking in Frameworks */ = {isa = PBXBuildFile; productRef = DA1AA8922F9B147500A68948 /* SrednaBGTracking */; };
+		DAF7EAA22FB0B00000C0DE2D /* SrednaBGTheme in Frameworks */ = {isa = PBXBuildFile; productRef = DAF7EAA32FB0B00000C0DE2D /* SrednaBGTheme */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -31,7 +36,28 @@
 			remoteGlobalIDString = DA42E3FB2F9B0D90008DC6AB;
 			remoteInfo = SrednaBG;
 		};
+		DAF7E2AA2FB0A22A00C0DE2D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DA42E3F42F9B0D90008DC6AB /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = DAF7E2972FB0A22900C0DE2D;
+			remoteInfo = SrednaBGWidgetsExtension;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		DAF7E2B12FB0A22A00C0DE2D /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				DAF7E2AC2FB0A22A00C0DE2D /* SrednaBGWidgetsExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		DA1AA8A12F9B166A00A68948 /* OfflineMap */ = {isa = PBXFileReference; lastKnownFileType = folder; name = OfflineMap; path = SrednaBG/App/Resources/OfflineMap; sourceTree = "<group>"; };
@@ -39,6 +65,10 @@
 		DA42E3FC2F9B0D90008DC6AB /* SrednaBG.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SrednaBG.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DA42E4092F9B0D91008DC6AB /* SrednaBGTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SrednaBGTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		DA42E4132F9B0D91008DC6AB /* SrednaBGUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SrednaBGUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		DAF7E2982FB0A22900C0DE2D /* SrednaBGWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SrednaBGWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		DAF7E29A2FB0A22900C0DE2D /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		DAF7E29C2FB0A22900C0DE2D /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		DAF7F62A2FB1090100C0DE2D /* i4-03-and-04-east.gpx */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = "i4-03-and-04-east.gpx"; path = "../test-data/i4-03-and-04-east.gpx"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -49,6 +79,13 @@
 				Info.plist,
 			);
 			target = DA42E3FB2F9B0D90008DC6AB /* SrednaBG */;
+		};
+		DAF7E2B02FB0A22A00C0DE2D /* Exceptions for "SrednaBGWidgets" folder in "SrednaBGWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = DAF7E2972FB0A22900C0DE2D /* SrednaBGWidgetsExtension */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -69,6 +106,14 @@
 		DA42E4162F9B0D91008DC6AB /* SrednaBGUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = SrednaBGUITests;
+			sourceTree = "<group>";
+		};
+		DAF7E29E2FB0A22900C0DE2D /* SrednaBGWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				DAF7E2B02FB0A22A00C0DE2D /* Exceptions for "SrednaBGWidgets" folder in "SrednaBGWidgetsExtension" target */,
+			);
+			path = SrednaBGWidgets;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -100,17 +145,31 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		DAF7E2952FB0A22900C0DE2D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DAF7E29D2FB0A22900C0DE2D /* SwiftUI.framework in Frameworks */,
+				DAF7E29B2FB0A22900C0DE2D /* WidgetKit.framework in Frameworks */,
+				DAF7EAA12FB0B00000C0DE2D /* SrednaBGTracking in Frameworks */,
+				DAF7EAA22FB0B00000C0DE2D /* SrednaBGTheme in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		DA42E3F32F9B0D90008DC6AB = {
 			isa = PBXGroup;
 			children = (
+				DAF7F62A2FB1090100C0DE2D /* i4-03-and-04-east.gpx */,
 				DA42E3FE2F9B0D90008DC6AB /* SrednaBG */,
 				DA1AA8A12F9B166A00A68948 /* OfflineMap */,
 				DA1AA8AF2F9B166A00A68948 /* bundled-zones.json */,
 				DA42E40C2F9B0D91008DC6AB /* SrednaBGTests */,
 				DA42E4162F9B0D91008DC6AB /* SrednaBGUITests */,
+				DAF7E29E2FB0A22900C0DE2D /* SrednaBGWidgets */,
+				DAF7E2992FB0A22900C0DE2D /* Frameworks */,
 				DA42E3FD2F9B0D90008DC6AB /* Products */,
 			);
 			sourceTree = "<group>";
@@ -121,8 +180,18 @@
 				DA42E3FC2F9B0D90008DC6AB /* SrednaBG.app */,
 				DA42E4092F9B0D91008DC6AB /* SrednaBGTests.xctest */,
 				DA42E4132F9B0D91008DC6AB /* SrednaBGUITests.xctest */,
+				DAF7E2982FB0A22900C0DE2D /* SrednaBGWidgetsExtension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		DAF7E2992FB0A22900C0DE2D /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				DAF7E29A2FB0A22900C0DE2D /* WidgetKit.framework */,
+				DAF7E29C2FB0A22900C0DE2D /* SwiftUI.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -138,10 +207,12 @@
 				DA42E3F82F9B0D90008DC6AB /* Sources */,
 				DA42E3F92F9B0D90008DC6AB /* Frameworks */,
 				DA42E3FA2F9B0D90008DC6AB /* Resources */,
+				DAF7E2B12FB0A22A00C0DE2D /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				DAF7E2AB2FB0A22A00C0DE2D /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				DA42E3FE2F9B0D90008DC6AB /* SrednaBG */,
@@ -204,6 +275,30 @@
 			productReference = DA42E4132F9B0D91008DC6AB /* SrednaBGUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		DAF7E2972FB0A22900C0DE2D /* SrednaBGWidgetsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DAF7E2AD2FB0A22A00C0DE2D /* Build configuration list for PBXNativeTarget "SrednaBGWidgetsExtension" */;
+			buildPhases = (
+				DAF7E2942FB0A22900C0DE2D /* Sources */,
+				DAF7E2952FB0A22900C0DE2D /* Frameworks */,
+				DAF7E2962FB0A22900C0DE2D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				DAF7E29E2FB0A22900C0DE2D /* SrednaBGWidgets */,
+			);
+			name = SrednaBGWidgetsExtension;
+			packageProductDependencies = (
+				DA1AA8922F9B147500A68948 /* SrednaBGTracking */,
+				DAF7EAA32FB0B00000C0DE2D /* SrednaBGTheme */,
+			);
+			productName = SrednaBGWidgetsExtension;
+			productReference = DAF7E2982FB0A22900C0DE2D /* SrednaBGWidgetsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -224,6 +319,9 @@
 					DA42E4122F9B0D91008DC6AB = {
 						CreatedOnToolsVersion = 26.4.1;
 						TestTargetID = DA42E3FB2F9B0D90008DC6AB;
+					};
+					DAF7E2972FB0A22900C0DE2D = {
+						CreatedOnToolsVersion = 26.4.1;
 					};
 				};
 			};
@@ -248,6 +346,7 @@
 				DA42E3FB2F9B0D90008DC6AB /* SrednaBG */,
 				DA42E4082F9B0D91008DC6AB /* SrednaBGTests */,
 				DA42E4122F9B0D91008DC6AB /* SrednaBGUITests */,
+				DAF7E2972FB0A22900C0DE2D /* SrednaBGWidgetsExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -270,6 +369,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		DA42E4112F9B0D91008DC6AB /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DAF7E2962FB0A22900C0DE2D /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -365,6 +471,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		DAF7E2942FB0A22900C0DE2D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -377,6 +490,11 @@
 			isa = PBXTargetDependency;
 			target = DA42E3FB2F9B0D90008DC6AB /* SrednaBG */;
 			targetProxy = DA42E4142F9B0D91008DC6AB /* PBXContainerItemProxy */;
+		};
+		DAF7E2AB2FB0A22A00C0DE2D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = DAF7E2972FB0A22900C0DE2D /* SrednaBGWidgetsExtension */;
+			targetProxy = DAF7E2AA2FB0A22A00C0DE2D /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -654,6 +772,68 @@
 			};
 			name = Release;
 		};
+		DAF7E2AE2FB0A22A00C0DE2D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4W2677KEN2;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SrednaBGWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = SrednaBGWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.demosten.srednabg.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		DAF7E2AF2FB0A22A00C0DE2D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4W2677KEN2;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SrednaBGWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = SrednaBGWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.demosten.srednabg.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -693,6 +873,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		DAF7E2AD2FB0A22A00C0DE2D /* Build configuration list for PBXNativeTarget "SrednaBGWidgetsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DAF7E2AE2FB0A22A00C0DE2D /* Debug */,
+				DAF7E2AF2FB0A22A00C0DE2D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -722,6 +911,10 @@
 		DAC4FA102FAA00000CA20001 /* SrednaBGMapCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SrednaBGMapCore;
+		};
+		DAF7EAA32FB0B00000C0DE2D /* SrednaBGTheme */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SrednaBGTheme;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -78,23 +78,3 @@ public struct StatusChip: View {
         return String(Int(value.rounded()))
     }
 }
-
-/// Round white badge with red border — the iconic Bulgarian speed-limit
-/// glyph used on both road signs and our overlay.
-public struct LimitBadge: View {
-    public let limit: Int
-
-    public init(limit: Int) { self.limit = limit }
-
-    public var body: some View {
-        Text(String(limit))
-            .font(.title3.weight(.bold))
-            .monospacedDigit()
-            .foregroundStyle(.black)
-            .lineLimit(1)
-            .minimumScaleFactor(0.6)
-            .frame(width: 48, height: 48)
-            .background(Color.white, in: Circle())
-            .overlay(Circle().stroke(Theme.statusRed, lineWidth: 3.5))
-    }
-}

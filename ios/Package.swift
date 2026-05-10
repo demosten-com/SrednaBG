@@ -26,6 +26,7 @@ let package = Package(
         .library(name: "SrednaBGData", targets: ["SrednaBGData"]),
         .library(name: "SrednaBGTracking", targets: ["SrednaBGTracking"]),
         .library(name: "SrednaBGMapCore", targets: ["SrednaBGMapCore"]),
+        .library(name: "SrednaBGTheme", targets: ["SrednaBGTheme"]),
         .library(name: "SrednaBGUI", targets: ["SrednaBGUI"]),
         .library(name: "SrednaBGCarPlay", targets: ["SrednaBGCarPlay"]),
     ],
@@ -98,12 +99,19 @@ let package = Package(
             swiftSettings: strictConcurrencySettings
         ),
         .target(
+            name: "SrednaBGTheme",
+            dependencies: ["SrednaBGCore"],
+            path: "Packages/SrednaBGTheme/Sources/SrednaBGTheme",
+            swiftSettings: strictConcurrencySettings
+        ),
+        .target(
             name: "SrednaBGUI",
             dependencies: [
                 "SrednaBGCore",
                 "SrednaBGData",
                 "SrednaBGTracking",
                 "SrednaBGMapCore",
+                "SrednaBGTheme",
             ],
             path: "Packages/SrednaBGUI/Sources/SrednaBGUI",
             resources: [.process("Resources")],

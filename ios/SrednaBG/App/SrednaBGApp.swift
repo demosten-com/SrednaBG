@@ -121,20 +121,35 @@ final class AppContainer {
         // active Live Activity is what convinces iOS to keep the process
         // resident in the background for the duration of a drive — the
         // single biggest fix for "GPS stopped while screen was locked".
+        //
+        // The activity is created at session start (foreground-only — Apple
+        // rejects `Activity.request` from the background) and torn down at
+        // session stop. Per-zone updates flow through the regular sink while
+        // the activity is alive.
         let liveActivity = LiveActivityManager()
-        let zoneStateSink: @Sendable (ZoneState) async -> Void = { state in
-            await liveActivity.update(state: state)
+        let zoneStateSink: @Sendable (ZoneState, Double?) async -> Void = { state, speed in
+            await liveActivity.update(state: state, currentSpeedKmh: speed)
+        }
+        let onSessionStart: @Sendable () async -> Void = {
+            await liveActivity.sessionStart()
+        }
+        let onSessionStop: @Sendable () async -> Void = {
+            await liveActivity.sessionStop()
         }
         #else
         let provider: any LocationProviding = SilentLocationProvider()
-        let zoneStateSink: @Sendable (ZoneState) async -> Void = { _ in }
+        let zoneStateSink: @Sendable (ZoneState, Double?) async -> Void = { _, _ in }
+        let onSessionStart: @Sendable () async -> Void = {}
+        let onSessionStop: @Sendable () async -> Void = {}
         #endif
         self.tracking = ZoneTrackingService(
             zones: [],
             provider: provider,
             alerts: alerts,
             settings: settings,
-            zoneStateSink: zoneStateSink
+            zoneStateSink: zoneStateSink,
+            onSessionStart: onSessionStart,
+            onSessionStop: onSessionStop
         )
     }
 

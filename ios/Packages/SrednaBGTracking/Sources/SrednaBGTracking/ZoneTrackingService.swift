@@ -57,7 +57,19 @@ public final class ZoneTrackingService {
     private let settings: SettingsStore
 
     @ObservationIgnored
-    private let zoneStateSink: @Sendable (ZoneState) async -> Void
+    private let zoneStateSink: @Sendable (ZoneState, Double?) async -> Void
+
+    /// Fired once when tracking starts. Wired in `SrednaBGApp` to
+    /// `LiveActivityManager.sessionStart()` — Apple's API requires
+    /// `Activity.request` to run from the foreground, and `start()` is
+    /// always called from a foreground tap on the Home screen.
+    @ObservationIgnored
+    private let onSessionStart: @Sendable () async -> Void
+
+    /// Fired once when tracking stops, replacing the prior
+    /// `zoneStateSink(.outside, nil)` end-signal.
+    @ObservationIgnored
+    private let onSessionStop: @Sendable () async -> Void
 
     @ObservationIgnored
     private var consumerTask: Task<Void, Never>?
@@ -70,7 +82,9 @@ public final class ZoneTrackingService {
         provider: any LocationProviding,
         alerts: AudioAlertManager,
         settings: SettingsStore,
-        zoneStateSink: @escaping @Sendable (ZoneState) async -> Void = { _ in }
+        zoneStateSink: @escaping @Sendable (ZoneState, Double?) async -> Void = { _, _ in },
+        onSessionStart: @escaping @Sendable () async -> Void = {},
+        onSessionStop: @escaping @Sendable () async -> Void = {}
     ) {
         self.zones = zones
         self.detector = ZoneDetector(zones: zones)
@@ -78,6 +92,8 @@ public final class ZoneTrackingService {
         self.alerts = alerts
         self.settings = settings
         self.zoneStateSink = zoneStateSink
+        self.onSessionStart = onSessionStart
+        self.onSessionStop = onSessionStop
     }
 
     /// Replace the active zone catalog (e.g. after a successful sync). Resets
@@ -118,6 +134,12 @@ public final class ZoneTrackingService {
 
         isTracking = true
 
+        // Create the Live Activity *before* the consumer task starts so the
+        // first GPS point lands on a live activity. Must happen here while
+        // we're still on a foreground call stack — `Activity.request` is
+        // rejected from the background.
+        await onSessionStart()
+
         let stream = await provider.updates()
         let initialMs = currentIntervalMs
         await provider.setIntervalMs(initialMs)
@@ -135,8 +157,9 @@ public final class ZoneTrackingService {
         consumerTask = nil
         await provider.stop()
         await alerts.reset()
-        // End any active Live Activity by signaling the sink with `.outside`.
-        await zoneStateSink(.outside)
+        // End the Live Activity for this session. The sink no longer carries
+        // the lifecycle signal — `onSessionStop` is the explicit hook.
+        await onSessionStop()
         detector.reset()
         isTracking = false
         zoneState = .outside
@@ -163,7 +186,7 @@ public final class ZoneTrackingService {
         // Fire-and-forget the Live Activity update — the sink throttles
         // internally so calling on every point is safe.
         Task.detached { [zoneStateSink] in
-            await zoneStateSink(next)
+            await zoneStateSink(next, point.speed)
         }
 
         // Adjust GPS cadence as we move toward / into / out of zones.

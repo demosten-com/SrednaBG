@@ -9,6 +9,7 @@ included:
   - SrednaBG
   - SrednaBGTests
   - SrednaBGUITests
+  - SrednaBGWidgets
 
 excluded:
   - .build
