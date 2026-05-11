@@ -12,6 +12,7 @@ consumed by the Android app, backend, and core calculation engine.
 import hashlib
 import json
 from datetime import UTC, datetime
+from typing import ClassVar
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
@@ -103,10 +104,19 @@ class ZoneDatabase(BaseModel):
     hash: str = ""
     zones: list[Zone]
 
+    # Fields whose value changes with the run timestamp but not with zone data.
+    # Excluded from the integrity hash so that re-running the pipeline on a
+    # different day with otherwise-identical scraped data yields the same hash.
+    HASH_EXCLUDE: ClassVar[set[str]] = {"last_verified"}
+
     def compute_hash(self) -> str:
-        """Compute SHA-256 hash of the zones data."""
+        """Compute SHA-256 hash of the zones data.
+
+        Excludes per-zone re-verification timestamps so the hash reflects
+        actual data changes only.
+        """
         zones_json = json.dumps(
-            [z.model_dump() for z in self.zones],
+            [z.model_dump(exclude=self.HASH_EXCLUDE) for z in self.zones],
             sort_keys=True,
             ensure_ascii=False,
         ).encode("utf-8")

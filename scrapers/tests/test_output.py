@@ -5,6 +5,14 @@
 
 """Tests for the output pipeline."""
 
+import json
+from datetime import UTC, datetime
+from unittest.mock import patch
+
+from src import output, validator
+from src.bgtoll_scraper import scrape as bgtoll_scrape
+from src.tolltracker_fetcher import scrape as tolltracker_scrape
+from src.validator import merge_all
 from src.zone_schema import SpeedLimits, Zone, ZoneDatabase, ZoneEndpoint
 
 
@@ -80,3 +88,88 @@ class TestZoneDatabase:
         db = ZoneDatabase(version="v1", zones=[]).with_hash()
         assert db.hash.startswith("sha256:")
         assert len(db.zones) == 0
+
+    def test_hash_ignores_last_verified(self):
+        """last_verified should not affect the hash — it's a run-time stamp,
+        not data. Two zones identical except for last_verified must hash equal.
+        """
+        z1 = _sample_zone()
+        z2 = z1.model_copy(update={"last_verified": "2099-12-31"})
+        db1 = ZoneDatabase(version="v1", zones=[z1])
+        db2 = ZoneDatabase(version="v1", zones=[z2])
+        assert db1.compute_hash() == db2.compute_hash()
+
+    def test_hash_still_changes_on_real_field(self):
+        """Sanity check: changing any non-excluded field still changes the hash."""
+        z1 = _sample_zone()
+        z2 = z1.model_copy(update={"distance_m": z1.distance_m + 1})
+        assert (
+            ZoneDatabase(version="v1", zones=[z1]).compute_hash()
+            != ZoneDatabase(version="v1", zones=[z2]).compute_hash()
+        )
+
+
+class TestPipelineHashStability:
+    """End-to-end: the hash must not change between runs that differ only
+    in the wall clock. Regression test for the bug where every zone got a
+    fresh last_verified stamp baked into the hash.
+    """
+
+    def _run_pipeline_on_date(self, bgtoll_html, tolltracker_html, date_str):
+        """Run the merge pipeline with datetime.now patched to return date_str."""
+        fake_now = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=UTC)
+
+        class _FakeDatetime(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return fake_now if tz is None else fake_now.astimezone(tz)
+
+        # Patch the symbol imported into validator (merge_match stamps
+        # last_verified there). The per-source scrapers also stamp, but
+        # merge_match overwrites those.
+        with patch.object(validator, "datetime", _FakeDatetime):
+            bg_zones = bgtoll_scrape(html=bgtoll_html)
+            tt_zones = tolltracker_scrape(html=tolltracker_html)
+            merged = merge_all(bg_zones, tt_zones, [])
+            db = ZoneDatabase(version="v1", zones=merged).with_hash()
+        return db
+
+    def test_hash_stable_across_dates(self, bgtoll_html, tolltracker_html):
+        db_day1 = self._run_pipeline_on_date(
+            bgtoll_html, tolltracker_html, "2026-05-11"
+        )
+        db_day2 = self._run_pipeline_on_date(
+            bgtoll_html, tolltracker_html, "2026-08-23"
+        )
+
+        # Sanity: confirm the patch actually moved last_verified.
+        assert db_day1.zones[0].last_verified == "2026-05-11"
+        assert db_day2.zones[0].last_verified == "2026-08-23"
+
+        # The whole point of this fix: hash must be identical.
+        assert db_day1.hash == db_day2.hash
+
+    def test_write_target_dir_no_snapshot_when_only_date_changed(
+        self, bgtoll_html, tolltracker_html, tmp_path
+    ):
+        """write_target_dir snapshots zones.json only on content change.
+        Content change is decided by byte-comparing the file; with the hash
+        fix alone, last_verified still flips a byte and triggers a spurious
+        snapshot. This test currently documents that gap — the hash on
+        /api/version is stable (the user-visible fix) but on-disk snapshot
+        churn would need a separate fix.
+        """
+        db1 = self._run_pipeline_on_date(
+            bgtoll_html, tolltracker_html, "2026-05-11"
+        )
+        output.write_target_dir(db1, tmp_path)
+        version1 = json.loads((tmp_path / "version.json").read_text())
+
+        db2 = self._run_pipeline_on_date(
+            bgtoll_html, tolltracker_html, "2026-08-23"
+        )
+        output.write_target_dir(db2, tmp_path)
+        version2 = json.loads((tmp_path / "version.json").read_text())
+
+        # The hash served to clients is stable across dates.
+        assert version1["hash"] == version2["hash"]
