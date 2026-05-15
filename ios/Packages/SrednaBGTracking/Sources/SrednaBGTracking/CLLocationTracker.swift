@@ -142,13 +142,25 @@ extension CLLocationTracker: CLLocationManagerDelegate {
 
     public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         for location in locations {
+            // CLLocationManager may deliver a cached "last known" fix as the
+            // first update — possibly hundreds of meters off from the real
+            // GPS lock. Seeding lastLat/Lng from such a fix would make the
+            // next real fix's deltaM spurious, producing a phantom speed
+            // that clamps the inferred reading at 250 km/h. 10 s mirrors
+            // Android's MAX_FIX_AGE_MS (CoreLocation timestamps are wall-
+            // clock, so compare to Date()).
+            let ageS = Date().timeIntervalSince(location.timestamp)
+            let freshFix = ageS >= 0 && ageS <= 10
+            let speedAccMps: Double? = location.speedAccuracy >= 0 ? location.speedAccuracy : nil
             let raw = RawLocationFix(
                 lat: location.coordinate.latitude,
                 lng: location.coordinate.longitude,
                 course: location.course >= 0 ? location.course : nil,
                 speedMps: location.speed >= 0 ? location.speed : nil,
                 timestampMs: Int64(location.timestamp.timeIntervalSince1970 * 1000),
-                accuracyM: location.horizontalAccuracy >= 0 ? location.horizontalAccuracy : nil
+                accuracyM: location.horizontalAccuracy >= 0 ? location.horizontalAccuracy : nil,
+                speedAccuracyMps: speedAccMps,
+                freshFix: freshFix
             )
             let (point, hasBearing, cont) = lock.withLock {
                 let (point, hasBearing) = builder.build(raw)

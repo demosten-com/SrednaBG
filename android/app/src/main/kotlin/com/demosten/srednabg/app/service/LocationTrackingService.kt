@@ -53,6 +53,19 @@ class LocationTrackingService : LifecycleService() {
         private const val MIN_SPEED_INFER_M = 5.0
         private const val MIN_SPEED_INFER_DT_SEC = 0.2
         private const val MAX_INFERRED_SPEED_KMH = 250.0
+        // FLP can deliver a cached "last known" fix as the first update —
+        // possibly from a wifi/cell-derived position tens to hundreds of
+        // meters off from the user's actual location. A stale fix as the
+        // seed for lastRawLat/Lng would make the next real fix's deltaM
+        // spurious, producing a phantom speed that clamps at
+        // MAX_INFERRED_SPEED_KMH and then sticks (the deltaM<5m guard
+        // below never clears the stale value on stationary samples).
+        // The real cached fixes we want to reject are minutes-to-hours old;
+        // 10 s is loose enough that normal FLP delivery (which on real
+        // devices can run 3–5 s behind the requested 5 s interval) is not
+        // mis-classified, but tight enough that "last known" caches still
+        // get caught.
+        private const val MAX_FIX_AGE_MS = 10_000L
         private const val DEBUG_PROVIDER = "debug-gpx"
         // Longer than the 5s far-zone FLP interval so one debug point is
         // enough to mask the next real FLP tick. Shorter than a reasonable
@@ -127,22 +140,45 @@ class LocationTrackingService : LifecycleService() {
             }
             else -> lastInferredBearing
         }
-        if (lastRawTimestampMs > 0 && location.time > lastRawTimestampMs && deltaM >= MIN_SPEED_INFER_M) {
+        val fixAgeMs = (android.os.SystemClock.elapsedRealtimeNanos() - location.elapsedRealtimeNanos) / 1_000_000
+        val freshFix = fixAgeMs in 0L..MAX_FIX_AGE_MS
+        if (freshFix && lastRawTimestampMs > 0 && location.time > lastRawTimestampMs) {
             val dtSec = (location.time - lastRawTimestampMs) / 1000.0
-            if (dtSec >= MIN_SPEED_INFER_DT_SEC && dtSec <= 30.0) {
+            if (deltaM >= MIN_SPEED_INFER_M && dtSec >= MIN_SPEED_INFER_DT_SEC && dtSec <= 30.0) {
                 val raw = (deltaM / dtSec) * 3.6
                 lastInferredSpeedKmh = raw.coerceAtMost(MAX_INFERRED_SPEED_KMH)
+            } else if (deltaM < MIN_SPEED_INFER_M) {
+                // No motion this sample — don't keep showing the previous
+                // inferred reading. Without this, a one-off position-delta
+                // spike (e.g. GPS cold-start jump) clamps at 250 and stays
+                // pinned because the deltaM>=MIN_SPEED_INFER_M branch never
+                // re-fires while the user is stationary.
+                lastInferredSpeedKmh = 0.0
             }
         }
-        val reportedSpeedKmh = if (location.hasSpeed()) location.speed.toDouble() * 3.6 else 0.0
+        // GPS Doppler-derived speed has its own noise floor — chips report
+        // ~0.3–1.5 m/s while sitting still. Android exposes a 68%-confidence
+        // accuracy alongside the speed; when the reported value is below
+        // that bound, "0" is statistically consistent with the measurement
+        // so we suppress it. minSdk=26 so hasSpeedAccuracy() is unconditional.
+        val rawSpeedMs = if (location.hasSpeed()) location.speed.toDouble() else 0.0
+        val speedAccMs = if (location.hasSpeedAccuracy()) {
+            location.speedAccuracyMetersPerSecond.toDouble()
+        } else {
+            Double.NaN
+        }
+        val withinNoise = !speedAccMs.isNaN() && rawSpeedMs < speedAccMs
+        val reportedSpeedKmh = if (withinNoise) 0.0 else rawSpeedMs * 3.6
         // Prefer whichever is larger — FLP on the emulator stamps a near-zero
         // speed even when positions move, so fall back to the position-delta
         // derivation. Real GPS is consistent between the two, so max() is a
         // no-op there.
         val speedKmh = kotlin.math.max(reportedSpeedKmh, lastInferredSpeedKmh)
-        lastRawLat = location.latitude
-        lastRawLng = location.longitude
-        lastRawTimestampMs = location.time
+        if (freshFix) {
+            lastRawLat = location.latitude
+            lastRawLng = location.longitude
+            lastRawTimestampMs = location.time
+        }
         val rawPoint = GpsPoint(
             lat = location.latitude,
             lng = location.longitude,
@@ -153,6 +189,12 @@ class LocationTrackingService : LifecycleService() {
         )
         val point = gpsFilter.filter(rawPoint)
         _currentPosition.value = point
+        Log.d(
+            TAG,
+            "displaySpeed: kmh=${point.speed} inferredKmh=$lastInferredSpeedKmh " +
+                "reportedKmh=$reportedSpeedKmh rawMs=$rawSpeedMs accMs=$speedAccMs " +
+                "fixAgeMs=$fixAgeMs fresh=$freshFix",
+        )
         if (bearing.isNaN()) {
             // No bearing yet — publish the position so the map can center on
             // the user, but skip the zone detector so we don't false-match a

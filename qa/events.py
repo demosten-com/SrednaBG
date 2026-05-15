@@ -34,6 +34,23 @@ class LocationUpdate(Event):
 
 
 @dataclass(frozen=True)
+class DisplaySpeed(Event):
+    """Speed shown on Home's 'Now km/h' — the post-filter `point.speed` from
+    `LocationTrackingService` after the inferred-vs-reported max() resolves.
+
+    `raw_ms` is the un-gated `location.speed`; `acc_ms` is the GPS speed
+    accuracy estimate at 68% confidence (NaN if the fix has no
+    speedAccuracy). `reported_kmh` is post-accuracy-gate."""
+    kmh: float
+    inferred_kmh: float
+    reported_kmh: float
+    raw_ms: float
+    acc_ms: float
+    fix_age_ms: int
+    fresh_fix: bool
+
+
+@dataclass(frozen=True)
 class ZoneStateChange(Event):
     """Fires on every detector update — derived from AudioAlertManager.kt:75.
 

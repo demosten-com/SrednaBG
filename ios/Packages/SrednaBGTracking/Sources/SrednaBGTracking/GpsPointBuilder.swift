@@ -27,8 +27,16 @@ public struct SpeedInference: Sendable {
         reportedKmh: Double,
         lat: Double,
         lng: Double,
-        timestampMs: Int64
+        timestampMs: Int64,
+        freshFix: Bool = true
     ) -> Double {
+        // Stale fixes (cached "last known" from CoreLocation) must NOT seed
+        // lastLat/Lng — comparing a fresh fix against a stale seed produces
+        // a phantom delta that clamps the inferred speed at 250 km/h.
+        guard freshFix else {
+            return max(reportedKmh, lastInferredKmh)
+        }
+
         defer {
             lastTimestampMs = timestampMs
             lastLat = lat
@@ -42,6 +50,12 @@ public struct SpeedInference: Sendable {
               dtSec >= Self.minDeltaSec,
               dtSec <= Self.maxDeltaSec
         else {
+            // No motion this sample — clear any stale inferred value so a
+            // prior 5m+ jump doesn't pin the display forever (the user-
+            // reported "Now shows 250 km/h while stationary" bug).
+            if deltaM < Self.minDistanceM {
+                lastInferredKmh = 0
+            }
             return max(reportedKmh, lastInferredKmh)
         }
         let inferred = min((deltaM / dtSec) * 3.6, Self.maxInferredKmh)
@@ -63,10 +77,12 @@ public struct SpeedInference: Sendable {
 public struct RawLocationFix: Sendable {
     public let lat: Double
     public let lng: Double
-    public let course: Double?      // CLLocation.course (-1 → nil)
-    public let speedMps: Double?    // CLLocation.speed   (-1 → nil)
+    public let course: Double?              // CLLocation.course           (-1 → nil)
+    public let speedMps: Double?            // CLLocation.speed            (-1 → nil)
     public let timestampMs: Int64
     public let accuracyM: Double?
+    public let speedAccuracyMps: Double?    // CLLocation.speedAccuracy    (-1 → nil)
+    public let freshFix: Bool               // age check done at the CLLocation boundary
 
     public init(
         lat: Double,
@@ -74,7 +90,9 @@ public struct RawLocationFix: Sendable {
         course: Double?,
         speedMps: Double?,
         timestampMs: Int64,
-        accuracyM: Double?
+        accuracyM: Double?,
+        speedAccuracyMps: Double? = nil,
+        freshFix: Bool = true
     ) {
         self.lat = lat
         self.lng = lng
@@ -82,6 +100,8 @@ public struct RawLocationFix: Sendable {
         self.speedMps = speedMps
         self.timestampMs = timestampMs
         self.accuracyM = accuracyM
+        self.speedAccuracyMps = speedAccuracyMps
+        self.freshFix = freshFix
     }
 }
 
@@ -100,12 +120,25 @@ public struct GpsPointBuilder: Sendable {
     /// `LocationTrackingService.kt`: we publish position to UI but skip the
     /// zone detector to avoid false-matching on a default 0° heading.
     public mutating func build(_ raw: RawLocationFix) -> (point: GpsPoint, hasBearing: Bool) {
-        let reportedKmh = (raw.speedMps ?? 0) * 3.6
+        // GPS Doppler-derived speed has its own noise floor — chips report
+        // ~0.3–1.5 m/s while sitting still. CoreLocation exposes a 68%-
+        // confidence accuracy alongside the speed; when the reported value
+        // is below that bound, "0" is statistically consistent with the
+        // measurement so we suppress it.
+        let rawSpeed = max(raw.speedMps ?? 0, 0)
+        let withinNoise: Bool
+        if let acc = raw.speedAccuracyMps {
+            withinNoise = rawSpeed < acc
+        } else {
+            withinNoise = false
+        }
+        let reportedKmh = withinNoise ? 0 : rawSpeed * 3.6
         let speed = speedInference.combine(
-            reportedKmh: max(reportedKmh, 0),
+            reportedKmh: reportedKmh,
             lat: raw.lat,
             lng: raw.lng,
-            timestampMs: raw.timestampMs
+            timestampMs: raw.timestampMs,
+            freshFix: raw.freshFix
         )
         let bearing = bearingFallback.bearing(rawBearing: raw.course, lat: raw.lat, lng: raw.lng)
         let rawPoint = GpsPoint(

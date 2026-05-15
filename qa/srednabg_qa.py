@@ -52,6 +52,7 @@ EDGE_SCENARIOS = [
     "vehicle_swap",
     "over_limit_recovery",
     "off_ramp",
+    "cold_start_spike",
 ]
 SYNC_SCENARIOS = [
     "zones_happy",

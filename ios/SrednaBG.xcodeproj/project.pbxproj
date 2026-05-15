@@ -68,7 +68,6 @@
 		DAF7E2982FB0A22900C0DE2D /* SrednaBGWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SrednaBGWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		DAF7E29A2FB0A22900C0DE2D /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		DAF7E29C2FB0A22900C0DE2D /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
-		DAF7F62A2FB1090100C0DE2D /* i4-03-and-04-east.gpx */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = "i4-03-and-04-east.gpx"; path = "../test-data/i4-03-and-04-east.gpx"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -162,13 +161,12 @@
 		DA42E3F32F9B0D90008DC6AB = {
 			isa = PBXGroup;
 			children = (
-				DAF7F62A2FB1090100C0DE2D /* i4-03-and-04-east.gpx */,
 				DA42E3FE2F9B0D90008DC6AB /* SrednaBG */,
-				DA1AA8A12F9B166A00A68948 /* OfflineMap */,
-				DA1AA8AF2F9B166A00A68948 /* bundled-zones.json */,
+				DAF7E29E2FB0A22900C0DE2D /* SrednaBGWidgets */,
 				DA42E40C2F9B0D91008DC6AB /* SrednaBGTests */,
 				DA42E4162F9B0D91008DC6AB /* SrednaBGUITests */,
-				DAF7E29E2FB0A22900C0DE2D /* SrednaBGWidgets */,
+				DA1AA8A12F9B166A00A68948 /* OfflineMap */,
+				DA1AA8AF2F9B166A00A68948 /* bundled-zones.json */,
 				DAF7E2992FB0A22900C0DE2D /* Frameworks */,
 				DA42E3FD2F9B0D90008DC6AB /* Products */,
 			);
@@ -307,7 +305,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 2640;
-				LastUpgradeCheck = 2640;
+				LastUpgradeCheck = 2650;
 				TargetAttributes = {
 					DA42E3FB2F9B0D90008DC6AB = {
 						CreatedOnToolsVersion = 26.4.1;
@@ -504,6 +502,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -558,6 +557,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -568,6 +568,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -615,6 +616,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
 			};

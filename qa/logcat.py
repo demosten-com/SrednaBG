@@ -32,6 +32,7 @@ from . import adb
 from .events import (
     Anr,
     Crash,
+    DisplaySpeed,
     Event,
     IntervalChanged,
     LocationUpdate,
@@ -57,6 +58,16 @@ _LOC_RE = re.compile(
     r"onLocation: lat=(?P<lat>-?\d+\.?\d*) lng=(?P<lng>-?\d+\.?\d*) "
     r"speed=(?P<speed>-?\d+\.?\d*) accuracy=(?P<acc>-?\d+\.?\d*) "
     r"provider=(?P<prov>\S+) mock=(?P<mock>true|false)"
+)
+
+_DISPLAY_SPEED_RE = re.compile(
+    r"displaySpeed: kmh=(?P<kmh>-?\d+\.?\d*(?:[eE]-?\d+)?) "
+    r"inferredKmh=(?P<inferred>-?\d+\.?\d*(?:[eE]-?\d+)?) "
+    r"reportedKmh=(?P<reported>-?\d+\.?\d*(?:[eE]-?\d+)?) "
+    r"rawMs=(?P<rawms>-?\d+\.?\d*(?:[eE]-?\d+)?) "
+    r"accMs=(?P<accms>NaN|-?\d+\.?\d*(?:[eE]-?\d+)?) "
+    r"fixAgeMs=(?P<age>-?\d+) "
+    r"fresh=(?P<fresh>true|false)"
 )
 
 _STATE_RE = re.compile(
@@ -106,6 +117,19 @@ def parse_line(raw: str) -> Optional[Event]:
                 accuracy_m=float(ml.group("acc")),
                 provider=ml.group("prov"),
                 is_mock=ml.group("mock") == "true",
+            )
+        md = _DISPLAY_SPEED_RE.search(msg)
+        if md:
+            return DisplaySpeed(
+                monotonic_ms=ts,
+                raw=raw,
+                kmh=float(md.group("kmh")),
+                inferred_kmh=float(md.group("inferred")),
+                reported_kmh=float(md.group("reported")),
+                raw_ms=float(md.group("rawms")),
+                acc_ms=float(md.group("accms")),  # accepts "NaN"
+                fix_age_ms=int(md.group("age")),
+                fresh_fix=md.group("fresh") == "true",
             )
         mz = _ZONES_RE.search(msg)
         if mz:
