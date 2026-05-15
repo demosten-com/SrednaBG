@@ -69,11 +69,14 @@ public struct SettingsScreen: View {
     private var voiceSection: some View {
         Section(L10n.settingVoiceAlerts) {
             Toggle(L10n.settingVoiceAlerts, isOn: $settings.voiceEnabled)
+                .accessibilityIdentifier("settings-voice-enabled")
             Toggle(L10n.settingPeriodicUpdates, isOn: $settings.periodicVoiceUpdates)
                 .disabled(!settings.voiceEnabled)
+                .accessibilityIdentifier("settings-periodic-voice-updates")
             Toggle(L10n.settingOverspeedOnly, isOn: $settings.announceOnlyWhenOver)
                 .disabled(!settings.voiceEnabled || !settings.periodicVoiceUpdates)
                 .padding(.leading, 16)
+                .accessibilityIdentifier("settings-announce-only-when-over")
         }
     }
 
@@ -84,6 +87,7 @@ public struct SettingsScreen: View {
                 Text(L10n.languageBg).tag(AppLanguage.bg)
                 Text(L10n.languageEn).tag(AppLanguage.en)
             }
+            .accessibilityIdentifier("settings-app-language")
             Text(L10n.settingLanguageDesc)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
@@ -97,12 +101,14 @@ public struct SettingsScreen: View {
                 Text(L10n.vehicleTruck).tag(VehicleType.truck)
                 Text(L10n.vehicleBus).tag(VehicleType.bus)
             }
+            .accessibilityIdentifier("settings-vehicle-type")
         }
     }
 
     private var mapSection: some View {
         Section(L10n.navMap) {
             Toggle(L10n.settingMapHeadingUp, isOn: $settings.mapHeadingUp)
+                .accessibilityIdentifier("settings-map-heading-up")
             Text(L10n.settingMapHeadingUpDesc)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
@@ -111,6 +117,7 @@ public struct SettingsScreen: View {
                 Text(L10n.mapThemeLight).tag(MapThemeMode.light)
                 Text(L10n.mapThemeDark).tag(MapThemeMode.dark)
             }
+            .accessibilityIdentifier("settings-map-theme")
             Text(L10n.settingMapThemeDesc)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
@@ -128,6 +135,7 @@ public struct SettingsScreen: View {
                 }
             }
             .disabled(isSyncing)
+            .accessibilityIdentifier("settings-sync-now")
         }
     }
 

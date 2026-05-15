@@ -32,13 +32,30 @@ struct SrednaBGApp: App {
         // requirement (must happen during app launch, not later). Capture
         // the local `container` so the closures don't try to capture the
         // `App` struct's mutating `self` via `@State`.
+        //
+        // Map-sync is gated on `FeatureFlags.isMapSyncEnabled` (off until the
+        // production backend serves `/api/map/bundle.zip` + `map_hash`). We
+        // still register the identifier with BGTaskScheduler so any task
+        // queued by a prior version completes via a no-op handler instead of
+        // being treated as unhandled; we just never submit a new request.
         #if os(iOS)
         BackgroundSyncScheduler.register(
             zoneSync: { _ = await container.runZoneSync() },
-            mapSync: { _ = await container.runMapSync() }
+            mapSync: {
+                guard FeatureFlags.isMapSyncEnabled else { return }
+                _ = await container.runMapSync()
+            }
         )
         BackgroundSyncScheduler.scheduleZoneSync()
-        BackgroundSyncScheduler.scheduleMapSync()
+        if FeatureFlags.isMapSyncEnabled {
+            BackgroundSyncScheduler.scheduleMapSync()
+        }
+        #endif
+
+        // QA harness debug surface — see SrednaBGApp+DebugServer.swift.
+        // Debug builds only; no-op in Release.
+        #if DEBUG
+        container.startDebugServer()
         #endif
     }
 
@@ -75,6 +92,15 @@ final class AppContainer {
     private var tileServer: LocalTileServer?
     private var tileReader: MBTilesReader?
     private var cachedStyleURLs: [MapTheme: URL] = [:]
+
+    #if DEBUG
+    /// Owned by `startDebugServer()` (in `SrednaBGApp+DebugServer.swift`)
+    /// so the QA loopback listener outlives any local scope. Stored
+    /// properties must live in the class body, so this declaration stays
+    /// here even though everything that touches it lives in the +Debug
+    /// extension. Nil in non-debug builds.
+    var debugServer: DebugControlServer?
+    #endif
 
     init() {
         // Settings live in the standard `UserDefaults` so the app, the
@@ -178,8 +204,11 @@ final class AppContainer {
         // Android app scheduling both `ZoneSyncWorker` and `MapSyncWorker` —
         // iOS `BGAppRefreshTask` / `BGProcessingTask` are best-effort, so we
         // also run them on launch to guarantee a hash-gated check per session.
+        // Map sync is gated on `FeatureFlags.isMapSyncEnabled` — see QAFlags.swift.
         Task { _ = await runZoneSync() }
-        Task { _ = await runMapSync() }
+        if FeatureFlags.isMapSyncEnabled {
+            Task { _ = await runMapSync() }
+        }
     }
 
     func runZoneSync() async -> SyncResult {

@@ -1,0 +1,96 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2026 SrednaBG Contributors
+//
+// SrednaBG — ios / SrednaBG
+
+#if DEBUG
+import Foundation
+import SrednaBGCore
+import SrednaBGData
+import SrednaBGTracking
+
+extension AppContainer {
+
+    /// Spins up the QA harness's loopback HTTP debug server. Called once from
+    /// `SrednaBGApp.init()` in Debug builds. Stores the server on
+    /// `debugServer` so it outlives the local scope and stays alive for the
+    /// lifetime of the process.
+    ///
+    /// Why HTTP instead of a `srednabg-debug://` URL scheme: `simctl openurl`
+    /// pops an "Open in <App>" confirmation dialog on every dispatch, which
+    /// makes automated QA runs unusable. Loopback HTTP avoids the prompt and
+    /// returns a synchronous status code to the harness. The iOS Simulator
+    /// shares the host's loopback, so the harness on macOS reaches the
+    /// listener directly with no port forwarding.
+    func startDebugServer() {
+        let router = DebugActionRouter(handlers: debugHandlers())
+        let server = DebugControlServer(router: router)
+        debugServer = server
+        Task { @MainActor in
+            do {
+                try await server.start()
+            } catch {
+                // Non-fatal: a stale simulator with the port already bound
+                // (rare on a clean boot). The harness's /ping will time out
+                // and surface the actual error.
+            }
+        }
+    }
+
+    /// Wires the container's services into the QA debug router. Each closure
+    /// is `@MainActor`-isolated because the underlying `SettingsStore` and
+    /// `ZoneTrackingService` both run on the main actor.
+    private func debugHandlers() -> DebugActionRouter.Handlers {
+        let settings = self.settings
+        let tracking = self.tracking
+        return DebugActionRouter.Handlers(
+            applySetting: { key, value in
+                let lower = value.lowercased()
+                let asBool = (lower == "true" || lower == "1" || lower == "yes")
+                switch key {
+                case "voice_enabled": settings.voiceEnabled = asBool
+                case "periodic_voice_updates": settings.periodicVoiceUpdates = asBool
+                case "announce_only_when_over": settings.announceOnlyWhenOver = asBool
+                case "app_language":
+                    guard let lang = AppLanguage(rawValue: value) else { return false }
+                    settings.appLanguage = lang
+                case "vehicle_type":
+                    guard let v = VehicleType(rawValue: value) else { return false }
+                    settings.vehicleType = v
+                case "alert_threshold_kmh":
+                    guard let n = Int(value) else { return false }
+                    settings.alertThresholdKmh = n
+                case "map_heading_up":
+                    settings.mapHeadingUp = asBool
+                default:
+                    return false
+                }
+                return true
+            },
+            runZoneSync: { [weak self] in
+                guard let self else { return .failed }
+                switch await self.runZoneSync() {
+                case .updated: return .updated
+                case .upToDate: return .upToDate
+                case .failed: return .failed
+                }
+            },
+            runMapSync: { [weak self] in
+                // Map sync is gated on FeatureFlags.isMapSyncEnabled (off until
+                // the production backend serves the map bundle). The QA harness
+                // talks to prod, so a debug-triggered sync against a backend
+                // that can't fulfill it would only generate failure noise.
+                guard FeatureFlags.isMapSyncEnabled else { return .upToDate }
+                guard let self else { return .failed }
+                switch await self.runMapSync() {
+                case .updated: return .updated
+                case .upToDate: return .upToDate
+                case .failed: return .failed
+                }
+            },
+            startTracking: { await tracking.start() },
+            stopTracking: { await tracking.stop() }
+        )
+    }
+}
+#endif

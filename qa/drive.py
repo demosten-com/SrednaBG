@@ -24,7 +24,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Iterable, Optional
 
-from . import adb
+from . import device as device_mod
 
 GPX_NS = "{http://www.topografix.com/GPX/1/1}"
 
@@ -129,13 +129,14 @@ def pump(plan: DrivePlan, *, on_each: Optional[callable] = None) -> None:  # typ
     """
     if not plan.points:
         return
+    d = device_mod.current()
     t0 = time.monotonic()
     for i, p in enumerate(plan.points):
         deadline = t0 + p.t_offset_ms / 1000.0
         delay = deadline - time.monotonic()
         if delay > 0:
             time.sleep(delay)
-        adb.geo_fix(p.lng, p.lat)
+        d.geo_fix(p.lng, p.lat)
         if on_each:
             on_each(p, i)
 

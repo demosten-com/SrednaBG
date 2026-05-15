@@ -29,7 +29,7 @@ from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Optional
 
-from . import adb
+from . import device as device_mod
 
 
 @dataclass
@@ -62,29 +62,27 @@ class UiRecorder:
     # ── adb-fallback methods (work without mobile-mcp) ──
 
     def launch_app(self) -> None:
-        adb.start_main()
+        d = device_mod.current()
+        d.start_main()
         time.sleep(2.0)
-        self._emit(UiCommand("launch_app", {"package": adb.PACKAGE}))
+        self._emit(UiCommand("launch_app", {"package": d.package_id}))
 
     def tap_via_adb(self, x: int, y: int) -> None:
+        # Android-only fallback. The iOS UI suite drives taps via
+        # the harness's mobile-mcp tools, not in-process.
+        from . import adb
         adb.shell(f"input tap {x} {y}")
         self._emit(UiCommand("tap", {"x": x, "y": y, "via": "adb"}))
 
     def press_back(self) -> None:
+        from . import adb
         adb.shell("input keyevent 4")
         self._emit(UiCommand("press_back", {}))
 
     def screenshot(self, name: str) -> Path:
-        """Capture via `adb shell screencap` and save to report dir."""
+        """Capture via the device's native screenshot path."""
         out = self.report_dir / "screenshots" / f"{name}.png"
-        out.parent.mkdir(parents=True, exist_ok=True)
-        # Pipe through adb exec-out to avoid CR/LF mangling
-        import subprocess
-        with out.open("wb") as f:
-            subprocess.run(
-                [adb._adb(), "exec-out", "screencap", "-p"],
-                stdout=f, check=True, timeout=15,
-            )
+        device_mod.current().screencap(out)
         self._emit(UiCommand("screenshot", {"path": str(out)}))
         return out
 

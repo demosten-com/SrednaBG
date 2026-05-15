@@ -40,6 +40,7 @@ Produced by `backend/scripts/build-map-bundle.sh` — see `backend/CLAUDE.md` fo
 
 - **Stage**: the `Map Bundle` Run Script phase in `ios/SrednaBG.xcodeproj` enforces bundle presence via `set -euo pipefail` + explicit file-presence checks (mirrors the Android `validateMapBundle` guard). `ios/SrednaBG/App/Resources/OfflineMap/` is gitignored.
 - **Install** (`OfflineMapInstaller` / ZIPFoundation): extracts + atomically swaps the offline map bundle and rewrites `style.json` placeholders to bare `mbtiles://<abs-path>` — **no `{z}/{x}/{y}`** (same MapLibre `MBTilesFileSource` hazard as Android).
+- **Sync — currently feature-gated OFF.** Client paths (`runMapSync`, `BackgroundSyncScheduler.scheduleMapSync`, `SyncClient.downloadMapBundle`, debug `/sync?action=map`) are wired but the production backend (`srednabg.com/api/*`) does not yet serve `/api/map/bundle.zip` or populate `map_hash` — the Namecheap scraper cron only emits zones, and the `backend/` Docker stack is dev/Mac-Mini-only. `FeatureFlags.isMapSyncEnabled` in `SrednaBGData/QAFlags.swift` is hardcoded `false` across all build flavors. **Re-enable** by flipping the constant to `true` after the backend bundle pipeline is live and the round-trip has been QA'd; mirrors `FeatureFlags.IS_MAP_SYNC_ENABLED` on Android.
 
 ## Key files
 
@@ -50,6 +51,24 @@ Produced by `backend/scripts/build-map-bundle.sh` — see `backend/CLAUDE.md` fo
 - **UI**: `ios/Packages/SrednaBGUI/Sources/SrednaBGUI/{Theme,L10n,Components/{SpeedDisplay,StatusChip},Screens/{HomeScreen,SettingsScreen,AboutScreen,ZoneMapScreen,RootView,KeepScreenAwakeModifier},Map/MapLibreView}.swift`.
 - **CarPlay** (package compiles + tests run; **not linked into the app target until the entitlement grant lands**): `ios/Packages/SrednaBGCarPlay/Sources/SrednaBGCarPlay/{CarPlayEntry,CarPlayLabels,CarPlaySpeedOverlayModel,CarPlaySpeedOverlayView,CarPlayMapViewController,CarPlaySceneCoordinator,CarPlaySceneDelegate}.swift`.
 - **App shell**: `ios/SrednaBG/Info.plist` (no `UIApplicationSceneManifest` override — SwiftUI auto-generates a phone-only scene) + `ios/SrednaBG/App/SrednaBGApp.swift` (no CarPlay wiring) + `ios/SrednaBG/SrednaBG.entitlements` (kept in repo as a documentation artifact, **not** wired via `CODE_SIGN_ENTITLEMENTS`).
+
+## QA debug surface (Debug builds only)
+
+The QA harness (`qa/`) drives the booted iOS Simulator via `xcrun simctl` and a loopback HTTP debug listener bound by the app at launch. All of the below is gated `#if DEBUG` so release builds carry none of it.
+
+- **Loopback HTTP control** — `DebugControlServer` (`SrednaBGData/DebugControlServer.swift`) binds to `127.0.0.1:<port>` on app launch in Debug builds; `DebugActionRouter` (`SrednaBGData/DebugActionRouter.swift`) dispatches `/ping`, `/setting?key=K&value=V`, `/sync?action=zones|map`, `/tracking?action=start|stop`, `/mute?on=1`, `/network?offline=1`. The HTTP form replaces the older `srednabg-debug://` URL scheme — `simctl openurl` raised an "Open in <App>" confirmation dialog on every dispatch that made automated QA unusable.
+- **Structured `os_log` emitters** under subsystem `com.demosten.srednabg`, exposed by `QALog` (`ios/Packages/SrednaBGData/Sources/SrednaBGData/QALog.swift`). Categories `SrednaBG.Loc`, `SrednaBG.TTS`, `DebugSync`, `DebugSettings` use line bodies identical to the Android logcat tripwires (`onLocation: lat=…`, `onZoneStateChanged prev=…`, `speak: "…"`, `… -> SyncResult.…`, `set key=value`) so `qa/parsers.py` works unchanged. All interpolated values use `.public` privacy markers — `--style ndjson` would otherwise emit `<private>`.
+- **Mute / offline** toggles back `QAFlags.ttsMuted` / `QAFlags.networkOffline` (`SrednaBGData/QAFlags.swift`). `AVSpeechTTSEngine.speak` drops calls when muted but the `speak:` log line still fires (parser self-test stays alive). `DebugActionRouter` short-circuits `/sync` to `Failed(offline)` when offline.
+- **Sync hook**: `DebugSyncHook` (`SrednaBGData/DebugSyncHook.swift`) emits the QA-shaped `DebugSync` log line for each sync attempt's outcome. When `FeatureFlags.isMapSyncEnabled` is `false`, `/sync?action=map` short-circuits in `DebugActionRouter` with `... SYNC_MAP -> Skipped (feature disabled)` instead of invoking the handler — `qa/scenarios/sync/map_disabled.py` asserts on this shape as the regression tripwire.
+- **Accessibility identifiers** on `HomeScreen` (`home-not-tracking-card`, `home-outside-card`, `home-in-zone-card`, `home-exiting-card`, `home-permission-card`, `home-start-stop`, `home-speed-display`), `SettingsScreen` (`settings-voice-enabled`, `settings-periodic-voice-updates`, `settings-announce-only-when-over`, `settings-app-language`, `settings-vehicle-type`, `settings-map-heading-up`, `settings-map-theme`, `settings-sync-now`), and `RootView` tabs (`tab-home`, `tab-map`, `tab-settings`). Consumed by the harness's `mobile-mcp` UI driver.
+
+Invoke from the repo root with the booted simulator and a Debug build installed:
+
+```bash
+python qa/srednabg_qa.py --suite smoke --platform ios
+```
+
+See `qa/CLAUDE.md` for the full suite list and platform caveats.
 
 ## Remaining work
 

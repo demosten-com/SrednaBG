@@ -6,7 +6,7 @@ Kotlin app using Jetpack Compose, Car App Library, MapLibre, Room, Hilt. ~37 Kot
 
 `LocationTrackingService` (foreground, adaptive 1s/5s GPS via `FusedLocationProviderClient`) feeds the core engine (`core/`). Phone-side `ZoneMapScreen` uses MapLibre against a fully-offline bundled map; `ZoneMapViewModel.styleUri` = `MapRepository.localStyleUri()`, falling back to `BuildConfig.MAP_STYLE_URL` only when no bundle is installed. `AudioAlertManager` uses TTS with navigation audio focus for background mode. *(WIP / dev-only)* On the Android Auto surface, `NavigationScreen` renders a canvas-based zone map (`MapRenderer` + custom `MercatorProjection`) with `SpeedOverlay`; `NavigationTemplate.mapActionStrip` carries +/- zoom controls that flow into `MapRenderer.draw(zoomOverride)`.
 
-`ZoneRepository.syncFromServer()` returns `SyncResult` (`Updated | UpToDate | Failed`) consumed by `ZoneSyncWorker` (WorkManager, 6h) and surfaced as Snackbars + retry CTA; falls back to bundled `zones.json`. Parallel `MapSyncWorker` (6h, unmetered-only) pulls `/api/map/bundle.zip` when `map_hash` from `/api/version` changes. Room (`ZoneDatabase`/`ZoneDao`/`ZoneEntity`) for local persistence. Full Hilt DI.
+`ZoneRepository.syncFromServer()` returns `SyncResult` (`Updated | UpToDate | Failed`) consumed by `ZoneSyncWorker` (WorkManager, 6h) and surfaced as Snackbars + retry CTA; falls back to bundled `zones.json`. `MapSyncWorker` (6h, unmetered-only) would pull `/api/map/bundle.zip` when `map_hash` from `/api/version` changes — **currently feature-gated off** (`FeatureFlags.IS_MAP_SYNC_ENABLED = false` in `app/src/main/kotlin/com/demosten/srednabg/app/FeatureFlags.kt`) because the production backend doesn't serve the bundle endpoint or populate `map_hash` yet. The gate is enforced both at `SrednaBGApp.onCreate` (don't enqueue the periodic work) and inside `MapSyncWorker.doWork` (early-return `Result.success()` to no-op any WorkManager queue persisted from a prior install). Mirrors `FeatureFlags.isMapSyncEnabled` on iOS; flip both when the backend pipeline ships. Room (`ZoneDatabase`/`ZoneDao`/`ZoneEntity`) for local persistence. Full Hilt DI.
 
 ## Permission gate
 
@@ -43,6 +43,8 @@ Bundle is produced by `backend/scripts/build-map-bundle.sh` — see `backend/CLA
 adb shell am broadcast -n com.demosten.srednabg/com.demosten.srednabg.app.debug.DebugSyncReceiver -a com.demosten.srednabg.debug.SYNC_MAP
 adb shell am broadcast -n com.demosten.srednabg/com.demosten.srednabg.app.debug.DebugSyncReceiver -a com.demosten.srednabg.debug.SYNC_ZONES
 ```
+
+`SYNC_MAP` logs `... -> Skipped (feature disabled)` while `FeatureFlags.IS_MAP_SYNC_ENABLED` is `false` and does not reach `MapRepository.syncFromServer`. `qa/scenarios/sync/map_disabled.py` asserts this shape — re-enabling the flag without restoring the happy-path scenario will fail the QA sync suite.
 
 `DebugControlReceiver` is the QA harness's control surface — flips any user-settable preference through the same `SettingsRepository` typed setters the UI uses, and starts/stops `LocationTrackingService` (the foreground service is `exported="false"`, so a plain `am start-foreground-service` is blocked). All applied changes log under tag `DebugSettings`.
 

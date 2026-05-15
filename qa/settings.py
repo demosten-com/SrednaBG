@@ -3,12 +3,12 @@
 #
 # SrednaBG — qa
 
-"""Settings client — talks to the debug DebugControlReceiver via broadcasts.
+"""Settings client — routes through the active Device.
 
-Goes through the typed setter on `SettingsRepository` (no DataStore proto
-write races). Each call is followed by a brief wait for the
-`SettingChanged` confirmation log so callers can assume the value has
-been persisted before they continue.
+Public surface is unchanged; the platform-specific plumbing (am broadcast on
+Android, srednabg-debug:// openurl on iOS) lives in the Device impl.
+Each call is followed by a brief wait for the `SettingChanged` confirmation
+event so callers can assume the value has been persisted before they continue.
 """
 
 from __future__ import annotations
@@ -17,25 +17,16 @@ import time
 from dataclasses import dataclass
 from typing import Optional
 
-from . import adb
+from . import device as device_mod
 from .events import SettingChanged
-from .logcat import LogcatObserver
-
-RECEIVER = f"{adb.PACKAGE}/{adb.PACKAGE}.app.debug.DebugControlReceiver"
-ACTION_SET_SETTING = "com.demosten.srednabg.debug.SET_SETTING"
-ACTION_START_TRACKING = "com.demosten.srednabg.debug.START_TRACKING"
-ACTION_STOP_TRACKING = "com.demosten.srednabg.debug.STOP_TRACKING"
+from .log_observer import LogObserver
 
 
-def _broadcast_set(key: str, value: str) -> None:
-    adb.broadcast(ACTION_SET_SETTING, RECEIVER, extras={"key": key, "value": value})
-
-
-def set_setting(key: str, value: str | int | bool, *, obs: Optional[LogcatObserver] = None,
+def set_setting(key: str, value: str | int | bool, *, obs: Optional[LogObserver] = None,
                 wait_s: float = 2.0) -> None:
-    """Apply a single setting and (if obs given) confirm via logcat."""
+    """Apply a single setting and (if obs given) confirm via the log stream."""
     str_val = str(value).lower() if isinstance(value, bool) else str(value)
-    _broadcast_set(key, str_val)
+    device_mod.current().set_setting(key, str_val)
     if obs is None:
         time.sleep(0.3)
         return
@@ -63,7 +54,7 @@ class SettingsCombo:
     alert_threshold_kmh: int = 5
     map_heading_up: bool = False
 
-    def apply(self, obs: Optional[LogcatObserver] = None) -> None:
+    def apply(self, obs: Optional[LogObserver] = None) -> None:
         # Order matters slightly: voice_enabled first so subsequent
         # toggle logs render meaningfully.
         set_setting("voice_enabled", self.voice_enabled, obs=obs)
@@ -75,7 +66,6 @@ class SettingsCombo:
         set_setting("map_heading_up", self.map_heading_up, obs=obs)
 
 
-# The four representative-tier combos from the approved plan.
 COMBO_S1 = SettingsCombo("S1", True, True, True, "bg", "car")
 COMBO_S2 = SettingsCombo("S2", True, False, False, "en", "truck")
 COMBO_S3 = SettingsCombo("S3", False, True, True, "system", "bus")
@@ -84,8 +74,8 @@ ALL_COMBOS = [COMBO_S1, COMBO_S2, COMBO_S3, COMBO_S4]
 
 
 def start_tracking() -> None:
-    adb.broadcast(ACTION_START_TRACKING, RECEIVER)
+    device_mod.current().start_tracking()
 
 
 def stop_tracking() -> None:
-    adb.broadcast(ACTION_STOP_TRACKING, RECEIVER)
+    device_mod.current().stop_tracking()

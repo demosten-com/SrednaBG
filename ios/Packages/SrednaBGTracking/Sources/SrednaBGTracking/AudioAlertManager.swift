@@ -89,6 +89,8 @@ public actor AudioAlertManager {
         guard let event = decision.event else { return }
         let resolvedLang = s.appLanguage.resolvedVoiceLanguage(deviceLanguage: deviceLanguage())
         let phrase = TtsPhrases.phrase(for: event, language: resolvedLang)
+        // QA harness tripwire: line shape must match `qa/parsers.py` SPEAK_RE.
+        QALog.tts.info("speak: \"\(phrase, privacy: .public)\"")
         await engine.speak(phrase, language: resolvedLang)
     }
 

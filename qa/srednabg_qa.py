@@ -33,7 +33,7 @@ _HERE = Path(__file__).resolve().parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
-from qa import adb  # noqa: E402
+from qa import device as device_mod  # noqa: E402
 from qa.report import write_reports  # noqa: E402
 from qa.runner import Scenario, SuiteRunner  # noqa: E402
 from qa.scenarios.bulk_loader import build_scenario, load_specs_from_dir  # noqa: E402
@@ -57,7 +57,10 @@ EDGE_SCENARIOS = [
 SYNC_SCENARIOS = [
     "zones_happy",
     "zones_offline",
-    "map_happy",
+    # Map sync is feature-gated off (see FeatureFlags on both platforms).
+    # `map_disabled` asserts the gate is in place; restore `map_happy` when
+    # the backend lights up.
+    "map_disabled",
 ]
 
 
@@ -161,6 +164,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--suite", required=True, choices=sorted(SUITE_BUILDERS.keys()))
     p.add_argument("--filter", default=None,
                    help="Substring filter on scenario name (e.g. 'trakiya')")
+    p.add_argument("--platform", choices=["auto", "android", "ios"], default="auto",
+                   help="Target platform. 'auto' picks whatever's booted; "
+                        "iOS requires macOS.")
     args = p.parse_args(argv)
 
     # Translate SIGTERM into KeyboardInterrupt so the `with SuiteRunner(...)`
@@ -171,13 +177,21 @@ def main(argv: list[str] | None = None) -> int:
         raise KeyboardInterrupt(f"received signal {signum}")
     signal.signal(signal.SIGTERM, _on_term)
 
-    adb.require_one_device()
-    if not adb.package_installed():
-        print(f"package {adb.PACKAGE} not installed; build + install the debug APK first",
+    try:
+        d = device_mod.make(args.platform)
+    except RuntimeError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+    device_mod.set_current(d)
+
+    d.require_device()
+    if not d.package_installed():
+        kind = "debug APK" if d.platform == "android" else "Debug .app"
+        print(f"{d.package_id} not installed on {d.platform}; build + install the {kind} first",
               file=sys.stderr)
         return 2
-    adb.grant_runtime_permissions()
-    adb.mute_audio()
+    d.grant_runtime_permissions()
+    d.mute_audio()
 
     scenarios = SUITE_BUILDERS[args.suite]()
     if args.filter:

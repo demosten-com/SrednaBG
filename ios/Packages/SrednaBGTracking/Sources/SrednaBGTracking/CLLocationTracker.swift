@@ -7,6 +7,7 @@
 import Foundation
 @preconcurrency import CoreLocation
 import SrednaBGCore
+import SrednaBGData
 
 /// Production `LocationProviding` backed by `CLLocationManager`.
 ///
@@ -78,6 +79,8 @@ public final class CLLocationTracker: NSObject, LocationProviding, @unchecked Se
     }
 
     public func setIntervalMs(_ ms: Int) async {
+        // QA harness tripwire: line shape must match `qa/parsers.py` INTERVAL_RE.
+        QALog.location.info("requestLocationWithInterval intervalMs=\(ms, privacy: .public)")
         // Map the requested cadence to a CoreLocation distance filter. The
         // delegate is still called more often than the time interval; we
         // throttle on the consumer side via `GpsPointBuilder.filter` and the
@@ -142,6 +145,10 @@ extension CLLocationTracker: CLLocationManagerDelegate {
 
     public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         for location in locations {
+            // QA harness tripwire: line shape must match `qa/parsers.py` LOC_RE.
+            QALog.location.info(
+                "onLocation: lat=\(location.coordinate.latitude, privacy: .public) lng=\(location.coordinate.longitude, privacy: .public) speed=\(location.speed >= 0 ? location.speed : -1, privacy: .public) accuracy=\(location.horizontalAccuracy >= 0 ? location.horizontalAccuracy : -1, privacy: .public) provider=gps mock=false"
+            )
             // CLLocationManager may deliver a cached "last known" fix as the
             // first update — possibly hundreds of meters off from the real
             // GPS lock. Seeding lastLat/Lng from such a fix would make the

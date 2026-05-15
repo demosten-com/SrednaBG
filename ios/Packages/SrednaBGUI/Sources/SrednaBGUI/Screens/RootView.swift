@@ -56,6 +56,7 @@ public struct RootView: View {
                     Image("HomeTabIcon", bundle: .module)
                 }
             }
+            .accessibilityIdentifier("tab-home")
 
             NavigationStack {
                 ZoneMapScreen(
@@ -67,11 +68,13 @@ public struct RootView: View {
                 )
             }
             .tabItem { Label(L10n.navMap, systemImage: "map") }
+            .accessibilityIdentifier("tab-map")
 
             NavigationStack {
                 SettingsScreen(settings: settings, onSyncTap: onSyncTap)
             }
             .tabItem { Label(L10n.navSettings, systemImage: "gearshape") }
+            .accessibilityIdentifier("tab-settings")
         }
         // SwiftUI's Toggle uses a hardcoded system-green for its "on" state and
         // ignores the AccentColor asset. Forcing .tint here cascades to every

@@ -1,0 +1,196 @@
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: 2026 SrednaBG Contributors
+#
+# SrednaBG — qa
+
+"""Platform-agnostic Device facade used by the runner, scenarios, and assertions.
+
+The harness was originally adb-only. With the iOS Simulator backend, every
+call that used to go through `qa.adb` now flows through `current().foo()`,
+and the concrete implementation lives in `qa/devices/android.py` or
+`qa/devices/ios.py`.
+
+This module is intentionally tiny: ABC + a single-instance singleton.
+Selection happens once at startup in `qa/srednabg_qa.py` (`--platform`),
+or implicitly through `select_default()` which prefers a booted iOS
+simulator on macOS over an adb device when both are present.
+"""
+
+from __future__ import annotations
+
+import abc
+import sys
+from pathlib import Path
+from typing import Optional
+
+
+class Device(abc.ABC):
+    """Operations the harness needs to drive an app under test.
+
+    Implementations:
+      - qa.devices.android.AndroidDevice — wraps adb.
+      - qa.devices.ios.IosDevice — wraps xcrun simctl + the iOS app's
+        srednabg-debug:// URL scheme.
+
+    Methods are grouped by responsibility. The runner only ever talks to
+    this protocol; scenario files may still talk to the underlying
+    Android-specific helpers in `qa.adb` when an iOS analogue doesn't
+    exist (cold_start_spike, _helpers, bulk_loader) — those scenarios are
+    skipped under `--platform ios`.
+    """
+
+    # ── identity ────────────────────────────────────────────────────────────
+    @property
+    @abc.abstractmethod
+    def platform(self) -> str: ...
+
+    @property
+    @abc.abstractmethod
+    def package_id(self) -> str: ...
+
+    # ── lifecycle ───────────────────────────────────────────────────────────
+    @abc.abstractmethod
+    def require_device(self) -> str: ...
+
+    @abc.abstractmethod
+    def package_installed(self) -> bool: ...
+
+    @abc.abstractmethod
+    def install_app(self, path: Path) -> None: ...
+
+    @abc.abstractmethod
+    def force_stop(self) -> None: ...
+
+    @abc.abstractmethod
+    def start_main(self) -> None: ...
+
+    @abc.abstractmethod
+    def start_tracking_service(self) -> None: ...
+
+    @abc.abstractmethod
+    def app_running(self) -> bool: ...
+
+    @abc.abstractmethod
+    def grant_runtime_permissions(self) -> None: ...
+
+    @abc.abstractmethod
+    def mute_audio(self) -> None: ...
+
+    # ── location injection ──────────────────────────────────────────────────
+    @abc.abstractmethod
+    def geo_fix(self, lng: float, lat: float) -> None:
+        """Push a single mock GPS point. Cadence is the caller's problem."""
+
+    # ── debug surface ───────────────────────────────────────────────────────
+    @abc.abstractmethod
+    def set_setting(self, key: str, value: str) -> None:
+        """Apply one app setting via the platform's debug control surface."""
+
+    @abc.abstractmethod
+    def start_tracking(self) -> None: ...
+
+    @abc.abstractmethod
+    def stop_tracking(self) -> None: ...
+
+    @abc.abstractmethod
+    def force_sync_zones(self) -> None: ...
+
+    @abc.abstractmethod
+    def force_sync_map(self) -> None: ...
+
+    # ── network gating ──────────────────────────────────────────────────────
+    @abc.abstractmethod
+    def go_offline(self) -> None: ...
+
+    @abc.abstractmethod
+    def go_online(self) -> None: ...
+
+    # ── inspection ──────────────────────────────────────────────────────────
+    @abc.abstractmethod
+    def screencap(self, dest: Path) -> Path: ...
+
+    @abc.abstractmethod
+    def crash_buffer(self) -> str: ...
+
+    @abc.abstractmethod
+    def clear_crash_buffer(self) -> None: ...
+
+    @abc.abstractmethod
+    def check_map_integrity(self) -> "MapIntegrityResult":
+        """Structured map-bundle integrity result. Per-platform impl."""
+
+
+# Re-exported here so qa.sync's data class stays its canonical home but
+# Device's abstract method can reference it without an import cycle.
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class MapIntegrityResult:
+    style_present: bool
+    mbtiles_present: bool
+    placeholders_remaining: list[str]
+    mbtiles_size_bytes: int
+
+
+# ────────────────────────────── active device ──────────────────────────────
+
+_current: Optional[Device] = None
+
+
+def current() -> Device:
+    if _current is None:
+        # Lazy default: pick whatever the host has booted.
+        set_current(select_default())
+    assert _current is not None
+    return _current
+
+
+def set_current(d: Device) -> None:
+    global _current
+    _current = d
+
+
+def select_default() -> Device:
+    """Pick the right backend based on platform + what's booted.
+
+    On macOS with a booted simulator and no adb device, picks iOS.
+    On macOS with both, picks Android (preserves legacy behavior).
+    Off macOS, always Android.
+    """
+    if sys.platform == "darwin":
+        try:
+            from qa.devices.android import AndroidDevice
+            android = AndroidDevice()
+            android.require_device()
+            return android
+        except Exception:
+            pass
+        try:
+            from qa.devices.ios import IosDevice
+            ios = IosDevice()
+            ios.require_device()
+            return ios
+        except Exception:
+            pass
+        raise RuntimeError(
+            "no device available — boot an Android emulator (adb) or iOS simulator "
+            "(xcrun simctl boot) first"
+        )
+    from qa.devices.android import AndroidDevice
+    return AndroidDevice()
+
+
+def make(platform: str) -> Device:
+    """Explicit factory used by --platform <name>."""
+    if platform == "android":
+        from qa.devices.android import AndroidDevice
+        return AndroidDevice()
+    if platform == "ios":
+        if sys.platform != "darwin":
+            raise RuntimeError("--platform ios requires macOS host")
+        from qa.devices.ios import IosDevice
+        return IosDevice()
+    if platform == "auto":
+        return select_default()
+    raise ValueError(f"unknown platform: {platform!r}")

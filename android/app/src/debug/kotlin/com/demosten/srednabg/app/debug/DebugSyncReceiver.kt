@@ -9,6 +9,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import com.demosten.srednabg.app.FeatureFlags
 import com.demosten.srednabg.app.data.MapRepository
 import com.demosten.srednabg.app.data.SyncResult
 import com.demosten.srednabg.app.data.ZoneRepository
@@ -42,7 +43,18 @@ class DebugSyncReceiver : BroadcastReceiver() {
         scope.launch {
             try {
                 val result: SyncResult = when (intent.action) {
-                    ACTION_SYNC_MAP -> mapRepository.syncFromServer()
+                    ACTION_SYNC_MAP -> {
+                        // Map sync is gated on FeatureFlags.IS_MAP_SYNC_ENABLED
+                        // (off until the production backend serves the bundle).
+                        // The QA harness talks to prod, so a debug-triggered
+                        // sync against a backend that can't fulfill it would
+                        // only generate failure noise.
+                        if (!FeatureFlags.IS_MAP_SYNC_ENABLED) {
+                            Log.i(TAG, "${intent.action} -> Skipped (feature disabled)")
+                            return@launch
+                        }
+                        mapRepository.syncFromServer()
+                    }
                     ACTION_SYNC_ZONES -> zoneRepository.syncFromServer()
                     else -> {
                         Log.w(TAG, "Unknown action: ${intent.action}")

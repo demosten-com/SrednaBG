@@ -29,6 +29,10 @@ public final class AVSpeechTTSEngine: TTSEngine {
     public init() {}
 
     public func speak(_ phrase: String, language: AppLanguage) async {
+        // QA mute: parser self-test still sees the `speak:` log line emitted
+        // by `AudioAlertManager`, but no audio plays. Used by the harness to
+        // silence the simulator without breaking the tripwire.
+        if QAFlags.ttsMuted { return }
         configureSessionIfNeeded()
         let bcp47: String
         switch language {

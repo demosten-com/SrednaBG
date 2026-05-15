@@ -5,6 +5,7 @@
 
 import Foundation
 import Observation
+import os
 import SrednaBGCore
 import SrednaBGData
 
@@ -105,6 +106,8 @@ public final class ZoneTrackingService {
         zones = newZones
         detector = ZoneDetector(zones: newZones)
         zoneState = .outside
+        // QA harness tripwire: line shape must match `qa/parsers.py` ZONES_RE.
+        QALog.location.info("zones changed (n=\(newZones.count, privacy: .public))")
     }
 
     /// Re-read authorization from the system. Call when the app returns to
@@ -174,6 +177,12 @@ public final class ZoneTrackingService {
         let next = detector.update(point, vehicleType: vehicleType)
         if next != zoneState {
             zoneState = next
+            // QA harness tripwire: line shape must match `qa/parsers.py` STATE_RE.
+            let zoneId = Self.zoneIdLabel(for: next)
+            let speedLabel = String(format: "%.1f", point.speed)
+            QALog.tts.info(
+                "onZoneStateChanged prev=\(Self.stateName(previous), privacy: .public) new=\(Self.stateName(next), privacy: .public) zone=\(zoneId, privacy: .public) speed=\(speedLabel, privacy: .public)"
+            )
         }
 
         // Fire-and-forget the TTS pipeline so we don't block the GPS consumer
@@ -216,6 +225,22 @@ public final class ZoneTrackingService {
         case .authorizedWhenInUse: return .whenInUse
         case .denied: return .denied
         case .notDetermined, .unknown: return .unknown
+        }
+    }
+
+    private static func stateName(_ s: ZoneState) -> String {
+        switch s {
+        case .outside: return "Outside"
+        case .inZone: return "InZone"
+        case .exiting: return "Exiting"
+        }
+    }
+
+    private static func zoneIdLabel(for state: ZoneState) -> String {
+        switch state {
+        case .outside: return "-"
+        case .inZone(let inZone): return inZone.zone.id
+        case .exiting(let exiting): return exiting.zone.id
         }
     }
 }

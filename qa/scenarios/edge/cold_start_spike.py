@@ -35,7 +35,7 @@ from __future__ import annotations
 
 import time
 
-from ... import adb
+from ... import device as device_mod
 from ...assertions import expect_never
 from ...events import DisplaySpeed
 from ...runner import RunContext, Scenario, step_lambda
@@ -59,7 +59,7 @@ def build() -> Scenario:
         # Seed the emulator with the "far" position BEFORE tracking starts,
         # so the first GPS update the LocationTrackingService receives is
         # this one (acting as the analog of FLP's cached last-known fix).
-        adb.geo_fix(FAR_LNG, FAR_LAT)
+        device_mod.current().geo_fix(FAR_LNG, FAR_LAT)
         scenario_setup(ctx, settings_id="S1")
 
     def drive(ctx: RunContext) -> None:
@@ -68,7 +68,7 @@ def build() -> Scenario:
         # Jump to the real position. On the unfixed code, this produces
         # the 250 clamp and pins it forever. On the fixed code, the next
         # stationary sample resets it.
-        adb.geo_fix(REAL_LNG, REAL_LAT)
+        device_mod.current().geo_fix(REAL_LNG, REAL_LAT)
         # Wait for the jump-sample and at least one stationary sample
         # to be processed, then discard those events. Without this we'd
         # see the legitimate transient 250 spike on the jump-sample even

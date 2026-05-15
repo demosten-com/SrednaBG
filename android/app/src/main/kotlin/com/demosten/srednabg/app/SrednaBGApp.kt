@@ -39,7 +39,9 @@ class SrednaBGApp : Application(), Configuration.Provider {
         super.onCreate()
         applyPersistedLocale()
         scheduleZoneSync()
-        scheduleMapSync()
+        if (FeatureFlags.IS_MAP_SYNC_ENABLED) {
+            scheduleMapSync()
+        }
     }
 
     private fun applyPersistedLocale() {

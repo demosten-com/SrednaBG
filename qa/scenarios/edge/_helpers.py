@@ -47,10 +47,11 @@ def base_plan(zone_id: str, *, speed_kmh: float = 130, approach_km: float = 2,
 
 
 def scenario_setup(ctx: RunContext, *, settings_id: str = "S1") -> None:
-    from ... import adb
-    # MainActivity must be foregrounded before startForegroundService is
-    # allowed under Android 12+ background-start restrictions.
-    adb.start_main()
+    from ... import device as device_mod
+    # Foreground the app before issuing start-tracking. On Android this
+    # satisfies the background-start restriction; on iOS it ensures the
+    # CoreLocation pipeline is alive and Live Activities can be created.
+    device_mod.current().start_main()
     time.sleep(2.0)
     combo = next(c for c in settings_mod.ALL_COMBOS if c.id == settings_id)
     combo.apply(ctx.obs)

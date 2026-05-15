@@ -31,7 +31,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
 
-from .. import adb, settings as settings_mod
+from .. import device as device_mod, settings as settings_mod
 from ..assertions import expect, expect_in_order, expect_never, expect_crash_free, AssertionFailure
 from ..drive import DrivePlan, parse_gpx, pump
 from ..events import Crash, ZoneStateChange
@@ -138,9 +138,10 @@ def build_scenario(spec: BulkScenarioSpec) -> Scenario:
     plan = parse_gpx(gpx_path).compressed(spec.compression)
 
     def setup_step(ctx: RunContext) -> None:
-        # MainActivity must be foregrounded before start-foreground-service
-        # is allowed under Android 12+ background-start restrictions.
-        adb.start_main()
+        # Foreground the app before issuing start-tracking. On Android this
+        # satisfies the background-start restriction; on iOS it ensures the
+        # CoreLocation pipeline is alive and Live Activities can be created.
+        device_mod.current().start_main()
         time.sleep(2.0)
         # Apply settings combo if specified
         if spec.settings:

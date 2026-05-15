@@ -28,10 +28,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator, Optional
 
-from . import adb
+from . import device as device_mod
 from .assertions import AssertionFailure, expect_crash_free
 from .drive import DrivePlan, pump
-from .logcat import LogcatObserver
+from .log_observer import LogObserver, for_current_device
 
 Step = Callable[["RunContext"], None]
 
@@ -41,7 +41,7 @@ class RunContext:
     """Lifetime: one Scenario. Steps read/write `data`; the runner sets
     `obs`, `report_dir`, `tts_phrases`."""
 
-    obs: LogcatObserver
+    obs: LogObserver
     report_dir: Path
     tts_phrases: dict[str, str] = field(default_factory=dict)
     data: dict[str, Any] = field(default_factory=dict)
@@ -74,12 +74,12 @@ class SuiteRunner:
         self.suite_name = suite_name
         self.report_dir = report_root / time.strftime(f"{suite_name}-%Y%m%d-%H%M%S")
         self.report_dir.mkdir(parents=True, exist_ok=True)
-        self.obs = LogcatObserver()
+        self.obs = for_current_device()
         self.tts_phrases = tts_phrases or {}
         self.results: list[ScenarioResult] = []
 
     def __enter__(self) -> "SuiteRunner":
-        adb.require_one_device()
+        device_mod.current().require_device()
         self.obs.start()
         return self
 
@@ -95,7 +95,7 @@ class SuiteRunner:
         except Exception:
             pass
         try:
-            adb.force_stop()
+            device_mod.current().force_stop()
         except Exception:
             pass
 
@@ -105,7 +105,7 @@ class SuiteRunner:
         # Clear the crash buffer so `expect_crash_free` in teardown only sees
         # crashes that happened during THIS scenario. Otherwise an emulator-side
         # audio-HAL wobble on scenario N would fail scenarios N+1, N+2, …
-        adb.clear_crash_buffer()
+        device_mod.current().clear_crash_buffer()
         ctx = RunContext(obs=self.obs, report_dir=self.report_dir, tts_phrases=self.tts_phrases)
         t0 = time.monotonic()
         failure_msg = ""
@@ -170,10 +170,10 @@ def step_lambda(name: str, fn: Callable[[RunContext], None]) -> Step:
 
 @contextmanager
 def with_app_running() -> Iterator[None]:
-    """Ensure MainActivity is foregrounded before the block, and the
-    LocationTrackingService is running. Caller is responsible for tapping
-    Start Tracking via UI helper if needed."""
-    if not adb.app_running():
-        adb.start_main()
+    """Ensure the app is foregrounded before the block. Caller is responsible
+    for tapping Start Tracking via UI helper if needed."""
+    d = device_mod.current()
+    if not d.app_running():
+        d.start_main()
         time.sleep(2.0)
     yield

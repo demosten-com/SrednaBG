@@ -72,6 +72,7 @@ public struct HomeScreen: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(24)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .accessibilityIdentifier("home-not-tracking-card")
     }
 
     private var permissionCard: some View {
@@ -103,12 +104,14 @@ public struct HomeScreen: View {
                     .frame(maxWidth: .infinity, minHeight: 48)
             }
             .buttonStyle(.borderedProminent)
+            .accessibilityIdentifier("home-permission-open-settings")
             #endif
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(24)
         .background(Theme.statusRed.opacity(0.10), in: RoundedRectangle(cornerRadius: 20))
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("home-permission-card")
     }
 
     private var outsideCard: some View {
@@ -121,6 +124,7 @@ public struct HomeScreen: View {
                 label: L10n.currentSpeedLabel,
                 statusColor: .accentColor
             )
+            .accessibilityIdentifier("home-speed-display")
             Spacer()
             Text(String(format: L10n.zonesLoaded, tracking.zones.count))
                 .font(.callout)
@@ -129,6 +133,7 @@ public struct HomeScreen: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(24)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .accessibilityIdentifier("home-outside-card")
     }
 
     private func inZoneCard(_ inZone: ZoneState.InZone) -> some View {
@@ -172,6 +177,7 @@ public struct HomeScreen: View {
         .padding(24)
         .background(swiftColor.opacity(0.15), in: RoundedRectangle(cornerRadius: 20))
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("home-in-zone-card")
     }
 
     private func exitingCard(_ exiting: ZoneState.Exiting) -> some View {
@@ -192,6 +198,7 @@ public struct HomeScreen: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(24)
         .background(color.opacity(0.15), in: RoundedRectangle(cornerRadius: 20))
+        .accessibilityIdentifier("home-exiting-card")
     }
 
     private var startStopButton: some View {
@@ -219,6 +226,7 @@ public struct HomeScreen: View {
         }
         .buttonStyle(.borderedProminent)
         .tint(tracking.isTracking ? Theme.statusRed : .accentColor)
+        .accessibilityIdentifier("home-start-stop")
     }
 
     private func infoItem(label: String, value: String) -> some View {

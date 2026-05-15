@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from typing import Callable, Optional, Type, TypeVar
 
 from .events import Crash, Event
-from .logcat import LogcatObserver
+from .log_observer import LogObserver
 
 T = TypeVar("T", bound=Event)
 
@@ -26,14 +26,14 @@ T = TypeVar("T", bound=Event)
 @dataclass
 class AssertionFailure(Exception):
     message: str
-    observer: Optional[LogcatObserver] = None
+    observer: Optional[LogObserver] = None
 
     def __str__(self) -> str:
         return self.message
 
 
 def expect(
-    obs: LogcatObserver,
+    obs: LogObserver,
     event_type: Type[T],
     *,
     where: Optional[Callable[[T], bool]] = None,
@@ -64,7 +64,7 @@ def expect(
 
 
 def expect_in_order(
-    obs: LogcatObserver,
+    obs: LogObserver,
     sequence: list[tuple[Type[Event], Optional[Callable[[Event], bool]]]],
     *,
     within_s: float = 30.0,
@@ -81,7 +81,7 @@ def expect_in_order(
 
 
 def expect_never(
-    obs: LogcatObserver,
+    obs: LogObserver,
     event_type: Type[T],
     *,
     where: Optional[Callable[[T], bool]] = None,
@@ -105,22 +105,21 @@ def expect_never(
             )
 
 
-def expect_crash_free(obs: LogcatObserver) -> None:
+def expect_crash_free(obs: LogObserver) -> None:
     """One-shot: snapshot the crash buffer and fail if the app crashed.
 
-    Only fails when the native crash dump names `com.demosten.srednabg` as the
-    offending process. Emulator-side crashes (audio HAL glitches, vendor
-    GPU driver, surfaceflinger, etc.) are reported by debuggerd into the
-    same crash buffer but are not our bug, and treating them as scenario
-    failures poisons an otherwise-green run (see runner.clear_crash_buffer
-    comment about "audio-HAL wobble on scenario N failing N+1").
+    Only fails when the crash mentions the app's package/bundle id. Host-
+    side crashes (audio HAL, GPU driver, surfaceflinger on Android;
+    simulated-app daemon noise on iOS) are reported into the same buffer
+    but are not our bug, and treating them as scenario failures poisons
+    an otherwise-green run (see runner.clear_crash_buffer comment about
+    "audio-HAL wobble on scenario N failing N+1").
     """
-    from . import adb
-    buf = adb.crash_buffer()
+    from . import device as device_mod
+    d = device_mod.current()
+    buf = d.crash_buffer()
     if not buf.strip():
         return
-    # debuggerd emits a ">>> <process-name> <<<" header for each crash.
-    # Matching on the package name is reliable across Android versions.
-    if "com.demosten.srednabg" not in buf:
+    if d.package_id not in buf:
         return
     raise AssertionFailure(f"crash buffer non-empty:\n{buf[:2000]}", obs)
