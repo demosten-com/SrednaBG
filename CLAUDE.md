@@ -61,7 +61,7 @@ Use Sonnet 4 as default; escalate to Opus 4 for architecture decisions or when s
 
 ## Branding & Locale
 
-- **App name:** SrednaBG (Средна БГ) | **Repo:** `sredna-bg`
+- **App name:** SrednaBG (Средна БГ) | **Repo:** `demosten-com/SrednaBG` (https://github.com/demosten-com/SrednaBG)
 - Zone data and BG TOLL scraping are Bulgarian Cyrillic; UI has BG + EN; Play Store targets BG only.
 - Play Store listing details (subtitle, keywords) live in `android/CLAUDE.md`.
 

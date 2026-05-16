@@ -60,6 +60,9 @@ RedirectMatch 404 ~$
 <IfModule mod_rewrite.c>
     RewriteRule ^api/zones$   api/zones.json   [L]
     RewriteRule ^api/version$ api/version.json [L]
+    # Clean URL for the privacy policy (linked from the Play Store listing
+    # and the iOS App Store privacy URL field).
+    RewriteRule ^privacy$     privacy.html     [L]
 </IfModule>
 
 <IfModule mod_headers.c>

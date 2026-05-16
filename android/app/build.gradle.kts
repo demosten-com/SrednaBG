@@ -14,14 +14,30 @@ android {
         applicationId = "com.demosten.srednabg"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "1.0.0"
         resourceConfigurations += listOf("bg", "en")
 
         // Both debug and release hit the production Namecheap host so dev
         // builds always test against real zone data.
         buildConfigField("String", "ZONE_API_BASE_URL", "\"https://srednabg.com\"")
         buildConfigField("String", "MAP_STYLE_URL", "\"https://srednabg.com/tiles/styles/basic-preview/style.json\"")
+    }
+
+    val hasReleaseKeystore = project.hasProperty("SREDNABG_RELEASE_STORE_FILE")
+
+    signingConfigs {
+        create("release") {
+            if (hasReleaseKeystore) {
+                storeFile = file(project.property("SREDNABG_RELEASE_STORE_FILE") as String)
+                storePassword = project.property("SREDNABG_RELEASE_STORE_PASSWORD") as String
+                keyAlias = project.property("SREDNABG_RELEASE_KEY_ALIAS") as String
+                keyPassword = project.property("SREDNABG_RELEASE_KEY_PASSWORD") as String
+                enableV1Signing = false
+                enableV2Signing = true
+                enableV3Signing = true
+            }
+        }
     }
 
     buildTypes {
@@ -32,6 +48,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            if (hasReleaseKeystore) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 
