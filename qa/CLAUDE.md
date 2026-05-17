@@ -79,3 +79,35 @@ Both apps gate map sync behind `FeatureFlags.IS_MAP_SYNC_ENABLED` (Kotlin) / `Fe
 ## Tripwire
 
 When log line shapes change in either platform's app — `AudioAlertManager.kt` / `LocationTrackingService.kt` on Android, `QALog` + `ZoneTrackingService.swift` / `CLLocationTracker.swift` / `AudioAlertManager.swift` on iOS — the smoke suite's parser self-test fails loudly with a pointer to the affected line. Fix the regex in `qa/parsers.py` (the shared module) and both platforms re-converge.
+
+## Store-screenshot tooling
+
+Two orchestrators live alongside the QA harness — they share `qa/screenshots/loader.py` + `qa/screenshots/shots.yaml` but are otherwise independent of the suites above:
+
+- `qa/srednabg_screenshots.py` — drives the running emulator / Simulator to capture the raw store PNGs. Skill: `/screenshot-app`.
+- `qa/srednabg_frame_screenshots.py` — **offline** post-processor that composes Waze-style marketing frames (solid bg + centered title + smaller phone screenshot with rounded corners + thin black border) from the raw PNGs. Skill: `/frame-screenshots`. No emulator / Simulator involved.
+
+### Outputs (gitignored)
+
+Both write under `web/screenshots/`, which is in `.gitignore`:
+
+- Raw: `web/screenshots/<platform>/NN-<platform>-<theme>-<lang>.png`
+- Framed: `web/screenshots/<platform>/framed/NN-<theme>-<lang>.png`
+
+Regenerate via the skills. Don't commit either tree — `web/CLAUDE.md` explains how the marketing site picks up the framed PNGs at deploy time.
+
+### `qa/screenshots/shots.yaml`
+
+Single source of truth for both scripts. Top-level keys:
+
+- `zone_id`, `languages`, `shots:` — consumed by capture.
+- `frame:` block + per-shot `background` / `title` — consumed only by framing. Capture ignores them. The renderer auto-shrinks oversized titles and supports a hard `\n` in title text; literal `#RRGGBB` works anywhere a palette key (from `frame.colors`) is accepted.
+- `frame.chrome_mask.<platform>` — paints a solid band over the top of each raw screenshot before rounded-corner cropping, to hide the OS status bar. Color is sampled at render time from the bottom tab bar (uniform per theme). `top_px: 0` disables the mask for that platform.
+
+### Python dependencies
+
+`qa/requirements.txt` (PyYAML + Pillow ≥10). The QA harness itself is stdlib + PyYAML; Pillow is only needed for `/frame-screenshots`. Install with `pip install -r qa/requirements.txt` (per project preference: pip + `requirements.txt`, never `pyproject.toml`).
+
+### Bundled font
+
+`qa/screenshots/fonts/Nunito-Bold.ttf` ships with the repo (SIL OFL 1.1; license at `qa/screenshots/fonts/LICENSE-OFL.txt`) so framing works without a system-font hunt and Cyrillic renders correctly. Don't replace it with a non-OFL font.

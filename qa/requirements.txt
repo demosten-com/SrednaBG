@@ -1,0 +1,13 @@
+# SrednaBG QA harness + screenshot tooling
+#
+# Install with: pip install -r qa/requirements.txt
+#
+# PyYAML is used by every script under qa/ that parses shots.yaml,
+# scenario fixtures, or tts_phrases.yaml.
+#
+# Pillow is only needed by qa/srednabg_frame_screenshots.py (the
+# /frame-screenshots store-asset compositor). Pillow 10 is required for
+# ImageFont.getlength() and ImageDraw.rounded_rectangle(outline=..., width=...).
+
+PyYAML>=6.0
+Pillow>=10.0

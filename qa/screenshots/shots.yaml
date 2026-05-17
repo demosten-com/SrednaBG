@@ -6,6 +6,8 @@
 #
 #   - add / remove / reorder shots
 #   - tweak settings, speed, zoom, band
+#   - tweak per-shot marketing-frame title + background (used by
+#     /frame-screenshots; absent → that shot is not framed)
 #
 # Position in this list = NN in the output filename (1-based).
 # Languages: each shot runs once per `languages` entry below.
@@ -27,6 +29,13 @@
 #                     the "Max now" field — the live computation often lands
 #                     at the 250 cap or near 0; this forces a story-friendly
 #                     value into the screenshot)
+#   background        palette key from `frame.colors` OR "#RRGGBB". Only
+#                     consumed by /frame-screenshots. Omit to skip framing.
+#   title             { <lang>: text } map. Only consumed by /frame-screenshots.
+#                     Literal "\n" in the text forces a hard line break;
+#                     otherwise the renderer pixel-wraps to canvas width.
+#                     Same title applies to light + dark themes (the phone
+#                     thumbnail itself carries the theme difference).
 
 # Canonical zone for all in-zone shots. Must exist in scrapers/data/zones.json.
 zone_id: i1-01-south
@@ -34,24 +43,71 @@ zone_id: i1-01-south
 # Per-platform output naming gets the language code appended.
 languages: [en, bg]
 
+# Marketing-frame settings — consumed only by /frame-screenshots.
+# Capture (/screenshot-app) ignores this block.
+frame:
+  font: qa/screenshots/fonts/Nunito-Bold.ttf  # repo-relative
+  title_size_px: 96
+  title_line_spacing: 1.15
+  title_margin_top_px: 140
+  title_margin_x_px: 80
+  phone_margin_top_px: 80
+  phone_max_width_frac: 0.80
+  phone_corner_radius_px: 56
+  phone_border_px: 4
+  phone_border_color: "#000000"
+  text_color: "#000000"
+  colors:
+    green:  "#66BB6A"  # mirrors ZoneStatusColor.kt
+    yellow: "#FDD835"
+    red:    "#EF5350"
+  canvas:
+    android: [1080, 1920]
+    ios:     [1290, 2796]
+  # Paint a solid band over the OS status bar at the top of each raw
+  # screenshot before rounded-corner cropping. Band color is sampled at
+  # render time from the bottom tab bar (uniform per theme, reliable on
+  # all tabs including the map where the status bar itself is transparent).
+  # top_px is in raw-image pixels (Pixel 8a ≈ 96; iPhone Dynamic Island ≈ 170).
+  # Set top_px: 0 to disable the mask for that platform.
+  chrome_mask:
+    android:
+      top_px: 96
+      sample_y_frac: 0.96  # 0.96 of 2400 = y≈2304, inside Pixel 8a tab bar
+    ios:
+      top_px: 0
+      sample_y_frac: 0.96
+
 shots:
   - name: home-outside-90
     description: Home tab, outside zone, current speed 90 km/h, light theme
     tab: home
     band: outside
     cur_speed_kmh: 90
+    background: green
+    title:
+      en: "Always know\nyour current speed"
+      bg: "Винаги знай\nтекущата си скорост"
 
   - name: home-in-zone-green
     description: Home tab, in zone, green band, light theme
     tab: home
     band: green
     max_now_override: 95
+    background: green
+    title:
+      en: "In a section-control zone?\nStay green."
+      bg: "В секционен контрол?\nКарай в зелено."
 
   - name: home-in-zone-yellow
     description: Home tab, in zone, yellow band, light theme
     tab: home
     band: yellow
     max_now_override: 88
+    background: yellow
+    title:
+      en: "Heads-up\nbefore you cross the limit"
+      bg: "Предупреждение\nпреди да минеш лимита"
 
   - name: map-north-green
     description: Map tab, north-up, green band in zone, light map theme
@@ -60,6 +116,10 @@ shots:
     map_heading_up: false
     map_theme_mode: light
     max_now_override: 95
+    background: green
+    title:
+      en: "See every camera zone\non the map"
+      bg: "Виж всяка зона\nна картата"
 
   - name: map-heading-yellow-dark
     description: Map heading-up, bigger zoom, yellow band, dark map theme
@@ -69,6 +129,10 @@ shots:
     map_theme_mode: dark
     map_zoom_override: 15.0
     max_now_override: 92
+    background: yellow
+    title:
+      en: "Heading-up navigation\nday or night"
+      bg: "Навигация по посока\nден и нощ"
 
   - name: map-heading-yellow-light
     description: Map heading-up, bigger zoom, yellow band, light map theme
@@ -78,6 +142,10 @@ shots:
     map_theme_mode: light
     map_zoom_override: 15.0
     max_now_override: 92
+    background: yellow
+    title:
+      en: "Live average\nfor every section"
+      bg: "Жива средна\nза всяка секция"
 
   - name: map-heading-red-light
     description: Map heading-up, bigger zoom, red band, light map theme
@@ -87,8 +155,16 @@ shots:
     map_theme_mode: light
     map_zoom_override: 15.0
     max_now_override: 78
+    background: red
+    title:
+      en: "Audible warning\nwhen you go over"
+      bg: "Звуково предупреждение\nкогато надхвърлиш"
 
   - name: settings-top
     description: Settings tab, top of screen, light theme
     tab: settings
     band: none
+    background: green
+    title:
+      en: "Free and open source\nworks offline"
+      bg: "Безплатно и отворен код\nработи офлайн"
