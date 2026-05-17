@@ -34,6 +34,8 @@ public final class CLLocationTracker: NSObject, LocationProviding, @unchecked Se
     private var stream: AsyncStream<GpsPoint>?
     private var builder = GpsPointBuilder()
     private var authContinuation: CheckedContinuation<LocationAuthorization, Never>?
+    private var requestedIntervalMs: Int = 1000
+    private var lastForwardedMs: Int64 = 0
 
     public override init() {
         super.init()
@@ -73,28 +75,44 @@ public final class CLLocationTracker: NSObject, LocationProviding, @unchecked Se
             continuation = nil
             stream = nil
             builder.reset()
+            lastForwardedMs = 0
             return prior
         }
         c?.finish()
     }
 
+    /// Decides whether a fix arriving at `nowMs` should be forwarded given the
+    /// timestamp of the last forwarded fix and the requested cadence. Returns
+    /// `true` on the very first fix (`lastForwardedMs == 0`), on any fix that
+    /// has waited at least `intervalMs - 200ms` since the previous forward,
+    /// and on backward clock jumps (defensive — the wall clock can be
+    /// adjusted by the system or NTP mid-drive). 200 ms of slack avoids
+    /// drift-induced single-sample stalls when CoreLocation delivers fixes a
+    /// touch faster than the requested cadence.
+    static func shouldForward(nowMs: Int64, lastForwardedMs: Int64, intervalMs: Int) -> Bool {
+        if lastForwardedMs == 0 { return true }
+        let elapsed = nowMs - lastForwardedMs
+        if elapsed < 0 { return true }
+        let threshold = Int64(max(intervalMs - 200, 0))
+        return elapsed >= threshold
+    }
+
     public func setIntervalMs(_ ms: Int) async {
         // QA harness tripwire: line shape must match `qa/parsers.py` INTERVAL_RE.
         QALog.location.info("requestLocationWithInterval intervalMs=\(ms, privacy: .public)")
-        // Map the requested cadence to a CoreLocation distance filter. The
-        // delegate is still called more often than the time interval; we
-        // throttle on the consumer side via `GpsPointBuilder.filter` and the
-        // ZoneDetector's idempotency.
-        let filter: Double
-        switch ms {
-        case ..<1500: filter = 5
-        case 1500..<3500: filter = 15
-        default: filter = 50
-        }
-        manager.distanceFilter = filter
+        // CoreLocation's `distanceFilter` is a *minimum-distance* gate, not a
+        // time interval: setting it to 50m for the "far from zone" cadence
+        // froze the speed display when the user stopped at a light, because
+        // no fix is delivered until the device moves that far. Instead let
+        // CoreLocation push fixes freely and throttle to the requested cadence
+        // on the consumer side (`shouldForward` in `emit`).
+        manager.distanceFilter = kCLDistanceFilterNone
         manager.desiredAccuracy = ms <= 1500
             ? kCLLocationAccuracyBestForNavigation
             : kCLLocationAccuracyBest
+        lock.withLock {
+            requestedIntervalMs = max(ms, 0)
+        }
     }
 
     #if DEBUG
@@ -170,6 +188,15 @@ extension CLLocationTracker: CLLocationManagerDelegate {
         QALog.location.info(
             "onLocation: lat=\(location.coordinate.latitude, privacy: .public) lng=\(location.coordinate.longitude, privacy: .public) speed=\(location.speed >= 0 ? location.speed : -1, privacy: .public) accuracy=\(location.horizontalAccuracy >= 0 ? location.horizontalAccuracy : -1, privacy: .public) provider=gps mock=false"
         )
+        let nowMs = Int64(location.timestamp.timeIntervalSince1970 * 1000)
+        let pass: Bool = lock.withLock {
+            if Self.shouldForward(nowMs: nowMs, lastForwardedMs: lastForwardedMs, intervalMs: requestedIntervalMs) {
+                lastForwardedMs = nowMs
+                return true
+            }
+            return false
+        }
+        guard pass else { return }
         // CLLocationManager may deliver a cached "last known" fix as the
         // first update — possibly hundreds of meters off from the real
         // GPS lock. Seeding lastLat/Lng from such a fix would make the

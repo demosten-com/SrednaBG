@@ -53,6 +53,7 @@ EDGE_SCENARIOS = [
     "over_limit_recovery",
     "off_ramp",
     "cold_start_spike",
+    "speed_decay_after_stop",
 ]
 SYNC_SCENARIOS = [
     "zones_happy",
