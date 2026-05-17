@@ -10,10 +10,14 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.view.Gravity
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -72,6 +76,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.demosten.srednabg.R
 import com.demosten.srednabg.app.ui.util.orDash
 import com.demosten.srednabg.app.ui.viewmodel.MapCameraSnapshot
+import com.demosten.srednabg.app.ui.theme.SpeedAmberDeep
+import com.demosten.srednabg.app.ui.theme.SpeedGreen
+import com.demosten.srednabg.app.ui.theme.SpeedRed
 import com.demosten.srednabg.app.ui.viewmodel.ZoneMapViewModel
 import com.demosten.srednabg.core.GpsPoint
 import com.demosten.srednabg.core.MapTheme
@@ -134,6 +141,8 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
     val activeZoneId by viewModel.activeZoneId.collectAsStateWithLifecycle()
     val zoneState by viewModel.zoneState.collectAsStateWithLifecycle()
     val mapHeadingUp by viewModel.mapHeadingUp.collectAsStateWithLifecycle()
+    val mapZoomOverride by viewModel.mapZoomOverride.collectAsStateWithLifecycle()
+    val debugMaxSpeedOverride by viewModel.debugMaxSpeedOverride.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var isFollowing by remember { mutableStateOf(false) }
@@ -192,7 +201,11 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
     // restore it so tab-switching doesn't yank the user back to the default
     // Bulgaria-wide zoom or a fresh zone-fit.
     val initialCameraSnapshot = remember { viewModel.cameraSnapshot.value }
+    val initialZoomOverride = remember { viewModel.mapZoomOverride.value }
     val mapView = remember {
+        val seedZoom = initialZoomOverride?.toDouble()
+            ?: initialCameraSnapshot?.zoom
+            ?: 7.0
         MapView(context).apply {
             getMapAsync { map ->
                 map.cameraPosition = CameraPosition.Builder()
@@ -201,10 +214,16 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
                             ?.let { LatLng(it.lat, it.lng) }
                             ?: LatLng(42.7, 25.5),
                     )
-                    .zoom(initialCameraSnapshot?.zoom ?: 7.0)
+                    .zoom(seedZoom)
                     .bearing(initialCameraSnapshot?.bearing ?: 0.0)
                     .tilt(initialCameraSnapshot?.tilt ?: 0.0)
                     .build()
+                // Anchor the compass at bottom-right above the zoom FAB column
+                // so it doesn't sit under the in-zone status chip when heading-up
+                // follow rotates the map.
+                val density = context.resources.displayMetrics.density
+                map.uiSettings.compassGravity = Gravity.BOTTOM or Gravity.END
+                map.uiSettings.setCompassMargins(0, 0, (16 * density).toInt(), (124 * density).toInt())
                 map.addOnMoveListener(object : MapLibreMap.OnMoveListener {
                     override fun onMoveBegin(detector: org.maplibre.android.gestures.MoveGestureDetector) {}
                     override fun onMove(detector: org.maplibre.android.gestures.MoveGestureDetector) {
@@ -331,7 +350,7 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
     var lastFittedZoneId by remember {
         mutableStateOf(if (initialCameraSnapshot != null) activeZoneId else null)
     }
-    LaunchedEffect(activeZoneId, zones, isFollowing) {
+    LaunchedEffect(activeZoneId, zones, isFollowing, mapZoomOverride) {
         if (isFollowing) return@LaunchedEffect
         val id = activeZoneId
         if (id == null) {
@@ -339,6 +358,22 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
             return@LaunchedEffect
         }
         if (id == lastFittedZoneId) return@LaunchedEffect
+        val overrideZoom = mapZoomOverride?.toDouble()
+        if (overrideZoom != null) {
+            val userPoint = currentPosition
+            if (userPoint != null) {
+                mapView.getMapAsync { map ->
+                    map.animateCamera(
+                        CameraUpdateFactory.newLatLngZoom(
+                            LatLng(userPoint.lat, userPoint.lng),
+                            overrideZoom,
+                        ),
+                    )
+                }
+                lastFittedZoneId = id
+            }
+            return@LaunchedEffect
+        }
         val bounds = zonesById[id]?.let(::zoneBounds) ?: return@LaunchedEffect
         mapView.getMapAsync { map ->
             map.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, ZONE_FIT_PADDING_PX))
@@ -347,25 +382,29 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
     }
 
     var hasCenteredOnUser by remember { mutableStateOf(initialCameraSnapshot != null) }
-    LaunchedEffect(currentPosition, activeZoneId, isFollowing) {
+    LaunchedEffect(currentPosition, activeZoneId, isFollowing, mapZoomOverride) {
         if (isFollowing) return@LaunchedEffect
         if (hasCenteredOnUser) return@LaunchedEffect
         if (activeZoneId != null) return@LaunchedEffect
         val point = currentPosition ?: return@LaunchedEffect
+        val targetZoom = mapZoomOverride?.toDouble() ?: USER_FOLLOW_ZOOM
         mapView.getMapAsync { map ->
             map.animateCamera(
-                CameraUpdateFactory.newLatLngZoom(LatLng(point.lat, point.lng), USER_FOLLOW_ZOOM),
+                CameraUpdateFactory.newLatLngZoom(LatLng(point.lat, point.lng), targetZoom),
             )
         }
         hasCenteredOnUser = true
     }
 
-    LaunchedEffect(displayPosition, isFollowing, mapHeadingUp, effectiveBearing) {
+    LaunchedEffect(displayPosition, isFollowing, mapHeadingUp, effectiveBearing, mapZoomOverride) {
         if (!isFollowing) return@LaunchedEffect
         val point = displayPosition ?: return@LaunchedEffect
+        val overrideZoom = mapZoomOverride?.toDouble()
         mapView.getMapAsync { map ->
             val bearing = if (mapHeadingUp) normalizeBearing(effectiveBearing) else 0.0
-            val zoom = map.cameraPosition.zoom.takeIf { it > 0.0 } ?: USER_FOLLOW_ZOOM
+            val zoom = overrideZoom
+                ?: map.cameraPosition.zoom.takeIf { it > 0.0 }
+                ?: USER_FOLLOW_ZOOM
             val target = CameraPosition.Builder()
                 .target(LatLng(point.lat, point.lng))
                 .zoom(zoom)
@@ -428,8 +467,10 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
                 isFollowing = isFollowing,
                 onTap = {
                     val activeZone = activeZoneId?.let { zonesById[it] }
-                    val zoneFit = activeZone?.let(::zoneBounds)
+                    val overrideZoom = mapZoomOverride?.toDouble()
+                    val zoneFit = if (overrideZoom == null) activeZone?.let(::zoneBounds) else null
                     val point = currentPosition
+                    val followZoom = overrideZoom ?: USER_FOLLOW_ZOOM
                     mapView.getMapAsync { map ->
                         when {
                             zoneFit != null ->
@@ -440,7 +481,7 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
                                 if (mapHeadingUp) {
                                     val target = CameraPosition.Builder()
                                         .target(LatLng(point.lat, point.lng))
-                                        .zoom(USER_FOLLOW_ZOOM)
+                                        .zoom(followZoom)
                                         .bearing(normalizeBearing(effectiveBearing))
                                         .tilt(0.0)
                                         .build()
@@ -449,7 +490,7 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
                                     map.animateCamera(
                                         CameraUpdateFactory.newLatLngZoom(
                                             LatLng(point.lat, point.lng),
-                                            USER_FOLLOW_ZOOM,
+                                            followZoom,
                                         ),
                                     )
                                 }
@@ -465,6 +506,7 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
             ZoneStatusChip(
                 state = zoneState,
                 currentSpeedKmh = currentPosition?.speed,
+                debugMaxSpeedOverride = debugMaxSpeedOverride,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .statusBarsPadding()
@@ -786,11 +828,12 @@ private fun RecenterFollowFab(
 private fun ZoneStatusChip(
     state: ZoneState,
     currentSpeedKmh: Double?,
+    debugMaxSpeedOverride: Int?,
     modifier: Modifier = Modifier,
 ) {
     when (state) {
         is ZoneState.Outside -> Unit
-        is ZoneState.InZone -> InZoneChip(state, currentSpeedKmh, modifier)
+        is ZoneState.InZone -> InZoneChip(state, currentSpeedKmh, debugMaxSpeedOverride, modifier)
         is ZoneState.Exiting -> ExitingChip(state, modifier)
     }
 }
@@ -799,17 +842,21 @@ private fun ZoneStatusChip(
 private fun InZoneChip(
     state: ZoneState.InZone,
     currentSpeedKmh: Double?,
+    debugMaxSpeedOverride: Int?,
     modifier: Modifier = Modifier,
 ) {
-    val statusArgb = zoneStatusColor(state, currentSpeedKmh)
-    val statusColor = Color(statusArgb)
     val limit = state.zone.speedLimits.car
+    // The chip's surface is the system theme's surfaceContainerHigh — light
+    // in light theme, dark in dark theme — regardless of the map tile theme.
+    // The core's zoneStatusColor returns the light-on-dark variants; swap to
+    // the dark-on-light shades (SpeedRed/Amber/Green) when the chip is light.
+    val statusColor = chipStatusColor(state, currentSpeedKmh)
     val statusLabel = stringResource(
         if (state.speedStatus.isOverLimit) R.string.status_over_limit else R.string.status_within_limit,
     )
     val nowText = stringResource(R.string.status_now_speed).format(currentSpeedKmh.orDash())
     val maxText = stringResource(R.string.max_for_remainder_format)
-        .format(state.speedStatus.maxSpeedForRemainder.toInt())
+        .format(debugMaxSpeedOverride ?: state.speedStatus.maxSpeedForRemainder.toInt())
     val distanceKm = state.distanceRemaining / 1000.0
     val totalDist = state.zone.distanceM.toDouble().coerceAtLeast(1.0)
     val progress = ((totalDist - state.distanceRemaining) / totalDist).coerceIn(0.0, 1.0).toFloat()
@@ -821,9 +868,13 @@ private fun InZoneChip(
         shape = MaterialTheme.shapes.large,
         tonalElevation = 4.dp,
         shadowElevation = 6.dp,
+        border = BorderStroke(1.5.dp, statusColor.copy(alpha = 0.65f)),
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(statusColor.copy(alpha = 0.15f))
+                .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // Average + Now
@@ -908,10 +959,13 @@ private fun ExitingChip(
     modifier: Modifier = Modifier,
 ) {
     val finalAvg = state.finalAvgSpeed
-    val color = if (finalAvg != null && finalAvg > state.zone.speedLimits.car) {
-        Color(ZONE_COLOR_RED)
-    } else {
-        Color(ZONE_COLOR_GREEN)
+    val overLimit = finalAvg != null && finalAvg > state.zone.speedLimits.car
+    val isLightChip = !isSystemInDarkTheme()
+    val color = when {
+        overLimit && isLightChip -> SpeedRed
+        overLimit -> Color(ZONE_COLOR_RED)
+        isLightChip -> SpeedGreen
+        else -> Color(ZONE_COLOR_GREEN)
     }
     Surface(
         modifier = modifier,
@@ -920,10 +974,12 @@ private fun ExitingChip(
         shape = MaterialTheme.shapes.large,
         tonalElevation = 4.dp,
         shadowElevation = 6.dp,
+        border = BorderStroke(1.5.dp, color.copy(alpha = 0.65f)),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .background(color.copy(alpha = 0.15f))
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -957,4 +1013,18 @@ private fun Context.bitmapFromVectorDrawable(@DrawableRes resId: Int): Bitmap? {
     drawable.setBounds(0, 0, canvas.width, canvas.height)
     drawable.draw(canvas)
     return bitmap
+}
+
+@Composable
+private fun chipStatusColor(state: ZoneState.InZone, currentSpeedKmh: Double?): Color {
+    val limit = state.zone.speedLimits.car
+    return if (isSystemInDarkTheme()) {
+        Color(zoneStatusColor(state, currentSpeedKmh))
+    } else {
+        when {
+            state.speedStatus.isOverLimit -> SpeedRed
+            currentSpeedKmh != null && currentSpeedKmh > limit -> SpeedAmberDeep
+            else -> SpeedGreen
+        }
+    }
 }

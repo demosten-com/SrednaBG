@@ -167,6 +167,46 @@ struct ZoneDetectorTests {
     }
 
     @Test
+    func distanceRemainingTracksGpsPositionAlongPolyline() {
+        // Regression: iOS used to surface `AverageSpeedCalc`'s
+        // `zoneDistance - distanceTraveled` (the time-integrated traveled
+        // distance) instead of Android's polyline-arc-length from the live
+        // GPS position. With a wide-margin zone the two diverge — the time-
+        // integrated value undershoots the polyline arc-length because the
+        // centerline winds while the integrator just sums |speed|·dt. The
+        // /screenshot-app harness surfaced "0.2 km Остават" in mid-zone
+        // shots that should have shown several kilometres.
+        var detector = ZoneDetector(zones: [TRAKIYA_T10, HEMUS_H12, I4_10])
+        let trace = generateGpsTrace(zone: TRAKIYA_T10, speedKmh: 130.0)
+
+        var firstInZoneRemaining: Double?
+        var midInZoneRemaining: Double?
+        var seenInZone = 0
+        for point in trace {
+            let state = detector.update(point)
+            if case .inZone(let inZone) = state {
+                seenInZone += 1
+                if firstInZoneRemaining == nil { firstInZoneRemaining = inZone.distanceRemaining }
+                // ~halfway through the in-zone span — far enough that the
+                // polyline arc-length has measurably decreased but well
+                // before the EXIT_DISTANCE_M (300m) tripwire fires.
+                if seenInZone == 20 { midInZoneRemaining = inZone.distanceRemaining }
+            }
+        }
+
+        let first = firstInZoneRemaining ?? -1
+        let mid = midInZoneRemaining ?? -1
+        #expect(first > 0, "InZone state should publish a positive distanceRemaining")
+        #expect(mid > 0, "Mid-trace distanceRemaining should still be positive (\(mid))")
+        #expect(mid < first,
+                "distanceRemaining should shrink as the GPS advances along the polyline (first=\(first), mid=\(mid))")
+        // The mid-trace value must still be meaningful — the bug we're catching
+        // collapsed it toward 0 when the centerline winds away from the chord.
+        #expect(mid > 1000,
+                "distanceRemaining at trace midpoint should be > 1km for TRAKIYA_T10, got \(mid)")
+    }
+
+    @Test
     func exitOnLeavingRoad() {
         var detector = ZoneDetector(zones: [TRAKIYA_T10, HEMUS_H12, I4_10])
         let trace = generateGpsTrace(zone: TRAKIYA_T10, speedKmh: 130.0)

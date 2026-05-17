@@ -10,6 +10,12 @@ import androidx.compose.ui.graphics.Color
 // Speed status colors
 val SpeedGreen = Color(0xFF2E7D32)
 val SpeedAmber = Color(0xFFF9A825)
+// Darker yellow used for the "yellow / over-speed-warning" semantic
+// when rendered on light Material surfaces — #F9A825 on pale amber-tinted
+// cards reads as washed out next to its green/red siblings; #B8860B
+// (CSS DarkGoldenrod) reaches ~4.4:1 contrast against white while staying
+// distinctly yellow rather than crossing into orange.
+val SpeedAmberDeep = Color(0xFFB8860B)
 val SpeedRed = Color(0xFFC62828)
 
 val SpeedGreenLight = Color(0xFF66BB6A)

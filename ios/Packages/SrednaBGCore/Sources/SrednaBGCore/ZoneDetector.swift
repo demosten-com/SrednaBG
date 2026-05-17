@@ -96,7 +96,7 @@ public struct ZoneDetector: Sendable {
             distanceTraveled: distanceTraveled,
             avgSpeed: status.avgSpeed,
             speedStatus: status,
-            distanceRemaining: status.distanceRemaining
+            distanceRemaining: polylineRemaining(point, zone)
         ))
     }
 
@@ -143,7 +143,7 @@ public struct ZoneDetector: Sendable {
             distanceTraveled: distanceTraveled,
             avgSpeed: status.avgSpeed,
             speedStatus: status,
-            distanceRemaining: status.distanceRemaining
+            distanceRemaining: polylineRemaining(point, zone)
         ))
     }
 
@@ -191,5 +191,14 @@ public struct ZoneDetector: Sendable {
         effectiveZoneDistance = 0
         totalStopDurationMs = 0
         stopStartTime = nil
+    }
+
+    // Polyline arc-length from the current GPS position to zone.end. Drives the
+    // "X km" label and progress bar — uses the live position rather than the
+    // speed×time integrator so it stays accurate across GPS dropouts, mid-zone
+    // cold-starts, and simulated jumps. Mirrors Android's `polylineRemaining`.
+    private func polylineRemaining(_ point: GpsPoint, _ zone: Zone) -> Double {
+        let traveledOnPolyline = projectOntoPolyline(point.lat, point.lng, zone.centerline)
+        return max(Double(zone.distanceM) - traveledOnPolyline, 0.0)
     }
 }

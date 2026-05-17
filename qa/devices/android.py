@@ -28,6 +28,7 @@ ACTION_START_TRACKING = "com.demosten.srednabg.debug.START_TRACKING"
 ACTION_STOP_TRACKING = "com.demosten.srednabg.debug.STOP_TRACKING"
 ACTION_SYNC_MAP = "com.demosten.srednabg.debug.SYNC_MAP"
 ACTION_SYNC_ZONES = "com.demosten.srednabg.debug.SYNC_ZONES"
+ACTION_FEED_POINT = "com.demosten.srednabg.debug.FEED_POINT"
 
 PROD_VERSION_URL = "https://srednabg.com/api/version"
 
@@ -73,10 +74,24 @@ class AndroidDevice(Device):
     def geo_fix(self, lng: float, lat: float) -> None:
         adb.geo_fix(lng, lat)
 
+    def feed_point(self, lat: float, lng: float, speed_ms: float,
+                   bearing: float | None = None) -> None:
+        extras = {
+            "lat": f"{lat:.7f}",
+            "lng": f"{lng:.7f}",
+            "speed_ms": f"{speed_ms:.3f}",
+        }
+        if bearing is not None:
+            extras["bearing"] = f"{bearing:.2f}"
+        adb.broadcast(ACTION_FEED_POINT, DEBUG_CONTROL_RECEIVER, extras=extras)
+
     # ── debug surface ───────────────────────────────────────────────────────
     def set_setting(self, key: str, value: str) -> None:
         adb.broadcast(ACTION_SET_SETTING, DEBUG_CONTROL_RECEIVER,
                       extras={"key": key, "value": value})
+
+    def set_zoom_override(self, zoom: float | None) -> None:
+        self.set_setting("map_zoom_override", "" if zoom is None else f"{zoom}")
 
     def start_tracking(self) -> None:
         adb.broadcast(ACTION_START_TRACKING, DEBUG_CONTROL_RECEIVER)
@@ -111,6 +126,36 @@ class AndroidDevice(Device):
             except Exception:
                 pass
             time.sleep(0.5)
+
+    # ── cosmetic chrome (screenshot harness) ────────────────────────────────
+    def set_system_appearance(self, mode: str) -> None:
+        if mode not in ("light", "dark"):
+            raise ValueError(f"mode must be 'light' or 'dark', got {mode!r}")
+        # `cmd uimode night yes|no|auto` is the Android 10+ surface for
+        # forcing the system-wide dark/light theme.
+        night = "yes" if mode == "dark" else "no"
+        adb.shell(f"cmd uimode night {night}")
+
+    def override_status_bar(self) -> None:
+        # SystemUI demo mode locks the status bar to a clean App-Store
+        # look: 9:41 clock, 100% battery, full wifi, no notifications.
+        # Requires `sysui_demo_allowed=1`. Granted on the emulator's
+        # shell user by default; on a physical device the user has to
+        # `adb shell pm grant com.android.shell android.permission.DUMP`.
+        adb.shell("settings put global sysui_demo_allowed 1")
+        adb.shell("am broadcast -a com.android.systemui.demo -e command enter")
+        adb.shell("am broadcast -a com.android.systemui.demo -e command clock -e hhmm 0941")
+        adb.shell("am broadcast -a com.android.systemui.demo -e command battery "
+                  "-e level 100 -e plugged false")
+        adb.shell("am broadcast -a com.android.systemui.demo -e command network "
+                  "-e wifi show -e level 4")
+        adb.shell("am broadcast -a com.android.systemui.demo -e command network "
+                  "-e mobile show -e level 4 -e datatype lte")
+        adb.shell("am broadcast -a com.android.systemui.demo -e command notifications "
+                  "-e visible false")
+
+    def clear_status_bar_override(self) -> None:
+        adb.shell("am broadcast -a com.android.systemui.demo -e command exit")
 
     # ── inspection ──────────────────────────────────────────────────────────
     def screencap(self, dest: Path) -> Path:

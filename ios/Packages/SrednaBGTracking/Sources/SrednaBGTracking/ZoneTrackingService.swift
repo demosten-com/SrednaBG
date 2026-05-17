@@ -243,4 +243,12 @@ public final class ZoneTrackingService {
         case .exiting(let exiting): return exiting.zone.id
         }
     }
+
+    #if DEBUG
+    /// QA-only entry point for injecting a synthetic GPS fix that flows
+    /// through the production `LocationProviding` pipeline.
+    public func debugFeed(lat: Double, lng: Double, speedMps: Double, bearing: Double?) async {
+        await provider.injectDebugFix(lat: lat, lng: lng, speedMps: speedMps, bearing: bearing)
+    }
+    #endif
 }

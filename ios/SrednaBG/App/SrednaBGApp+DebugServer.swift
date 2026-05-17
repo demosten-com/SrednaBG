@@ -62,6 +62,31 @@ extension AppContainer {
                     settings.alertThresholdKmh = n
                 case "map_heading_up":
                     settings.mapHeadingUp = asBool
+                case "map_theme_mode":
+                    // Android sends UPPERCASE enum names (AUTO/LIGHT/DARK)
+                    // because its MapThemeMode is a Kotlin enum with
+                    // uppercase names; iOS's MapThemeMode is a lowercase
+                    // rawValue String enum. Lowercase before init so the
+                    // QA harness's single `set_setting("map_theme_mode", ...)`
+                    // call works on both platforms.
+                    guard let mode = MapThemeMode(rawValue: value.lowercased()) else { return false }
+                    settings.mapThemeMode = mode
+                case "map_zoom_override":
+                    if value.isEmpty {
+                        settings.mapZoomOverride = nil
+                    } else if let zoom = Double(value) {
+                        settings.mapZoomOverride = (zoom == 0) ? nil : zoom
+                    } else {
+                        return false
+                    }
+                case "debug_max_speed_override":
+                    if value.isEmpty {
+                        settings.debugMaxSpeedOverride = nil
+                    } else if let n = Int(value) {
+                        settings.debugMaxSpeedOverride = n
+                    } else {
+                        return false
+                    }
                 default:
                     return false
                 }
@@ -89,7 +114,12 @@ extension AppContainer {
                 }
             },
             startTracking: { await tracking.start() },
-            stopTracking: { await tracking.stop() }
+            stopTracking: { await tracking.stop() },
+            feedLocation: { lat, lng, speed, bearing in
+                Task { @MainActor in
+                    await tracking.debugFeed(lat: lat, lng: lng, speedMps: speed, bearing: bearing)
+                }
+            }
         )
     }
 }

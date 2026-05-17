@@ -43,7 +43,7 @@ public struct RootView: View {
 
         return TabView {
             NavigationStack {
-                HomeScreen(tracking: tracking)
+                HomeScreen(tracking: tracking, settings: settings)
                     .navigationTitle(L10n.navHome)
                     #if os(iOS)
                     .toolbar(.hidden, for: .navigationBar)

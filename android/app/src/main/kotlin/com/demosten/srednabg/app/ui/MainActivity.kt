@@ -21,9 +21,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -43,6 +47,7 @@ class MainActivity : AppCompatActivity() {
 
     @Inject lateinit var permissionRepository: PermissionRepository
 
+    @OptIn(ExperimentalComposeUiApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Edge-to-edge globally with permanently transparent system bars.
@@ -112,9 +117,12 @@ class MainActivity : AppCompatActivity() {
                     // transparent status bar.
                     contentWindowInsets = WindowInsets(0),
                     bottomBar = {
-                        NavigationBar {
+                        NavigationBar(
+                            modifier = Modifier.semantics { testTagsAsResourceId = true },
+                        ) {
                             NavRoute.all.forEach { route ->
                                 NavigationBarItem(
+                                    modifier = Modifier.testTag("tab-${route.route}"),
                                     icon = { route.TabIcon(contentDescription = stringResource(route.titleResId)) },
                                     label = { Text(stringResource(route.titleResId)) },
                                     selected = currentDestination?.hierarchy?.any {

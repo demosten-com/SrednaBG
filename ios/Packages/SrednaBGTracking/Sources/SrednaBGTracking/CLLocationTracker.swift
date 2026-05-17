@@ -97,6 +97,22 @@ public final class CLLocationTracker: NSObject, LocationProviding, @unchecked Se
             : kCLLocationAccuracyBest
     }
 
+    #if DEBUG
+    public func injectDebugFix(lat: Double, lng: Double, speedMps: Double, bearing: Double?) async {
+        let coord = CLLocationCoordinate2D(latitude: lat, longitude: lng)
+        let loc = CLLocation(
+            coordinate: coord,
+            altitude: 0,
+            horizontalAccuracy: 5,
+            verticalAccuracy: 5,
+            course: bearing ?? -1,
+            speed: speedMps,
+            timestamp: Date()
+        )
+        emit(location: loc)
+    }
+    #endif
+
     public func requestAuthorization() async -> LocationAuthorization {
         let current = manager.authorizationStatus
         switch current {
@@ -145,41 +161,45 @@ extension CLLocationTracker: CLLocationManagerDelegate {
 
     public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         for location in locations {
-            // QA harness tripwire: line shape must match `qa/parsers.py` LOC_RE.
-            QALog.location.info(
-                "onLocation: lat=\(location.coordinate.latitude, privacy: .public) lng=\(location.coordinate.longitude, privacy: .public) speed=\(location.speed >= 0 ? location.speed : -1, privacy: .public) accuracy=\(location.horizontalAccuracy >= 0 ? location.horizontalAccuracy : -1, privacy: .public) provider=gps mock=false"
-            )
-            // CLLocationManager may deliver a cached "last known" fix as the
-            // first update — possibly hundreds of meters off from the real
-            // GPS lock. Seeding lastLat/Lng from such a fix would make the
-            // next real fix's deltaM spurious, producing a phantom speed
-            // that clamps the inferred reading at 250 km/h. 10 s mirrors
-            // Android's MAX_FIX_AGE_MS (CoreLocation timestamps are wall-
-            // clock, so compare to Date()).
-            let ageS = Date().timeIntervalSince(location.timestamp)
-            let freshFix = ageS >= 0 && ageS <= 10
-            let speedAccMps: Double? = location.speedAccuracy >= 0 ? location.speedAccuracy : nil
-            let raw = RawLocationFix(
-                lat: location.coordinate.latitude,
-                lng: location.coordinate.longitude,
-                course: location.course >= 0 ? location.course : nil,
-                speedMps: location.speed >= 0 ? location.speed : nil,
-                timestampMs: Int64(location.timestamp.timeIntervalSince1970 * 1000),
-                accuracyM: location.horizontalAccuracy >= 0 ? location.horizontalAccuracy : nil,
-                speedAccuracyMps: speedAccMps,
-                freshFix: freshFix
-            )
-            let (point, hasBearing, cont) = lock.withLock {
-                let (point, hasBearing) = builder.build(raw)
-                return (point, hasBearing, continuation)
-            }
-            // Skip the publish until we have a real bearing — same rationale
-            // as the Android `LocationTrackingService` early-return: a default
-            // 0° heading would false-match a zone whose `polylineBearing`
-            // happens to fall inside the 45° tolerance.
-            guard hasBearing else { continue }
-            cont?.yield(point)
+            emit(location: location)
         }
+    }
+
+    fileprivate func emit(location: CLLocation) {
+        // QA harness tripwire: line shape must match `qa/parsers.py` LOC_RE.
+        QALog.location.info(
+            "onLocation: lat=\(location.coordinate.latitude, privacy: .public) lng=\(location.coordinate.longitude, privacy: .public) speed=\(location.speed >= 0 ? location.speed : -1, privacy: .public) accuracy=\(location.horizontalAccuracy >= 0 ? location.horizontalAccuracy : -1, privacy: .public) provider=gps mock=false"
+        )
+        // CLLocationManager may deliver a cached "last known" fix as the
+        // first update — possibly hundreds of meters off from the real
+        // GPS lock. Seeding lastLat/Lng from such a fix would make the
+        // next real fix's deltaM spurious, producing a phantom speed
+        // that clamps the inferred reading at 250 km/h. 10 s mirrors
+        // Android's MAX_FIX_AGE_MS (CoreLocation timestamps are wall-
+        // clock, so compare to Date()).
+        let ageS = Date().timeIntervalSince(location.timestamp)
+        let freshFix = ageS >= 0 && ageS <= 10
+        let speedAccMps: Double? = location.speedAccuracy >= 0 ? location.speedAccuracy : nil
+        let raw = RawLocationFix(
+            lat: location.coordinate.latitude,
+            lng: location.coordinate.longitude,
+            course: location.course >= 0 ? location.course : nil,
+            speedMps: location.speed >= 0 ? location.speed : nil,
+            timestampMs: Int64(location.timestamp.timeIntervalSince1970 * 1000),
+            accuracyM: location.horizontalAccuracy >= 0 ? location.horizontalAccuracy : nil,
+            speedAccuracyMps: speedAccMps,
+            freshFix: freshFix
+        )
+        let (point, hasBearing, cont) = lock.withLock {
+            let (point, hasBearing) = builder.build(raw)
+            return (point, hasBearing, continuation)
+        }
+        // Skip the publish until we have a real bearing — same rationale
+        // as the Android `LocationTrackingService` early-return: a default
+        // 0° heading would false-match a zone whose `polylineBearing`
+        // happens to fall inside the 45° tolerance.
+        guard hasBearing else { return }
+        cont?.yield(point)
     }
 
     public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {

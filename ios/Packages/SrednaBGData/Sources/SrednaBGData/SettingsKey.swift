@@ -21,6 +21,13 @@ public enum SettingsKey {
     public static let cachedMapHash = "cached_map_hash"
     public static let mapHeadingUp = "map_heading_up"
     public static let mapThemeMode = "map_theme_mode"
+    public static let mapZoomOverride = "map_zoom_override"
+    /// Screenshot harness only: when set, in-zone UI shows this value for
+    /// "Max now" instead of the live SpeedStatus computation. Mirrors the
+    /// Android `KEY_DEBUG_MAX_SPEED_OVERRIDE`. Writes are gated to the
+    /// `#if DEBUG` DebugActionRouter — release builds can read the field
+    /// (it stays `nil`) but nothing in the app can mutate it.
+    public static let debugMaxSpeedOverride = "debug_max_speed_override"
 }
 
 public enum SettingsDefaults {
@@ -34,6 +41,7 @@ public enum SettingsDefaults {
     public static let cachedMapHash = ""
     public static let mapHeadingUp = false
     public static let mapThemeMode: MapThemeMode = .auto
+    public static let mapZoomOverride: Double? = nil
 }
 
 public enum AppLanguage: String, Sendable, CaseIterable, Codable {

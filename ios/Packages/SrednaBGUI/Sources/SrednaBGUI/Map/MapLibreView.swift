@@ -27,6 +27,7 @@ struct MapLibreView: UIViewRepresentable {
     let zoneState: ZoneState
     let headingUp: Bool
     let mapSession: MapSessionStore
+    let zoomOverride: Double?
     @Binding var pendingCommand: MapCommand?
     @Binding var styleLoadFailed: Bool
     @Binding var isMapReady: Bool
@@ -35,7 +36,12 @@ struct MapLibreView: UIViewRepresentable {
         case zoomIn
         case zoomOut
         case recenter
+        case zoomTo(Double)
     }
+
+    /// Default zoom for the follow camera when no per-shot override is set.
+    /// Mirrors Android's `USER_FOLLOW_ZOOM` constant in `ZoneMapScreen.kt`.
+    static let userFollowZoom: Double = 14.0
 
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
@@ -45,6 +51,11 @@ struct MapLibreView: UIViewRepresentable {
         let mapView = MLNMapView(frame: .zero, styleURL: styleURL)
         mapView.delegate = context.coordinator
         mapView.compassView.isHidden = false
+        // Anchor the compass at bottom-right above the controls toolbar so it
+        // doesn't sit under the in-zone StatusChip when heading-up follow
+        // rotates the map (chip overlays the default top-right corner).
+        mapView.compassViewPosition = .bottomRight
+        mapView.compassViewMargins = CGPoint(x: 8, y: 76)
         mapView.logoView.isHidden = false
         mapView.attributionButton.isHidden = false
         mapView.showsUserLocation = false
@@ -64,6 +75,10 @@ struct MapLibreView: UIViewRepresentable {
                 animated: false
             )
             context.coordinator.didRestoreCameraSnapshot = true
+            // Treat a restored snapshot as already-followed-once so the next
+            // GPS update preserves the user's saved zoom instead of yanking
+            // it to `userFollowZoom`.
+            context.coordinator.didFollowOnce = true
         } else {
             // First Map mount this process: center over Bulgaria until the
             // first GPS point or active-zone fit takes over.
@@ -107,7 +122,8 @@ struct MapLibreView: UIViewRepresentable {
             // Fit-on-entry only when the user isn't actively following AND
             // we didn't just restore a saved camera (in which case the
             // restored zoom + pan must win).
-            if let zone = activeZone, !mapSession.isFollowing, !coord.didRestoreCameraSnapshot {
+            if let zone = activeZone, !mapSession.isFollowing, !coord.didRestoreCameraSnapshot,
+               zoomOverride == nil {
                 fit(uiView: uiView, to: zone)
             }
         }
@@ -173,16 +189,30 @@ struct MapLibreView: UIViewRepresentable {
 
     private func applyFollowCamera(uiView: MLNMapView, position: GpsPoint, coordinator: Coordinator) {
         let coord = CLLocationCoordinate2D(latitude: position.lat, longitude: position.lng)
-        let altitude = uiView.camera.altitude
         let effectiveBearing = coordinator.damper.effectiveBearing
-        let camera = MLNMapCamera(
-            lookingAtCenter: coord,
-            altitude: altitude,
-            pitch: 0,
-            heading: headingUp ? effectiveBearing : 0
-        )
+        // Mirror Android's follow-camera zoom logic (ZoneMapScreen.kt:381/396):
+        //   override > preserve-current > USER_FOLLOW_ZOOM. We also force a
+        //   one-shot bump to USER_FOLLOW_ZOOM the first time we follow without
+        //   an override — the initial mount centers Bulgaria-wide at zoom 9 to
+        //   render the empty-state, which would otherwise stick across every
+        //   follow frame and leave the screenshots / first-launch map zoomed
+        //   way out.
+        let targetZoom: Double
+        if let override = zoomOverride {
+            targetZoom = override
+        } else if !coordinator.didFollowOnce {
+            targetZoom = Self.userFollowZoom
+        } else {
+            targetZoom = uiView.zoomLevel
+        }
+        coordinator.didFollowOnce = true
+        let bearing: CLLocationDirection = headingUp ? effectiveBearing : 0
         coordinator.programmaticCameraChange = true
-        uiView.setCamera(camera, animated: true)
+        // `setCenter(_:zoomLevel:direction:animated:)` writes the target zoom
+        // directly. `MLNMapCamera(altitude:)` would be vulnerable to mid-animation
+        // altitude reads — exactly the race that caused the override to bleed
+        // back to the pre-zoom value on every subsequent GPS update.
+        uiView.setCenter(coord, zoomLevel: targetZoom, direction: bearing, animated: true)
     }
 
     private func apply(command: MapCommand, to uiView: MLNMapView, coordinator: Coordinator) {
@@ -196,6 +226,8 @@ struct MapLibreView: UIViewRepresentable {
             if let position = displayPosition ?? currentPosition {
                 applyFollowCamera(uiView: uiView, position: position, coordinator: coordinator)
             }
+        case .zoomTo(let level):
+            uiView.setZoomLevel(level, animated: true)
         }
     }
 
@@ -230,6 +262,11 @@ struct MapLibreView: UIViewRepresentable {
         /// so the first `didFinishLoading` / `updateUIView` pass doesn't
         /// auto-fit the active zone over the restored camera.
         @MainActor var didRestoreCameraSnapshot: Bool = false
+        /// `false` until `applyFollowCamera` has run at least once. On the
+        /// first follow we bump the camera from the Bulgaria-wide seed zoom
+        /// (9, set by `makeUIView`) to `userFollowZoom` (14); after that we
+        /// preserve whatever zoom the user / override / pinch-gesture set.
+        @MainActor var didFollowOnce: Bool = false
 
         @MainActor
         init(parent: MapLibreView) {
@@ -297,7 +334,8 @@ struct MapLibreView: UIViewRepresentable {
                     // Skip the fit when we restored a saved camera; otherwise
                     // the user's preferred zoom would be wiped out the moment
                     // the style finishes loading on tab re-entry.
-                    if !self.parent.mapSession.isFollowing, !self.didRestoreCameraSnapshot {
+                    if !self.parent.mapSession.isFollowing, !self.didRestoreCameraSnapshot,
+                       self.parent.zoomOverride == nil {
                         self.parent.fit(uiView: mapView, to: active)
                     }
                 }

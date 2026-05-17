@@ -90,14 +90,30 @@ public struct ZoneMapScreen: View {
         .toolbar(.hidden, for: .navigationBar)
         #endif
         .task { await resolveStyleURLIfNeeded() }
-        .onAppear { reevaluateThemeIfNeeded() }
+        .onAppear {
+            reevaluateThemeIfNeeded()
+            #if os(iOS)
+            applyZoomOverrideIfNeeded()
+            #endif
+        }
         .onChange(of: settings.mapThemeMode) { _, _ in reevaluateThemeIfNeeded() }
         .onChange(of: tracking.currentPosition?.lat) { _, _ in reevaluateThemeIfNeeded() }
+        #if os(iOS)
+        .onChange(of: settings.mapZoomOverride) { _, _ in applyZoomOverrideIfNeeded() }
+        #endif
         .onReceive(themeTimer) { now in
             nowTick = now
             reevaluateThemeIfNeeded()
         }
     }
+
+    #if os(iOS)
+    @MainActor
+    private func applyZoomOverrideIfNeeded() {
+        guard let override = settings.mapZoomOverride else { return }
+        pendingCommand = .zoomTo(override)
+    }
+    #endif
 
     @ViewBuilder
     private var mapSurface: some View {
@@ -112,6 +128,7 @@ public struct ZoneMapScreen: View {
                 zoneState: tracking.zoneState,
                 headingUp: settings.mapHeadingUp,
                 mapSession: mapSession,
+                zoomOverride: settings.mapZoomOverride,
                 pendingCommand: $pendingCommand,
                 styleLoadFailed: $styleLoadFailed,
                 isMapReady: $isMapReady

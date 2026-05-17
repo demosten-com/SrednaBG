@@ -58,7 +58,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.demosten.srednabg.R
 import com.demosten.srednabg.app.permissions.PermissionState
-import com.demosten.srednabg.app.ui.theme.SpeedAmber
+import com.demosten.srednabg.app.ui.theme.warningAmber
 import com.demosten.srednabg.app.ui.theme.SpeedGreen
 import com.demosten.srednabg.app.ui.theme.SpeedRed
 import com.demosten.srednabg.app.ui.util.orDash
@@ -72,6 +72,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
     val zoneCount by viewModel.zoneCount.collectAsStateWithLifecycle()
     val currentSpeedKmh by viewModel.currentSpeedKmh.collectAsStateWithLifecycle()
     val permissionState by viewModel.permissionState.collectAsStateWithLifecycle()
+    val debugMaxSpeedOverride by viewModel.debugMaxSpeedOverride.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     // Notification permission is requested from inside the NotificationCard
@@ -114,6 +115,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                 zoneCount = zoneCount,
                 currentSpeedKmh = currentSpeedKmh,
                 permissionState = permissionState,
+                debugMaxSpeedOverride = debugMaxSpeedOverride,
                 onOpenAppSettings = { openAppSettings(context) },
                 onRequestNotification = onRequestNotification,
                 onRequestBatteryOptOut = { requestIgnoreBatteryOptimizations(context) },
@@ -177,6 +179,7 @@ private fun StateContent(
     zoneCount: Int,
     currentSpeedKmh: Double?,
     permissionState: PermissionState,
+    debugMaxSpeedOverride: Int?,
     onOpenAppSettings: () -> Unit,
     onRequestNotification: () -> Unit,
     onRequestBatteryOptOut: () -> Unit,
@@ -185,7 +188,7 @@ private fun StateContent(
         // Active tracking always wins — never gate the live display on
         // permission state changes mid-trip.
         isTracking && zoneState is ZoneState.InZone ->
-            InZoneCard(modifier, zoneState, currentSpeedKmh)
+            InZoneCard(modifier, zoneState, currentSpeedKmh, debugMaxSpeedOverride)
         isTracking && zoneState is ZoneState.Exiting ->
             ExitingCard(modifier, zoneState, currentSpeedKmh)
         isTracking ->
@@ -269,7 +272,7 @@ private fun NotificationCard(
 ) {
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = SpeedAmber.copy(alpha = 0.15f)),
+        colors = CardDefaults.cardColors(containerColor = warningAmber().copy(alpha = 0.15f)),
     ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(24.dp),
@@ -279,7 +282,7 @@ private fun NotificationCard(
                 Icon(
                     imageVector = Icons.Default.Notifications,
                     contentDescription = null,
-                    tint = SpeedAmber,
+                    tint = warningAmber(),
                 )
                 Text(
                     text = stringResource(R.string.notification_recommended_title),
@@ -298,7 +301,7 @@ private fun NotificationCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = SpeedAmber),
+                colors = ButtonDefaults.buttonColors(containerColor = warningAmber()),
             ) {
                 Text(
                     text = stringResource(R.string.notification_recommended_allow),
@@ -326,7 +329,7 @@ private fun NotificationCard(
 private fun BatteryOptimizationCard(modifier: Modifier, onRequestOptOut: () -> Unit) {
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = SpeedAmber.copy(alpha = 0.15f)),
+        colors = CardDefaults.cardColors(containerColor = warningAmber().copy(alpha = 0.15f)),
     ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(24.dp),
@@ -336,7 +339,7 @@ private fun BatteryOptimizationCard(modifier: Modifier, onRequestOptOut: () -> U
                 text = stringResource(R.string.battery_opt_title),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = SpeedAmber,
+                color = warningAmber(),
             )
             Text(
                 text = stringResource(R.string.battery_opt_body),
@@ -349,7 +352,7 @@ private fun BatteryOptimizationCard(modifier: Modifier, onRequestOptOut: () -> U
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = SpeedAmber),
+                colors = ButtonDefaults.buttonColors(containerColor = warningAmber()),
             ) {
                 Text(
                     text = stringResource(R.string.battery_opt_action),
@@ -431,10 +434,15 @@ private fun OutsideCard(modifier: Modifier, currentSpeedKmh: Double?, zoneCount:
 }
 
 @Composable
-private fun InZoneCard(modifier: Modifier, state: ZoneState.InZone, currentSpeedKmh: Double?) {
+private fun InZoneCard(
+    modifier: Modifier,
+    state: ZoneState.InZone,
+    currentSpeedKmh: Double?,
+    debugMaxSpeedOverride: Int? = null,
+) {
     val statusColor = when {
         state.speedStatus.isOverLimit -> SpeedRed
-        currentSpeedKmh != null && currentSpeedKmh > state.zone.speedLimits.car -> SpeedAmber
+        currentSpeedKmh != null && currentSpeedKmh > state.zone.speedLimits.car -> warningAmber()
         else -> SpeedGreen
     }
     val statusText = if (state.speedStatus.isOverLimit) {
@@ -496,7 +504,7 @@ private fun InZoneCard(modifier: Modifier, state: ZoneState.InZone, currentSpeed
                 )
                 InfoItem(
                     label = stringResource(R.string.max_for_remainder),
-                    value = "${state.speedStatus.maxSpeedForRemainder.toInt()}",
+                    value = "${debugMaxSpeedOverride ?: state.speedStatus.maxSpeedForRemainder.toInt()}",
                 )
                 InfoItem(
                     label = stringResource(R.string.remaining),

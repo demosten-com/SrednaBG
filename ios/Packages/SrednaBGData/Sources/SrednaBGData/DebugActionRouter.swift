@@ -21,19 +21,22 @@ public final class DebugActionRouter {
         public let runMapSync: @MainActor () async -> DebugSyncOutcome
         public let startTracking: @MainActor () async -> Void
         public let stopTracking: @MainActor () async -> Void
+        public let feedLocation: @MainActor (Double, Double, Double, Double?) -> Void
 
         public init(
             applySetting: @escaping @MainActor (String, String) -> Bool,
             runZoneSync: @escaping @MainActor () async -> DebugSyncOutcome,
             runMapSync: @escaping @MainActor () async -> DebugSyncOutcome,
             startTracking: @escaping @MainActor () async -> Void,
-            stopTracking: @escaping @MainActor () async -> Void
+            stopTracking: @escaping @MainActor () async -> Void,
+            feedLocation: @escaping @MainActor (Double, Double, Double, Double?) -> Void = { _, _, _, _ in }
         ) {
             self.applySetting = applySetting
             self.runZoneSync = runZoneSync
             self.runMapSync = runMapSync
             self.startTracking = startTracking
             self.stopTracking = stopTracking
+            self.feedLocation = feedLocation
         }
     }
 
@@ -119,6 +122,17 @@ public final class DebugActionRouter {
         case "/network":
             QAFlags.networkOffline = (params["offline"] == "1" || params["offline"] == "true")
             return Result(status: 200, body: QAFlags.networkOffline ? "offline" : "online")
+
+        case "/inject":
+            guard let latStr = params["lat"], let lat = Double(latStr),
+                  let lngStr = params["lng"], let lng = Double(lngStr),
+                  let speedStr = params["speed"], let speed = Double(speedStr)
+            else {
+                return Result(status: 400, body: "inject requires lat, lng, speed")
+            }
+            let bearing = params["bearing"].flatMap(Double.init)
+            handlers.feedLocation(lat, lng, speed, bearing)
+            return Result(status: 200, body: "ok")
 
         default:
             return Result(status: 404, body: "no such endpoint: \(path)")

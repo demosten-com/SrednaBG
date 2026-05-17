@@ -67,6 +67,12 @@ class ZoneMapViewModel @Inject constructor(
     val mapHeadingUp: StateFlow<Boolean> = settingsRepository.mapHeadingUp
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    val mapZoomOverride: StateFlow<Float?> = settingsRepository.mapZoomOverride
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val debugMaxSpeedOverride: StateFlow<Int?> = settingsRepository.debugMaxSpeedOverride
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
     /**
      * Effective map theme. Combines the user's mode (Auto/Light/Dark) with
      * the current GPS position and a 60s wall-clock ticker so the auto

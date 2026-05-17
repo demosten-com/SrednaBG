@@ -29,6 +29,11 @@ public protocol LocationProviding: Sendable {
     /// to obtain When-In-Use, then again from `.authorizedWhenInUse` to drive
     /// the Always upgrade prompt.
     func requestAuthorization() async -> LocationAuthorization
+
+    /// QA harness hook: synthesize a GPS fix and drive it through the
+    /// provider's normal emission pipeline. Default implementation is a
+    /// no-op; only the production `CLLocationTracker` overrides in DEBUG.
+    func injectDebugFix(lat: Double, lng: Double, speedMps: Double, bearing: Double?) async
 }
 
 public enum LocationAuthorization: Sendable, Equatable {
@@ -42,4 +47,13 @@ public enum LocationAuthorization: Sendable, Equatable {
 public enum LocationProviderError: Error, Sendable {
     case authorizationDenied
     case unavailable
+}
+
+public extension LocationProviding {
+    /// Default no-op. Only the production `CLLocationTracker` overrides this
+    /// in DEBUG builds so the QA harness can drive synthetic GPS fixes
+    /// through the exact same pipeline as real ones.
+    func injectDebugFix(lat: Double, lng: Double, speedMps: Double, bearing: Double?) async {
+        // no-op default
+    }
 }

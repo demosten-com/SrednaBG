@@ -60,6 +60,26 @@ public final class SettingsStore {
         didSet { defaults.set(mapThemeMode.rawValue, forKey: SettingsKey.mapThemeMode) }
     }
 
+    public var mapZoomOverride: Double? {
+        didSet {
+            if let value = mapZoomOverride, value != 0 {
+                defaults.set(value, forKey: SettingsKey.mapZoomOverride)
+            } else {
+                defaults.removeObject(forKey: SettingsKey.mapZoomOverride)
+            }
+        }
+    }
+
+    public var debugMaxSpeedOverride: Int? {
+        didSet {
+            if let value = debugMaxSpeedOverride {
+                defaults.set(value, forKey: SettingsKey.debugMaxSpeedOverride)
+            } else {
+                defaults.removeObject(forKey: SettingsKey.debugMaxSpeedOverride)
+            }
+        }
+    }
+
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
 
@@ -85,5 +105,8 @@ public final class SettingsStore {
             ?? SettingsDefaults.mapHeadingUp
         self.mapThemeMode = (defaults.string(forKey: SettingsKey.mapThemeMode))
             .flatMap(MapThemeMode.init(rawValue:)) ?? SettingsDefaults.mapThemeMode
+        let storedZoom = (defaults.object(forKey: SettingsKey.mapZoomOverride) as? Double)
+        self.mapZoomOverride = (storedZoom == 0) ? nil : storedZoom
+        self.debugMaxSpeedOverride = defaults.object(forKey: SettingsKey.debugMaxSpeedOverride) as? Int
     }
 }

@@ -50,6 +50,9 @@ qa/reports/
 qa/fixtures/gpx/
 qa/fixtures/tts_phrases.yaml
 
+# Screenshots (you can regenerate using /screenshot-app)
+web/screenshots/
+
 # Claude Code local harness state (skills/ stays tracked for contributors)
 .claude/settings.local.json
 .claude/scheduled_tasks.lock

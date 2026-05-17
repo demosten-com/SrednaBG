@@ -81,10 +81,31 @@ class Device(abc.ABC):
     def geo_fix(self, lng: float, lat: float) -> None:
         """Push a single mock GPS point. Cadence is the caller's problem."""
 
+    @abc.abstractmethod
+    def feed_point(self, lat: float, lng: float, speed_ms: float,
+                   bearing: Optional[float] = None) -> None:
+        """Inject a fix with speed and bearing through the app's debug back-channel.
+
+        Unlike `geo_fix`, this goes through the in-app debug surface
+        (Android FEED_POINT broadcast / iOS /inject HTTP endpoint), which
+        lets the screenshot harness drive precise speed values into the
+        zone state machine without waiting for FLP to synthesize speed
+        from successive positions. Required for deterministic Green /
+        Yellow / Red band selection in the screenshot orchestrator.
+        """
+
     # ── debug surface ───────────────────────────────────────────────────────
     @abc.abstractmethod
     def set_setting(self, key: str, value: str) -> None:
         """Apply one app setting via the platform's debug control surface."""
+
+    @abc.abstractmethod
+    def set_zoom_override(self, zoom: Optional[float]) -> None:
+        """Pin the map view at a specific zoom level, or clear with None.
+
+        Screenshot-only. When set, the map skips its auto fit-bounds and
+        sticks at the given zoom for deterministic framing.
+        """
 
     @abc.abstractmethod
     def start_tracking(self) -> None: ...
@@ -104,6 +125,20 @@ class Device(abc.ABC):
 
     @abc.abstractmethod
     def go_online(self) -> None: ...
+
+    # ── cosmetic chrome (screenshot harness) ────────────────────────────────
+    @abc.abstractmethod
+    def set_system_appearance(self, mode: str) -> None:
+        """Force the device into 'light' or 'dark' system theme."""
+
+    @abc.abstractmethod
+    def override_status_bar(self) -> None:
+        """Lock the status bar to a clean App Store look (time 9:41, full
+        battery, full wifi, no notifications). Idempotent."""
+
+    @abc.abstractmethod
+    def clear_status_bar_override(self) -> None:
+        """Restore the system-driven status bar."""
 
     # ── inspection ──────────────────────────────────────────────────────────
     @abc.abstractmethod

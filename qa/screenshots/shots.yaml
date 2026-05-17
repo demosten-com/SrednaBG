@@ -1,0 +1,94 @@
+# SPDX-License-Identifier: MIT
+#
+# SrednaBG screenshot harness — shot list.
+# THIS IS THE SINGLE SOURCE OF TRUTH for the App Store / Play Store
+# screenshots produced by /screenshot-app. Edit freely:
+#
+#   - add / remove / reorder shots
+#   - tweak settings, speed, zoom, band
+#
+# Position in this list = NN in the output filename (1-based).
+# Languages: each shot runs once per `languages` entry below.
+#
+# Schema (per shot):
+#   name              short slug — used to address the shot from the CLI
+#                     (e.g. `/screenshot-app android map-north-green`)
+#   description       human-readable, shown in run logs
+#   tab               home | map | settings
+#   band              outside | green | yellow | red | none
+#                       outside — drive off-zone GPS at `cur_speed_kmh`
+#                       green / yellow / red — drive in-zone speed pattern
+#                       none — no GPS forcing (e.g. Settings tab)
+#   cur_speed_kmh     (band: outside only) current speed shown on screen
+#   map_heading_up    true | false | null  (null = leave as-is)
+#   map_theme_mode    light | dark | auto | null
+#   map_zoom_override number | null
+#   max_now_override  integer km/h | null  (debug-only display override for
+#                     the "Max now" field — the live computation often lands
+#                     at the 250 cap or near 0; this forces a story-friendly
+#                     value into the screenshot)
+
+# Canonical zone for all in-zone shots. Must exist in scrapers/data/zones.json.
+zone_id: i1-01-south
+
+# Per-platform output naming gets the language code appended.
+languages: [en, bg]
+
+shots:
+  - name: home-outside-90
+    description: Home tab, outside zone, current speed 90 km/h, light theme
+    tab: home
+    band: outside
+    cur_speed_kmh: 90
+
+  - name: home-in-zone-green
+    description: Home tab, in zone, green band, light theme
+    tab: home
+    band: green
+    max_now_override: 95
+
+  - name: home-in-zone-yellow
+    description: Home tab, in zone, yellow band, light theme
+    tab: home
+    band: yellow
+    max_now_override: 88
+
+  - name: map-north-green
+    description: Map tab, north-up, green band in zone, light map theme
+    tab: map
+    band: green
+    map_heading_up: false
+    map_theme_mode: light
+    max_now_override: 95
+
+  - name: map-heading-yellow-dark
+    description: Map heading-up, bigger zoom, yellow band, dark map theme
+    tab: map
+    band: yellow
+    map_heading_up: true
+    map_theme_mode: dark
+    map_zoom_override: 15.0
+    max_now_override: 92
+
+  - name: map-heading-yellow-light
+    description: Map heading-up, bigger zoom, yellow band, light map theme
+    tab: map
+    band: yellow
+    map_heading_up: true
+    map_theme_mode: light
+    map_zoom_override: 15.0
+    max_now_override: 92
+
+  - name: map-heading-red-light
+    description: Map heading-up, bigger zoom, red band, light map theme
+    tab: map
+    band: red
+    map_heading_up: true
+    map_theme_mode: light
+    map_zoom_override: 15.0
+    max_now_override: 78
+
+  - name: settings-top
+    description: Settings tab, top of screen, light theme
+    tab: settings
+    band: none

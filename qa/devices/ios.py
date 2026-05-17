@@ -159,6 +159,17 @@ class IosDevice(Device):
         _run(["simctl", "location", self._device(), "set",
               f"{lat:.7f},{lng:.7f}"], timeout=5.0)
 
+    def feed_point(self, lat: float, lng: float, speed_ms: float,
+                   bearing: float | None = None) -> None:
+        params = {
+            "lat": f"{lat:.7f}",
+            "lng": f"{lng:.7f}",
+            "speed": f"{speed_ms:.3f}",
+        }
+        if bearing is not None:
+            params["bearing"] = f"{bearing:.2f}"
+        self._debug_get("/inject", params)
+
     # ── debug surface (loopback HTTP) ──────────────────────────────────────
     def _debug_get(self, path: str, params: Optional[dict[str, str]] = None,
                    *, timeout: float = 10.0) -> str:
@@ -189,6 +200,9 @@ class IosDevice(Device):
 
     def set_setting(self, key: str, value: str) -> None:
         self._debug_get("/setting", {"key": key, "value": value})
+
+    def set_zoom_override(self, zoom: float | None) -> None:
+        self.set_setting("map_zoom_override", "" if zoom is None else f"{zoom}")
 
     def start_tracking(self) -> None:
         self._debug_get("/tracking", {"action": "start"})
@@ -221,6 +235,26 @@ class IosDevice(Device):
             except Exception:
                 pass
             time.sleep(0.5)
+
+    # ── cosmetic chrome (screenshot harness) ────────────────────────────────
+    def set_system_appearance(self, mode: str) -> None:
+        if mode not in ("light", "dark"):
+            raise ValueError(f"mode must be 'light' or 'dark', got {mode!r}")
+        _run(["simctl", "ui", self._device(), "appearance", mode], timeout=5.0)
+
+    def override_status_bar(self) -> None:
+        _run([
+            "simctl", "status_bar", self._device(), "override",
+            "--time", "9:41",
+            "--dataNetwork", "wifi",
+            "--wifiMode", "active", "--wifiBars", "3",
+            "--cellularMode", "active", "--cellularBars", "4",
+            "--batteryState", "charged", "--batteryLevel", "100",
+        ], timeout=5.0)
+
+    def clear_status_bar_override(self) -> None:
+        _run(["simctl", "status_bar", self._device(), "clear"], timeout=5.0,
+             check=False)
 
     # ── inspection ──────────────────────────────────────────────────────────
     def screencap(self, dest: Path) -> Path:

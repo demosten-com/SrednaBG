@@ -11,6 +11,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.demosten.srednabg.app.data.MapRepository
+import com.demosten.srednabg.app.data.SettingsRepository
 import com.demosten.srednabg.app.data.ZoneRepository
 import com.demosten.srednabg.app.permissions.PermissionRepository
 import com.demosten.srednabg.app.permissions.PermissionState
@@ -30,8 +31,12 @@ class HomeViewModel @Inject constructor(
     zoneRepository: ZoneRepository,
     private val mapRepository: MapRepository,
     private val permissionRepository: PermissionRepository,
+    settingsRepository: SettingsRepository,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
+
+    val debugMaxSpeedOverride: StateFlow<Int?> = settingsRepository.debugMaxSpeedOverride
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     val zoneState: StateFlow<ZoneState> = LocationTrackingService.zoneState
 

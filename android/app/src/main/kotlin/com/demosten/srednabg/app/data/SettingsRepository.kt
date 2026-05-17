@@ -9,6 +9,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.demosten.srednabg.core.MapThemeMode
@@ -33,6 +34,12 @@ class SettingsRepository @Inject constructor(
         private val KEY_MAP_HASH = stringPreferencesKey("cached_map_hash")
         private val KEY_MAP_HEADING_UP = booleanPreferencesKey("map_heading_up")
         private val KEY_MAP_THEME_MODE = stringPreferencesKey("map_theme_mode")
+        private val KEY_MAP_ZOOM_OVERRIDE = floatPreferencesKey("map_zoom_override")
+        // Screenshot harness only: when set, in-zone UI shows this value for
+        // "Max now" instead of the live SpeedStatus computation. Lets the
+        // App Store / Play Store harness render a meaningful number even when
+        // the live calc would land at the 250 cap or near 0.
+        private val KEY_DEBUG_MAX_SPEED_OVERRIDE = intPreferencesKey("debug_max_speed_override")
 
         const val DEFAULT_ALERT_THRESHOLD = 5
         const val DEFAULT_APP_LANGUAGE = "system"
@@ -89,6 +96,14 @@ class SettingsRepository @Inject constructor(
             ?: DEFAULT_MAP_THEME_MODE
     }
 
+    val mapZoomOverride: Flow<Float?> = dataStore.data.map { prefs ->
+        prefs[KEY_MAP_ZOOM_OVERRIDE]
+    }
+
+    val debugMaxSpeedOverride: Flow<Int?> = dataStore.data.map { prefs ->
+        prefs[KEY_DEBUG_MAX_SPEED_OVERRIDE]
+    }
+
     suspend fun setAlertThreshold(value: Int) {
         dataStore.edit { it[KEY_ALERT_THRESHOLD] = value }
     }
@@ -127,6 +142,26 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setMapThemeMode(value: MapThemeMode) {
         dataStore.edit { it[KEY_MAP_THEME_MODE] = value.name }
+    }
+
+    suspend fun setMapZoomOverride(value: Float?) {
+        dataStore.edit { p ->
+            if (value == null) {
+                p.remove(KEY_MAP_ZOOM_OVERRIDE)
+            } else {
+                p[KEY_MAP_ZOOM_OVERRIDE] = value
+            }
+        }
+    }
+
+    suspend fun setDebugMaxSpeedOverride(value: Int?) {
+        dataStore.edit { p ->
+            if (value == null) {
+                p.remove(KEY_DEBUG_MAX_SPEED_OVERRIDE)
+            } else {
+                p[KEY_DEBUG_MAX_SPEED_OVERRIDE] = value
+            }
+        }
     }
 }
 

@@ -14,11 +14,13 @@ import SrednaBGTracking
 public struct HomeScreen: View {
 
     @Bindable public var tracking: ZoneTrackingService
+    public let settings: SettingsStore
 
     @Environment(\.scenePhase) private var scenePhase
 
-    public init(tracking: ZoneTrackingService) {
+    public init(tracking: ZoneTrackingService, settings: SettingsStore) {
         self.tracking = tracking
+        self.settings = settings
     }
 
     public var body: some View {
@@ -164,7 +166,8 @@ public struct HomeScreen: View {
             HStack {
                 infoItem(label: L10n.speedLimit, value: String(inZone.zone.speedLimits.car))
                 Spacer()
-                infoItem(label: L10n.maxForRemainder, value: String(Int(inZone.speedStatus.maxSpeedForRemainder)))
+                infoItem(label: L10n.maxForRemainder,
+                         value: String(settings.debugMaxSpeedOverride ?? Int(inZone.speedStatus.maxSpeedForRemainder)))
                 Spacer()
                 infoItem(label: L10n.remaining, value: String(format: "%.1f km", inZone.distanceRemaining / 1000))
             }
