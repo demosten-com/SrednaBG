@@ -1,25 +1,24 @@
 # Tiles
 
-Place the Bulgaria OpenMapTiles `.mbtiles` file here as `bulgaria.mbtiles`.
+`bulgaria.mbtiles` (Bulgaria OpenMapTiles, vector) lives here. The file is
+gitignored — generate it locally before bringing up the docker compose
+stack.
 
-## Download
+## Build
 
-1. Create a free account at [data.maptiler.com](https://data.maptiler.com/)
-2. Download the Bulgaria extract (~200-300 MB):
-   - Go to: https://data.maptiler.com/downloads/tileset/osm/europe/bulgaria/
-   - Download the OpenMapTiles `.mbtiles` format
-3. Place the file here as `bulgaria.mbtiles`
-
-Or use the download script:
 ```bash
-../scripts/download-tiles.sh YOUR_MAPTILER_KEY
+../scripts/download-tiles.sh    # run from backend/ (or call with the full path)
 ```
 
-## Expected File
+Runs [Planetiler](https://github.com/onthegomap/planetiler) in Docker against
+the Geofabrik Bulgaria OSM extract. No API key needed. Output: `bulgaria.mbtiles`
+at z5–z12 (~50 MB), the same shape tileserver-gl and the offline-bundle
+builder consume.
+
+## Expected file
 
 - **Filename:** `bulgaria.mbtiles`
-- **Size:** ~200-300 MB
-- **Format:** MBTiles (SQLite with vector tile data)
-- **Coverage:** All of Bulgaria
-
-This file is gitignored (see root `.gitignore`).
+- **Format:** MBTiles (SQLite + vector tile data, OpenMapTiles schema)
+- **Coverage:** All of Bulgaria, z5–z12
+- **License:** © OpenStreetMap contributors (ODbL) — attribution required
+  anywhere these tiles are surfaced.

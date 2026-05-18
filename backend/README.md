@@ -18,21 +18,22 @@ Self-hosted infrastructure for serving Bulgaria map tiles and zone data. Runs on
 
 ## Prerequisites
 
-- Docker and Docker Compose
-- Free MapTiler account (for tile download)
-- ~500 MB disk space for Bulgaria tiles
+- Docker and Docker Compose (Docker must be running for the tile build)
+- ~4 GB free RAM (for the Planetiler JVM)
+- ~1 GB free disk (PBF download + mbtiles output + sources)
 
 ## Quick Start
 
-### 1. Download Bulgaria tiles
-
-Create a free account at [data.maptiler.com](https://data.maptiler.com/) and get your API key.
+### 1. Generate Bulgaria tiles
 
 ```bash
-./scripts/download-tiles.sh YOUR_MAPTILER_KEY
+./scripts/download-tiles.sh
 ```
 
-Or download manually from [MapTiler Downloads](https://data.maptiler.com/downloads/tileset/osm/europe/bulgaria/) and place the file at `tiles/bulgaria.mbtiles`.
+The script runs [Planetiler](https://github.com/onthegomap/planetiler) in
+Docker against the Geofabrik Bulgaria OSM extract (~200 MB) and writes
+`tiles/bulgaria.mbtiles` (z5–z12, ~50 MB). No API key needed; takes a few
+minutes on first run. Tile data © OpenStreetMap contributors (ODbL).
 
 ### 2. Update zone data
 

@@ -1,13 +1,13 @@
 # qa/
 
-End-to-end QA harness (Python, stdlib + PyYAML). Drives the running Android emulator (via `adb`) **or** a booted iOS Simulator (via `xcrun simctl` + the iOS app's `srednabg-debug://` URL scheme). Parses typed events from the platform's log stream, asserts on the full app stack (zone state machine, audio alerts, settings, sync, UI). Pairs with the JVM / Swift unit tests — units cover algorithm math, this covers everything they don't.
+End-to-end QA harness (Python, stdlib + PyYAML). Drives the running Android emulator (via `adb`) **or** a booted iOS Simulator (via `xcrun simctl` + a loopback HTTP debug listener the iOS app binds at launch in Debug builds). Parses typed events from the platform's log stream, asserts on the full app stack (zone state machine, audio alerts, settings, sync, UI). Pairs with the JVM / Swift unit tests — units cover algorithm math, this covers everything they don't.
 
 ## Architecture
 
 - `qa/srednabg_qa.py` — entry point / orchestrator. Picks the backend via `--platform {auto,android,ios}`.
 - `qa/device.py` — `Device` ABC + `current()` / `set_current()` singleton. The runner, scenarios, settings/sync helpers, and drive pump all go through this facade.
 - `qa/devices/android.py` — `AndroidDevice` (delegates to `qa/adb.py`).
-- `qa/devices/ios.py` — `IosDevice` (wraps `xcrun simctl` + `simctl openurl srednabg-debug://…`). iOS-only; requires macOS.
+- `qa/devices/ios.py` — `IosDevice` (wraps `xcrun simctl` + HTTP POSTs to the app's loopback debug listener). iOS-only; requires macOS.
 - `qa/devices/{android_log,ios_log}.py` — `LogObserver` subclasses (logcat threadtime / `simctl spawn booted log stream --style ndjson`).
 - `qa/parsers.py` — shared regex set + `parse_message(tag, msg, raw)`. Same tag names (`SrednaBG.Loc`, `SrednaBG.TTS`, `DebugSync`, `DebugSettings`) on both platforms.
 - `qa/log_observer.py` — abstract observer with `for_current_device()` factory.
@@ -16,14 +16,14 @@ End-to-end QA harness (Python, stdlib + PyYAML). Drives the running Android emul
 - `qa/drive.py` — parses GPX into a `DrivePlan`, pumps `device.geo_fix()` at the right cadence.
 - `qa/assertions.py` — `expect` / `expect_in_order` / `expect_never` over the event queue.
 - `qa/runner.py` — runs ordered scenario steps with per-scenario log-buffer isolation.
-- `qa/settings.py` — flips settings via the active device (broadcast on Android, openurl on iOS).
+- `qa/settings.py` — flips settings via the active device (broadcast on Android, HTTP POST to the debug listener on iOS).
 - `qa/sync.py` — triggers sync via the active device and inspects on-disk map bundle integrity.
 - `qa/ui.py`, `qa/report.py` — UI walk + report generation.
 - Scenarios under `qa/scenarios/{bulk,representative,edge,sync,ui}/`.
 - Fixtures in `qa/fixtures/` (`tts_phrases.yaml`, GPX).
 - `qa/logcat.py` — compatibility shim, re-exports `LogObserver as LogcatObserver` and the regexes. New code should import from `qa.log_observer` + `qa.parsers`.
 
-Android depends on `android/`'s debug-only `DebugSyncReceiver` and `DebugControlReceiver`. iOS depends on the Debug-only `srednabg-debug://` URL scheme + `QALog` + `DebugSyncHook` (see `ios/SrednaBG/App/DebugURLHandler.swift`, `ios/Packages/SrednaBGData/Sources/SrednaBGData/QALog.swift`).
+Android depends on `android/`'s debug-only `DebugSyncReceiver` and `DebugControlReceiver`. iOS depends on the Debug-only loopback HTTP debug listener (`DebugControlServer` + `DebugActionRouter` in `SrednaBGData`) plus `QALog` + `DebugSyncHook` (see `ios/SrednaBG/App/SrednaBGApp+DebugServer.swift`, `ios/Packages/SrednaBGData/Sources/SrednaBGData/QALog.swift`). The earlier `srednabg-debug://` URL-scheme dispatch was replaced because `simctl openurl` raised an "Open in <App>" confirmation dialog on every dispatch — see `ios/CLAUDE.md` "QA debug surface" for the current shape.
 
 ## Suite invocations
 
@@ -45,7 +45,7 @@ python qa/srednabg_qa.py --suite nightly         # ~2 hr — representative + fu
 # Prereqs:
 #   1. xcrun simctl boot <udid>  # or open Simulator.app
 #   2. xcodebuild ... -configuration Debug build install — Debug, not Release;
-#      the srednabg-debug:// URL scheme + QA log emitters are #if DEBUG.
+#      the loopback debug HTTP listener + QA log emitters are #if DEBUG.
 #   3. xcrun simctl install booted <path-to-built-.app>
 
 python qa/srednabg_qa.py --suite smoke           --platform ios
@@ -58,9 +58,9 @@ python qa/srednabg_qa.py --suite representative  --platform ios
 #### iOS-specific caveats
 
 - **Headless on a Mac mini**: the iOS Simulator needs an active GUI session (Metal rendering). No workaround.
-- **TTS muting**: there's no OS-level mute toggle on the simulator. The harness's `mute_audio()` routes to `srednabg-debug://mute?on=1`, which swaps the `AVSpeechTTSEngine` for a no-op while still emitting `speak:` log lines (so the parser self-test still trips on broken phrase changes).
-- **Network offline**: `simctl status_bar` doesn't actually gate the network. `IosDevice.go_offline()` flips a `QAFlags.networkOffline` UserDefaults flag that makes the `DebugURLHandler` short-circuit sync requests to `Failed`. Observable behavior matches Android's airplane-mode path.
-- **Mid-route GPS mutation**: `simctl location set` per-point is slower than `adb emu geo fix` (≈100–500 ms vs <10 ms). For steady-cruise (smoke / representative / full-zones) this is fine. Edge scenarios that fan out fixes rapidly (`gps_dropout`, `wrong_direction`, `u_turn`, `vehicle_swap`) may need a faster pump — open work; smoke comes first.
+- **TTS muting**: there's no OS-level mute toggle on the simulator. The harness's `mute_audio()` POSTs `/mute?on=1` to the debug listener, which swaps the `AVSpeechTTSEngine` for a no-op while still emitting `speak:` log lines (so the parser self-test still trips on broken phrase changes).
+- **Network offline**: `simctl status_bar` doesn't actually gate the network. `IosDevice.go_offline()` flips a `QAFlags.networkOffline` UserDefaults flag that makes the `DebugActionRouter` short-circuit sync requests to `Failed`. Observable behavior matches Android's airplane-mode path.
+- **Mid-route GPS mutation**: `simctl location set` per-point is slower than `adb emu geo fix` (≈100–500 ms vs <10 ms). The steady-cruise suites (smoke / representative / full-zones) run fine on it; edge scenarios that fan out fixes rapidly (`gps_dropout`, `wrong_direction`, `u_turn`, `vehicle_swap`) are still Android-only until a faster iOS pump lands.
 
 Reports land in `qa/reports/<suite>-<timestamp>/` (`junit.xml` + `summary.md` + `screenshots/`); exit code 0 = all passed. Invoke from a Claude Code session with the `/qa-app` skill — it runs the orchestrator, parses the report, and summarizes back in <200 words.
 

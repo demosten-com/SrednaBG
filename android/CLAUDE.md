@@ -1,6 +1,6 @@
 # android/
 
-Kotlin app using Jetpack Compose, Car App Library, MapLibre, Room, Hilt. ~37 Kotlin files in `main/` + 8 test files + 2 debug-only sources (`DebugSyncReceiver`, `DebugControlReceiver`). Phone app is the shipping surface: Home, ZoneMap, and Settings screens (TripHistory commented out pending implementation), running as a foreground location service that also doubles as a background audio service alongside Waze/Google Maps. The Car App Library / Android Auto target is WIP — kept in-tree for developer testing on DHU and AAOS, excluded from the Play Store release (see `test-data/android-release.md`).
+Kotlin app using Jetpack Compose, Car App Library, MapLibre, Room, Hilt. ~40 Kotlin files in `main/` + 8 test files + 2 debug-only sources (`DebugSyncReceiver`, `DebugControlReceiver`). Phone app is the shipping surface: Home, ZoneMap, and Settings screens (TripHistory commented out pending implementation), running as a foreground location service that also doubles as a background audio service alongside Waze/Google Maps. Release signing is wired (`app/build.gradle.kts`): the `release` signing config activates whenever the four `SREDNABG_RELEASE_*` Gradle properties are present (set in `~/.gradle/gradle.properties` or `-P` flags), so the keystore stays outside the repo. The Car App Library / Android Auto target is WIP — kept in-tree for developer testing on DHU and AAOS, excluded from the Play Store release (see `test-data/android-release.md`).
 
 ## Runtime
 
@@ -85,9 +85,8 @@ Kotlin 2.1.10, AGP 8.8.2, Compose BOM 2025.02.00, Car App Library 1.7.0, MapLibr
 
 ## Remaining work
 
-- **Release signing**: keystore + `signingConfigs` in build.gradle.kts
 - **Backend URLs**: `ZONE_API_BASE_URL` and `MAP_STYLE_URL` are set in `defaultConfig` at `https://srednabg.com` for both debug and release — every build talks to the Namecheap-hosted `/api/zones` + `/api/version`. `MAP_STYLE_URL` (`https://srednabg.com/tiles/styles/basic-preview/style.json`) is a fallback only; runs use the on-disk bundle via `MapRepository.localStyleUri()`. The `/tiles/...` path doesn't exist on the production host yet — the fallback only fires if the in-APK bundle is broken.
-- **Play Store listing**: screenshots, store description, content rating. Play subtitle: Секционен контрол — средна скорост. Keywords: средна скорост, секционен контрол, камери, отсечки, БГ ТОЛ, скорост, автомагистрала. Play Store targets BG only.
+- **Play Store listing**: store description, content rating, final upload. Play subtitle: Секционен контрол — средна скорост. Keywords: средна скорост, секционен контрол, камери, отсечки, БГ ТОЛ, скорост, автомагистрала. Play Store targets BG only. Screenshots are produced by the `/screenshot-app` + `/frame-screenshots` skills (raw PNGs from the emulator, then Waze-style framed PNGs from those — see `qa/CLAUDE.md` "Store-screenshot tooling" for the workflow).
 - **TripHistoryScreen**: commented out from navigation; implement when ready
 - **Battery optimization**: GPS/wake-lock refinement; geofencing API for zone proximity
 - **Instrumented tests**: no `androidTest/` yet (JVM units cover ViewModels/repos/mappers). The absence hid a latent manifest bug (`android:name=".SrednaBGApp"` vs `com.demosten.srednabg.app.*` packages) until first on-device run

@@ -1,12 +1,17 @@
 # SrednaBG QA harness
 
-End-to-end test layer that drives the running emulator via `adb emu geo fix`,
-observes typed events parsed from `adb logcat`, and asserts on the full app
-stack: zone state machine, audio alerts, settings, sync, UI.
+End-to-end test layer that drives a running Android emulator (via `adb emu
+geo fix`) or a booted iOS Simulator (via `xcrun simctl` + the app's loopback
+debug listener), observes typed events parsed from the platform log stream,
+and asserts on the full app stack: zone state machine, audio alerts,
+settings, sync, UI.
 
-Pairs with the existing JVM unit tests (`cd android && ./gradlew :core:test
-:app:test`) — the unit tests cover algorithm math, this harness covers
-everything they don't.
+Pairs with the existing JVM / Swift unit tests (`cd android && ./gradlew
+:core:test :app:test`; `cd ios && swift test`) — the unit tests cover
+algorithm math, this harness covers everything they don't.
+
+See `qa/CLAUDE.md` for the platform-by-platform invocation matrix and
+caveats; this README sticks to the Android quick-start.
 
 ## Quick start
 
@@ -46,16 +51,21 @@ screenshots/).
 
 ## Architecture in 1 paragraph
 
-`qa/adb.py` shells out to `adb`. `qa/logcat.py` tails one filtered logcat
-subprocess and parses each line into typed events from `qa/events.py`.
-`qa/drive.py` parses GPX into a `DrivePlan` (list of `(lat, lng, t_offset_ms)`)
-and pumps `adb emu geo fix` at the right cadence. `qa/assertions.py` provides
-`expect`, `expect_in_order`, `expect_never` over the event queue.
-`qa/runner.py` runs ordered scenario steps with per-scenario log-buffer
-isolation. `qa/settings.py` flips app settings via the debug
-`DebugControlReceiver` broadcast (no DataStore proto write race).
-`qa/sync.py` triggers `DebugSyncReceiver` and inspects on-disk map bundle
-integrity.
+`qa/device.py` is the platform facade — `AndroidDevice` (delegates to
+`qa/adb.py`) or `IosDevice` (wraps `xcrun simctl` + HTTP POSTs to the app's
+debug listener); everything else talks through `device.current()`.
+`qa/log_observer.py` + the per-platform observers in `qa/devices/` tail one
+filtered log stream and parse each line into typed events from `qa/events.py`
+using the shared regex set in `qa/parsers.py`. `qa/drive.py` parses GPX into
+a `DrivePlan` (list of `(lat, lng, t_offset_ms)`) and pumps `device.geo_fix()`
+at the right cadence. `qa/assertions.py` provides `expect`, `expect_in_order`,
+`expect_never` over the event queue. `qa/runner.py` runs ordered scenario
+steps with per-scenario log-buffer isolation. `qa/settings.py` flips app
+settings via the active device (Android: `DebugControlReceiver` broadcast;
+iOS: HTTP POST to the debug listener). `qa/sync.py` triggers a sync and
+inspects on-disk map bundle integrity. `qa/logcat.py` survives as a
+compatibility shim re-exporting `LogObserver as LogcatObserver` — new code
+imports from `qa.log_observer` + `qa.parsers`.
 
 ## Adding a scenario
 
@@ -96,12 +106,14 @@ Then add the module name to `EDGE_SCENARIOS` in `qa/srednabg_qa.py`.
 
 ## Updating after app changes
 
-When `AudioAlertManager.kt` phrases change, regenerate `tts_phrases.yaml`.
-When zones.json changes, re-run `python -m qa.scenarios.bulk._generate` and
-commit the diff. When the Kotlin log format at `LocationTrackingService.kt`
-or `AudioAlertManager.kt` changes, the smoke suite's parser self-test
-fails loudly with a pointer to the affected line — fix the regex in
-`qa/logcat.py`.
+When `AudioAlertManager.kt` (or the iOS `AudioAlertManager.swift`) phrases
+change, regenerate `tts_phrases.yaml`. When zones.json changes, re-run
+`python -m qa.scenarios.bulk._generate` and commit the diff. When the log
+format changes — Kotlin `LocationTrackingService.kt` / `AudioAlertManager.kt`
+on Android, `QALog` + `ZoneTrackingService.swift` / `CLLocationTracker.swift`
+/ `AudioAlertManager.swift` on iOS — the smoke suite's parser self-test
+fails loudly with a pointer to the affected line. Fix the regex in
+`qa/parsers.py` (the shared module) and both platforms re-converge.
 
 ## Known acceptable gaps
 
@@ -109,8 +121,21 @@ fails loudly with a pointer to the affected line — fix the regex in
   successive positions (matches what the Kalman filter expects). Fine.
 - Periodic TTS uses wall-clock 30s; at 4× compression there are fewer
   periodic announcements per zone. Bulk asserts are agnostic to exact count.
-- Phone emulator only by default. AAOS support is a planned tier (different
-  LocationManager source path + Surface rendering).
+- iOS Simulator's `simctl location set` is ≈100–500 ms per point vs. <10 ms
+  for `adb emu geo fix`, so edge-case scenarios that fan fixes rapidly
+  (`gps_dropout`, `wrong_direction`, `u_turn`, `vehicle_swap`) are
+  Android-only until a faster iOS pump lands.
+- AAOS support is a planned tier (different LocationManager source path +
+  Surface rendering).
+
+## Sibling tooling
+
+`qa/srednabg_screenshots.py` (skill: `/screenshot-app`) drives the running
+emulator / Simulator to capture raw store PNGs. `qa/srednabg_frame_screenshots.py`
+(skill: `/frame-screenshots`) is an offline post-processor that composes
+Waze-style marketing frames from those raw PNGs. Both share
+`qa/screenshots/shots.yaml` but are independent of the suites above. See
+`qa/CLAUDE.md` "Store-screenshot tooling" for the workflow.
 
 ## Skill entry
 

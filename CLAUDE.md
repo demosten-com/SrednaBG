@@ -14,8 +14,8 @@ Package ID: `com.demosten.srednabg` | Bulgaria-only scope | MIT license.
 | 4 | Backend infrastructure (Docker, nginx) | Done (Planetiler-generated Bulgaria tiles, tileserver-gl verified) |
 | 5 | Android app foundation (phone UI) | Done (Compose UI, Room, Hilt, location service, audio alerts) |
 | 6 | Android Auto integration | Done in code — WIP, not in initial release (kept for developer testing on DHU/AAOS) |
-| 7 | Polish, testing, release prep | Mostly done — signing + Play listing remain (see `android/CLAUDE.md`) |
-| 8a | iOS phone port (Swift 6 + SwiftUI) | Functionally complete. App Store submission is Phase 8c. |
+| 7 | Polish, testing, release prep | Signing wired; Play listing screenshots/metadata in prep (see `android/CLAUDE.md`) |
+| 8a | iOS phone port (Swift 6 + SwiftUI) | Functionally complete (Xcode app shell, MapLibre map, Live Activity + Dynamic Island, permission gating). App Store submission is Phase 8c. |
 | 8b | CarPlay | WIP — not in initial release. Code complete (`SrednaBGCarPlay` package — scene delegate, `CPMapTemplate`, `CPNavigationSession`). **Unwired from the app target** until Apple grants `com.apple.developer.carplay-navigation` (iOS 18+ Simulator's `amfi` rejects the un-granted entitlement). Re-link path is documented in `ios/CLAUDE.md`. |
 | 8c | Phone-only App Store release | Privacy manifest, App Store metadata + screenshots, TestFlight, App Store submission. CarPlay entitlement filed once TestFlight build exists. |
 
@@ -50,6 +50,8 @@ Each subfolder owns its own `CLAUDE.md` with build commands, key files, and subf
 
 - `.github/workflows/android-build.yml` — on push/PR: core tests, assemble debug APK, lint, upload APK artifact
 - `.github/workflows/scraper.yml` — PR validation only (scrapers/** path filter) + manual trigger; production scheduling lives on the Namecheap cron (see `scrapers/CLAUDE.md` "Hosted deployment")
+
+Store assets (Play Store + App Store screenshots) are produced locally by the `/screenshot-app` skill (raw PNGs from the running emulator / Simulator) followed by `/frame-screenshots` (offline Waze-style framing). See `qa/CLAUDE.md` "Store-screenshot tooling".
 
 ## Development Workflow
 

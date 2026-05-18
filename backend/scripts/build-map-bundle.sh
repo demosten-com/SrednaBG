@@ -66,12 +66,18 @@ HAS_SPRITE=$(echo "$RAW_STYLE" | jq -r 'has("sprite")')
 # Rewrite URIs to local/relative form. We overwrite every vector source's
 # `tiles`/`url` with a {MBTILES_URI} placeholder that the runtime substitutes
 # with the on-disk mbtiles path. Sprite and glyphs go relative; sprite is
-# only emitted if the upstream style references one.
+# only emitted if the upstream style references one. The vector source
+# carries an explicit `attribution` field so MapLibre's attribution button
+# has something to render — rewriting the source to `tiles: [...]` at runtime
+# bypasses the TileJSON path that would otherwise surface the mbtiles
+# metadata's attribution row. Tile data © OpenStreetMap contributors (ODbL);
+# OpenMapTiles schema CC-BY 4.0 — both must be credited.
+ATTRIBUTION='<a href="https://www.openmaptiles.org/" target="_blank">&copy; OpenMapTiles</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>'
 echo "Rewriting style.json for local assets (light)..."
-echo "$RAW_STYLE" | jq --argjson hasSprite "$HAS_SPRITE" '
+echo "$RAW_STYLE" | jq --argjson hasSprite "$HAS_SPRITE" --arg attribution "$ATTRIBUTION" '
     .sources |= with_entries(
         if .value.type == "vector" then
-            .value = {type: "vector", url: "{MBTILES_URI}"}
+            .value = {type: "vector", url: "{MBTILES_URI}", attribution: $attribution}
         else . end
     )
     | (if $hasSprite then .sprite = "{SPRITE_URI}" else del(.sprite) end)
