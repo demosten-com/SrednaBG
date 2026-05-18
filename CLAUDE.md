@@ -44,6 +44,7 @@ Each subfolder owns its own `CLAUDE.md` with build commands, key files, and subf
 - **Offline-first** — zones.json + map bundle ship in APK / iOS bundle; network sync is optional updates
 - **Self-hosted Mac Mini** — no recurring cloud costs; 1 Gbit upload handles thousands of users
 - **Adaptive GPS polling** — 1s inside zones, 5s when far from any zone (battery)
+- **Inactivity auto-stop** — tracking shuts itself down after a settable timeout (default 3h, also 6h / Never) of no zone state transitions, so a forgotten-in-background session doesn't drain the battery. Setting key `auto_stop_hours`; QA scenarios dial it down via the DEBUG-only `debug_auto_stop_seconds` override
 - **Map bundle in APK, not PAD** — mbtiles capped at z12 to fit the APK; avoids Play Asset Delivery so F-Droid / sideload stay open
 
 ## CI/CD

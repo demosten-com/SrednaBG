@@ -28,6 +28,7 @@ public struct SettingsScreen: View {
             voiceSection
             languageSection
             vehicleSection
+            autoStopSection
             mapSection
             syncSection
             aboutSection
@@ -102,6 +103,20 @@ public struct SettingsScreen: View {
                 Text(L10n.vehicleBus).tag(VehicleType.bus)
             }
             .accessibilityIdentifier("settings-vehicle-type")
+        }
+    }
+
+    private var autoStopSection: some View {
+        Section(L10n.settingAutoStop) {
+            Picker(L10n.settingAutoStop, selection: $settings.autoStopHours) {
+                Text(L10n.autoStop3h).tag(3)
+                Text(L10n.autoStop6h).tag(6)
+                Text(L10n.autoStopNever).tag(0)
+            }
+            .accessibilityIdentifier("settings-auto-stop-hours")
+            Text(L10n.settingAutoStopDesc)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
         }
     }
 

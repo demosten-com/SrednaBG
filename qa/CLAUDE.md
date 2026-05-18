@@ -32,7 +32,7 @@ Android depends on `android/`'s debug-only `DebugSyncReceiver` and `DebugControl
 ```bash
 python qa/srednabg_qa.py --suite smoke           # ~5 min — 1 zone + 1 sync + parser self-test
 python qa/srednabg_qa.py --suite representative  # ~30 min — 6 hand-picked zones × 4 settings combos + sync set
-python qa/srednabg_qa.py --suite scenarios       # ~20 min — 7 edge cases (stop, dropout, off-ramp, U-turn, swap, …)
+python qa/srednabg_qa.py --suite scenarios       # ~20 min — 10 edge cases (stop, dropout, off-ramp, U-turn, swap, auto-stop, …)
 python qa/srednabg_qa.py --suite sync            # ~5 min — zones happy + offline; map happy + integrity
 python qa/srednabg_qa.py --suite ui              # <1 min — phone UI walk
 python qa/srednabg_qa.py --suite full-zones      # ~75 min @4× — all 72 zones, minimal asserts

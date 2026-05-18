@@ -117,6 +117,19 @@ class IntervalChanged(Event):
 
 
 @dataclass(frozen=True)
+class AutoStopped(Event):
+    """Inactivity auto-stop fired — the tracking service is shutting down
+    because no zone state transition happened within the configured threshold.
+
+    `elapsed_s` is observed idle duration; `threshold_s` is the resolved
+    threshold (auto_stop_hours * 3600 or debug_auto_stop_seconds, whichever
+    is active). Emitted on tag `SrednaBG.Loc`.
+    """
+    elapsed_s: int
+    threshold_s: int
+
+
+@dataclass(frozen=True)
 class Crash(Event):
     """Anything from logcat -b crash, or an uncaught FATAL EXCEPTION."""
     process: str

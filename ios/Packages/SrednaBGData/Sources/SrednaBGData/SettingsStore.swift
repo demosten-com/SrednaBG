@@ -12,7 +12,8 @@ import SrednaBGCore
 /// survives a process restart and is visible to the QA harness's
 /// `DebugControlReceiver` analogue (a future debug-only `URL` handler).
 ///
-/// Eight settings keys, mirroring `SettingsRepository.kt` byte-identically.
+/// Settings keys mirror `SettingsRepository.kt` byte-identically so the QA
+/// harness can drive both platforms with the same key names.
 @Observable
 @MainActor
 public final class SettingsStore {
@@ -80,6 +81,20 @@ public final class SettingsStore {
         }
     }
 
+    public var autoStopHours: Int {
+        didSet { defaults.set(autoStopHours, forKey: SettingsKey.autoStopHours) }
+    }
+
+    public var debugAutoStopSeconds: Int? {
+        didSet {
+            if let value = debugAutoStopSeconds, value > 0 {
+                defaults.set(value, forKey: SettingsKey.debugAutoStopSeconds)
+            } else {
+                defaults.removeObject(forKey: SettingsKey.debugAutoStopSeconds)
+            }
+        }
+    }
+
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
 
@@ -108,5 +123,8 @@ public final class SettingsStore {
         let storedZoom = (defaults.object(forKey: SettingsKey.mapZoomOverride) as? Double)
         self.mapZoomOverride = (storedZoom == 0) ? nil : storedZoom
         self.debugMaxSpeedOverride = defaults.object(forKey: SettingsKey.debugMaxSpeedOverride) as? Int
+        self.autoStopHours = (defaults.object(forKey: SettingsKey.autoStopHours) as? Int)
+            ?? SettingsDefaults.autoStopHours
+        self.debugAutoStopSeconds = defaults.object(forKey: SettingsKey.debugAutoStopSeconds) as? Int
     }
 }

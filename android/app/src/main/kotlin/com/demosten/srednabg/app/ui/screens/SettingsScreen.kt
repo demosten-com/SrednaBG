@@ -66,6 +66,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val announceOnlyWhenOver by viewModel.announceOnlyWhenOver.collectAsStateWithLifecycle()
     val appLanguage by viewModel.appLanguage.collectAsStateWithLifecycle()
     val vehicleType by viewModel.vehicleType.collectAsStateWithLifecycle()
+    val autoStopHours by viewModel.autoStopHours.collectAsStateWithLifecycle()
     val mapThemeMode by viewModel.mapThemeMode.collectAsStateWithLifecycle()
     val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
 
@@ -286,6 +287,58 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                         onClick = {
                             viewModel.setVehicleType(code)
                             typeExpanded = false
+                        },
+                    )
+                }
+            }
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+        // Auto-stop after inactivity
+        Text(
+            text = stringResource(R.string.setting_auto_stop),
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Text(
+            text = stringResource(R.string.setting_auto_stop_desc),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        var autoStopExpanded by remember { mutableStateOf(false) }
+        val autoStopOptions = listOf(
+            3 to stringResource(R.string.auto_stop_3h),
+            6 to stringResource(R.string.auto_stop_6h),
+            0 to stringResource(R.string.auto_stop_never),
+        )
+        val currentAutoStopLabel =
+            autoStopOptions.firstOrNull { it.first == autoStopHours }?.second ?: ""
+
+        ExposedDropdownMenuBox(
+            expanded = autoStopExpanded,
+            onExpandedChange = { autoStopExpanded = it },
+        ) {
+            OutlinedTextField(
+                value = currentAutoStopLabel,
+                onValueChange = {},
+                readOnly = true,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = autoStopExpanded) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+            )
+            ExposedDropdownMenu(
+                expanded = autoStopExpanded,
+                onDismissRequest = { autoStopExpanded = false },
+            ) {
+                autoStopOptions.forEach { (hours, label) ->
+                    DropdownMenuItem(
+                        text = { Text(label) },
+                        onClick = {
+                            viewModel.setAutoStopHours(hours)
+                            autoStopExpanded = false
                         },
                     )
                 }

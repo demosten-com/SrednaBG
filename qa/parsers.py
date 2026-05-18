@@ -30,6 +30,7 @@ import time
 from typing import Optional
 
 from .events import (
+    AutoStopped,
     DisplaySpeed,
     Event,
     IntervalChanged,
@@ -82,6 +83,9 @@ SYNC_RE = re.compile(
     r"(?P<action>[\w.]+\.debug\.SYNC_\w+) -> (?:SyncResult\.)?(?P<outcome>\w+)(?:\((?P<detail>.*)\))?"
 )
 SETTING_RE = re.compile(r"set (?P<key>\w+)=(?P<value>.+)$")
+AUTO_STOP_RE = re.compile(
+    r"auto-stop: idle for (?P<elapsed>\d+)s \(threshold=(?P<threshold>\d+)s\)"
+)
 
 
 def _now_ms() -> int:
@@ -129,6 +133,14 @@ def parse_message(tag: str, msg: str, raw: str) -> Optional[Event]:
         mi = INTERVAL_RE.search(msg)
         if mi:
             return IntervalChanged(monotonic_ms=ts, raw=raw, interval_ms=int(mi.group("i")))
+        mas = AUTO_STOP_RE.search(msg)
+        if mas:
+            return AutoStopped(
+                monotonic_ms=ts,
+                raw=raw,
+                elapsed_s=int(mas.group("elapsed")),
+                threshold_s=int(mas.group("threshold")),
+            )
         return UnparsedLog(monotonic_ms=ts, raw=raw, tag=tag)
 
     if tag == "SrednaBG.TTS":

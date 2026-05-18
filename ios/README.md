@@ -65,8 +65,11 @@ offline-map-bundle pipeline, and the CarPlay re-link checklist.
   server (`mbtiles://<abs-path>` placeholders match Android byte-for-byte).
 - Plain JSON-on-disk for zones (`ZoneStore` actor) — SwiftData was overkill
   for a tiny read-heavy dataset queried per GPS tick.
-- UserDefaults for the 8 settings keys (key names match Android exactly so
-  the QA harness's `DebugControlReceiver` analogue can be reused).
+- UserDefaults for the user-tunable settings keys — alert threshold, voice
+  toggles, language, vehicle type, map heading-up, map theme, and the
+  inactivity auto-stop window (`auto_stop_hours`, default 3h). Key names
+  match Android exactly so the QA harness's `DebugControlReceiver`
+  analogue can be reused.
 - ActivityKit for in-zone Lock Screen / Dynamic Island status.
 - iOS `ZoneDetector.update(_:vehicleType:)` honors the user's vehicle-type
   setting; Android currently hardcodes `.car` (TODO to backport — tracked

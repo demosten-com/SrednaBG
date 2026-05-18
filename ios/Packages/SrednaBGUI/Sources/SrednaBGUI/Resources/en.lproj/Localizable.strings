@@ -48,6 +48,11 @@
 "vehicleCar" = "Car";
 "vehicleTruck" = "Truck";
 "vehicleBus" = "Bus";
+"settingAutoStop" = "Automatic stop";
+"settingAutoStopDesc" = "Stops tracking after a period without zone activity.";
+"autoStop3h" = "3 hours";
+"autoStop6h" = "6 hours";
+"autoStopNever" = "Never";
 "settingMapHeadingUp" = "Map: heading up";
 "settingMapHeadingUpDesc" = "Rotate the map to your heading instead of north up.";
 "settingMapTheme" = "Map theme";

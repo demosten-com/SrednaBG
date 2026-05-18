@@ -28,6 +28,16 @@ public enum SettingsKey {
     /// `#if DEBUG` DebugActionRouter — release builds can read the field
     /// (it stays `nil`) but nothing in the app can mutate it.
     public static let debugMaxSpeedOverride = "debug_max_speed_override"
+    /// Hours of inactivity (no zone state transition) after which tracking
+    /// auto-stops to spare the battery if the user forgets the app open. `0`
+    /// disables the auto-stop. Mirrors Android `KEY_AUTO_STOP_HOURS`.
+    public static let autoStopHours = "auto_stop_hours"
+    /// QA harness only: when > 0, the inactivity timer compares against this
+    /// value in seconds instead of `auto_stop_hours * 3600`. Lets the scenario
+    /// fire in ~10 s instead of 3 h. Mirrors the `debug_max_speed_override`
+    /// gating — release builds can read the field but the `DebugActionRouter`
+    /// setter is `#if DEBUG`-only.
+    public static let debugAutoStopSeconds = "debug_auto_stop_seconds"
 }
 
 public enum SettingsDefaults {
@@ -42,6 +52,7 @@ public enum SettingsDefaults {
     public static let mapHeadingUp = false
     public static let mapThemeMode: MapThemeMode = .auto
     public static let mapZoomOverride: Double? = nil
+    public static let autoStopHours = 3
 }
 
 public enum AppLanguage: String, Sendable, CaseIterable, Codable {

@@ -32,9 +32,12 @@ import com.demosten.srednabg.core.bearingBetween
 import com.demosten.srednabg.core.haversineDistance
 import com.google.android.gms.location.FusedLocationProviderClient
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChangedBy
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -71,6 +74,7 @@ class LocationTrackingService : LifecycleService() {
         // enough to mask the next real FLP tick. Shorter than a reasonable
         // manual-stop gap so FLP resumes quickly once the feeder stops.
         private const val DEBUG_FEED_SUPPRESS_MS = 15_000L
+        private const val AUTO_STOP_CHECK_INTERVAL_MS = 60_000L
 
         private val _zoneState = MutableStateFlow<ZoneState>(ZoneState.Outside)
         val zoneState: StateFlow<ZoneState> = _zoneState
@@ -108,6 +112,14 @@ class LocationTrackingService : LifecycleService() {
     // suppress real FLP updates for DEBUG_FEED_SUPPRESS_MS; a fresh debug
     // point resets the window, stopping the feeder lets FLP resume.
     private var lastDebugFeedMs: Long = 0
+
+    // Inactivity auto-stop: monotonic ms of the most recent "activity" —
+    // tracking start or any zone state transition. Compared against
+    // SettingsRepository.autoStopHours on a 60 s timer; when exceeded, the
+    // service stops itself so a forgotten-in-background app doesn't drain
+    // the battery indefinitely.
+    @Volatile
+    private var lastActivityMs: Long = 0L
 
     private val locationListener = LocationUpdateListener { location ->
         val fromDebug = location.provider == DEBUG_PROVIDER
@@ -205,6 +217,9 @@ class LocationTrackingService : LifecycleService() {
         val previousState = detector.state
         val newState = detector.update(point)
         _zoneState.value = newState
+        if (previousState::class != newState::class) {
+            lastActivityMs = android.os.SystemClock.elapsedRealtime()
+        }
         audioAlertManager.onZoneStateChanged(previousState, newState, point.speed)
         adjustGpsInterval(newState, point)
     }
@@ -226,6 +241,34 @@ class LocationTrackingService : LifecycleService() {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION,
         )
         _isTracking.value = true
+        lastActivityMs = android.os.SystemClock.elapsedRealtime()
+
+        lifecycleScope.launch {
+            while (isActive) {
+                val debugSeconds = settingsRepository.debugAutoStopSeconds.first()
+                val checkIntervalMs = if (debugSeconds != null && debugSeconds in 1..60) {
+                    1_000L
+                } else {
+                    AUTO_STOP_CHECK_INTERVAL_MS
+                }
+                delay(checkIntervalMs)
+                val thresholdMs = if (debugSeconds != null && debugSeconds > 0) {
+                    debugSeconds * 1_000L
+                } else {
+                    val hours = settingsRepository.autoStopHours.first()
+                    if (hours <= 0) continue
+                    hours * 3_600_000L
+                }
+                val elapsedMs = android.os.SystemClock.elapsedRealtime() - lastActivityMs
+                if (elapsedMs > thresholdMs) {
+                    val elapsedS = elapsedMs / 1000
+                    val thresholdS = thresholdMs / 1000
+                    Log.i(TAG, "auto-stop: idle for ${elapsedS}s (threshold=${thresholdS}s) — stopping")
+                    stopSelf()
+                    break
+                }
+            }
+        }
 
         lifecycleScope.launch {
             Log.d(TAG, "ensureLoaded start")

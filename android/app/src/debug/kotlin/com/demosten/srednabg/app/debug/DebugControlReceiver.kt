@@ -143,6 +143,8 @@ class DebugControlReceiver : BroadcastReceiver() {
             "map_theme_mode" -> settings.setMapThemeMode(MapThemeMode.valueOf(raw.uppercase()))
             "map_zoom_override" -> settings.setMapZoomOverride(raw.toFloatOrNull())
             "debug_max_speed_override" -> settings.setDebugMaxSpeedOverride(raw.toIntOrNull())
+            "auto_stop_hours" -> settings.setAutoStopHours(raw.toInt())
+            "debug_auto_stop_seconds" -> settings.setDebugAutoStopSeconds(raw.toIntOrNull())
             "cached_zone_hash" -> settings.setCachedZoneHash(raw)
             "cached_map_hash" -> settings.setCachedMapHash(raw)
             else -> throw IllegalArgumentException("unknown setting key: $key")

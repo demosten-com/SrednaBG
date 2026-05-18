@@ -4,7 +4,7 @@ Kotlin app using Jetpack Compose, Car App Library, MapLibre, Room, Hilt. ~40 Kot
 
 ## Runtime
 
-`LocationTrackingService` (foreground, adaptive 1s/5s GPS via `FusedLocationProviderClient`) feeds the core engine (`core/`). Phone-side `ZoneMapScreen` uses MapLibre against a fully-offline bundled map; `ZoneMapViewModel.styleUri` = `MapRepository.localStyleUri()`, falling back to `BuildConfig.MAP_STYLE_URL` only when no bundle is installed. `AudioAlertManager` uses TTS with navigation audio focus for background mode. *(WIP / dev-only)* On the Android Auto surface, `NavigationScreen` renders a canvas-based zone map (`MapRenderer` + custom `MercatorProjection`) with `SpeedOverlay`; `NavigationTemplate.mapActionStrip` carries +/- zoom controls that flow into `MapRenderer.draw(zoomOverride)`.
+`LocationTrackingService` (foreground, adaptive 1s/5s GPS via `FusedLocationProviderClient`) feeds the core engine (`core/`). A second `lifecycleScope` coroutine runs the inactivity auto-stop: tracks `lastActivityMs` (monotonic, reset on tracking start and on every `ZoneState` class transition), polls `SettingsRepository.autoStopHours` every 60 s, and calls `stopSelf()` when the threshold elapses (the DEBUG-only `debug_auto_stop_seconds` override drops the check cadence to 1 s so the QA scenario fires in ~10 s instead of 3 h). Phone-side `ZoneMapScreen` uses MapLibre against a fully-offline bundled map; `ZoneMapViewModel.styleUri` = `MapRepository.localStyleUri()`, falling back to `BuildConfig.MAP_STYLE_URL` only when no bundle is installed. `AudioAlertManager` uses TTS with navigation audio focus for background mode. *(WIP / dev-only)* On the Android Auto surface, `NavigationScreen` renders a canvas-based zone map (`MapRenderer` + custom `MercatorProjection`) with `SpeedOverlay`; `NavigationTemplate.mapActionStrip` carries +/- zoom controls that flow into `MapRenderer.draw(zoomOverride)`.
 
 `ZoneRepository.syncFromServer()` returns `SyncResult` (`Updated | UpToDate | Failed`) consumed by `ZoneSyncWorker` (WorkManager, 6h) and surfaced as Snackbars + retry CTA; falls back to bundled `zones.json`. `MapSyncWorker` (6h, unmetered-only) would pull `/api/map/bundle.zip` when `map_hash` from `/api/version` changes — **currently feature-gated off** (`FeatureFlags.IS_MAP_SYNC_ENABLED = false` in `app/src/main/kotlin/com/demosten/srednabg/app/FeatureFlags.kt`) because the production backend doesn't serve the bundle endpoint or populate `map_hash` yet. The gate is enforced both at `SrednaBGApp.onCreate` (don't enqueue the periodic work) and inside `MapSyncWorker.doWork` (early-return `Result.success()` to no-op any WorkManager queue persisted from a prior install). Mirrors `FeatureFlags.isMapSyncEnabled` on iOS; flip both when the backend pipeline ships. Room (`ZoneDatabase`/`ZoneDao`/`ZoneEntity`) for local persistence. Full Hilt DI.
 
@@ -57,7 +57,7 @@ adb shell am broadcast -n com.demosten.srednabg/com.demosten.srednabg.app.debug.
     -a com.demosten.srednabg.debug.STOP_TRACKING
 ```
 
-Settable keys: `vehicle_type`, `app_language`, `voice_enabled`, `periodic_voice_updates`, `announce_only_when_over`, `alert_threshold_kmh`, `map_heading_up`, `cached_zone_hash`, `cached_map_hash`.
+Settable keys: `vehicle_type`, `app_language`, `voice_enabled`, `periodic_voice_updates`, `announce_only_when_over`, `alert_threshold_kmh`, `map_heading_up`, `auto_stop_hours`, `cached_zone_hash`, `cached_map_hash`, and the DEBUG-only `debug_auto_stop_seconds` / `debug_max_speed_override` overrides used by the QA harness.
 
 ## Drive simulation (AAOS emulator)
 

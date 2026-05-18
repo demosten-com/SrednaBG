@@ -48,6 +48,11 @@
 "vehicleCar" = "Кола";
 "vehicleTruck" = "Камион";
 "vehicleBus" = "Автобус";
+"settingAutoStop" = "Автоматично спиране";
+"settingAutoStopDesc" = "Спира проследяването след период без активност в зона.";
+"autoStop3h" = "3 часа";
+"autoStop6h" = "6 часа";
+"autoStopNever" = "Никога";
 "settingMapHeadingUp" = "Карта: по посока";
 "settingMapHeadingUpDesc" = "Върти картата по посоката на движение вместо север нагоре.";
 "settingMapTheme" = "Тема на картата";

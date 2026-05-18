@@ -75,8 +75,22 @@ public final class ZoneTrackingService {
     @ObservationIgnored
     private var consumerTask: Task<Void, Never>?
 
+    /// Periodic fallback timer: fires the auto-stop check even when no GPS
+    /// fixes are arriving (e.g. iOS defers location updates while the device
+    /// is stationary). The on-fix check inside `process(point:)` covers the
+    /// fast path; this Task guarantees the threshold eventually fires.
+    @ObservationIgnored
+    private var autoStopTask: Task<Void, Never>?
+
     @ObservationIgnored
     private var currentIntervalMs: Int = AdaptiveLocationCadence.farIntervalMs
+
+    /// Monotonic wall-clock stamp of the last "activity" — tracking start or
+    /// a zone state-case transition. Compared against `settings.autoStopHours`
+    /// on every GPS fix; when exceeded, `process(point:)` stops tracking so a
+    /// forgotten-in-background app doesn't drain the battery.
+    @ObservationIgnored
+    private var lastActivityDate: Date = .distantPast
 
     public init(
         zones: [Zone],
@@ -136,6 +150,7 @@ public final class ZoneTrackingService {
         }
 
         isTracking = true
+        lastActivityDate = Date()
 
         // Create the Live Activity *before* the consumer task starts so the
         // first GPS point lands on a live activity. Must happen here while
@@ -153,11 +168,22 @@ public final class ZoneTrackingService {
                 await self.process(point: point)
             }
         }
+
+        autoStopTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self else { return }
+                try? await Task.sleep(nanoseconds: self.autoStopCheckIntervalNs())
+                guard let strong = self as ZoneTrackingService? else { return }
+                if strong.checkAutoStop() { return }
+            }
+        }
     }
 
     public func stop() async {
         consumerTask?.cancel()
         consumerTask = nil
+        autoStopTask?.cancel()
+        autoStopTask = nil
         await provider.stop()
         await alerts.reset()
         // End the Live Activity for this session. The sink no longer carries
@@ -184,6 +210,10 @@ public final class ZoneTrackingService {
                 "onZoneStateChanged prev=\(Self.stateName(previous), privacy: .public) new=\(Self.stateName(next), privacy: .public) zone=\(zoneId, privacy: .public) speed=\(speedLabel, privacy: .public)"
             )
         }
+        if Self.stateName(previous) != Self.stateName(next) {
+            lastActivityDate = Date()
+        }
+        if checkAutoStop() { return }
 
         // Fire-and-forget the TTS pipeline so we don't block the GPS consumer
         // on synthesis (could be hundreds of ms while the audio session
@@ -204,6 +234,39 @@ public final class ZoneTrackingService {
             currentIntervalMs = desiredMs
             await provider.setIntervalMs(desiredMs)
         }
+    }
+
+    /// Returns true when auto-stop fired (caller should bail out of the
+    /// current iteration). The actual `stop()` runs in a detached task so the
+    /// hot path doesn't `await` on it.
+    private func checkAutoStop() -> Bool {
+        let thresholdS = autoStopThresholdSeconds()
+        guard thresholdS.isFinite else { return false }
+        let elapsedS = Date().timeIntervalSince(lastActivityDate)
+        guard elapsedS > thresholdS else { return false }
+        QALog.location.info(
+            "auto-stop: idle for \(Int(elapsedS), privacy: .public)s (threshold=\(Int(thresholdS), privacy: .public)s) — stopping"
+        )
+        Task { @MainActor [weak self] in await self?.stop() }
+        return true
+    }
+
+    private func autoStopThresholdSeconds() -> Double {
+        if let debugSeconds = settings.debugAutoStopSeconds, debugSeconds > 0 {
+            return Double(debugSeconds)
+        }
+        let hours = settings.autoStopHours
+        return hours > 0 ? Double(hours) * 3600 : .infinity
+    }
+
+    /// Tighter cadence (1 s) when the debug seconds override is set so the QA
+    /// scenario can complete in ~`debugSeconds + 1` s; otherwise 60 s.
+    private func autoStopCheckIntervalNs() -> UInt64 {
+        if let debugSeconds = settings.debugAutoStopSeconds,
+           debugSeconds > 0, debugSeconds <= 60 {
+            return 1_000_000_000
+        }
+        return 60_000_000_000
     }
 
     private func ensureAlwaysAuthorization() async -> LocationPermission {

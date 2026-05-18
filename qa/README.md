@@ -41,7 +41,7 @@ python -m qa.fixtures._extract_tts > qa/fixtures/tts_phrases.yaml
 | `smoke` | ~5 min | 1 zone, 1 settings combo, 1 sync, parser self-test |
 | `representative` | ~30 min | 6 hand-picked zones × 4 settings combos + sync set |
 | `full-zones` | ~75 min @ 4× | All 72 zones × constant-speed pass × 4 minimal asserts |
-| `scenarios` | ~20 min | 7 edge cases (stop, dropout, off-ramp, U-turn, swap, etc.) |
+| `scenarios` | ~20 min | 10 edge cases (stop, dropout, off-ramp, U-turn, swap, auto-stop, etc.) |
 | `sync` | ~5 min | Zones happy + offline; map happy + integrity |
 | `ui` | <1 min | Phone UI walk via mobile-mcp / adb input |
 | `nightly` | ~2 hr | representative + full-zones + scenarios + ui |

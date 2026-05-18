@@ -73,6 +73,11 @@ public enum L10n {
     public static var vehicleCar: String { loc("vehicleCar") }
     public static var vehicleTruck: String { loc("vehicleTruck") }
     public static var vehicleBus: String { loc("vehicleBus") }
+    public static var settingAutoStop: String { loc("settingAutoStop") }
+    public static var settingAutoStopDesc: String { loc("settingAutoStopDesc") }
+    public static var autoStop3h: String { loc("autoStop3h") }
+    public static var autoStop6h: String { loc("autoStop6h") }
+    public static var autoStopNever: String { loc("autoStopNever") }
     public static var settingMapHeadingUp: String { loc("settingMapHeadingUp") }
     public static var settingMapHeadingUpDesc: String { loc("settingMapHeadingUpDesc") }
     public static var settingMapTheme: String { loc("settingMapTheme") }

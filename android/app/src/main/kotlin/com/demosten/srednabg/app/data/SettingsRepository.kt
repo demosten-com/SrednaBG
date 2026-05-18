@@ -40,12 +40,19 @@ class SettingsRepository @Inject constructor(
         // App Store / Play Store harness render a meaningful number even when
         // the live calc would land at the 250 cap or near 0.
         private val KEY_DEBUG_MAX_SPEED_OVERRIDE = intPreferencesKey("debug_max_speed_override")
+        private val KEY_AUTO_STOP_HOURS = intPreferencesKey("auto_stop_hours")
+        // QA harness only: when > 0, the inactivity timer compares against
+        // this value in seconds instead of `auto_stop_hours * 3600` so the
+        // scenario can fire in ~10 s instead of 3 h. Mirrors the
+        // `debug_max_speed_override` shape (DEBUG broadcast only).
+        private val KEY_DEBUG_AUTO_STOP_SECONDS = intPreferencesKey("debug_auto_stop_seconds")
 
         const val DEFAULT_ALERT_THRESHOLD = 5
         const val DEFAULT_APP_LANGUAGE = "system"
         const val DEFAULT_VEHICLE_TYPE = "car"
         const val DEFAULT_PERIODIC_VOICE_UPDATES = true
         const val DEFAULT_ANNOUNCE_ONLY_WHEN_OVER = true
+        const val DEFAULT_AUTO_STOP_HOURS = 3
         val DEFAULT_MAP_THEME_MODE: MapThemeMode = MapThemeMode.AUTO
 
         const val LANG_SYSTEM = "system"
@@ -104,6 +111,14 @@ class SettingsRepository @Inject constructor(
         prefs[KEY_DEBUG_MAX_SPEED_OVERRIDE]
     }
 
+    val autoStopHours: Flow<Int> = dataStore.data.map { prefs ->
+        prefs[KEY_AUTO_STOP_HOURS] ?: DEFAULT_AUTO_STOP_HOURS
+    }
+
+    val debugAutoStopSeconds: Flow<Int?> = dataStore.data.map { prefs ->
+        prefs[KEY_DEBUG_AUTO_STOP_SECONDS]
+    }
+
     suspend fun setAlertThreshold(value: Int) {
         dataStore.edit { it[KEY_ALERT_THRESHOLD] = value }
     }
@@ -160,6 +175,20 @@ class SettingsRepository @Inject constructor(
                 p.remove(KEY_DEBUG_MAX_SPEED_OVERRIDE)
             } else {
                 p[KEY_DEBUG_MAX_SPEED_OVERRIDE] = value
+            }
+        }
+    }
+
+    suspend fun setAutoStopHours(value: Int) {
+        dataStore.edit { it[KEY_AUTO_STOP_HOURS] = value }
+    }
+
+    suspend fun setDebugAutoStopSeconds(value: Int?) {
+        dataStore.edit { p ->
+            if (value == null || value <= 0) {
+                p.remove(KEY_DEBUG_AUTO_STOP_SECONDS)
+            } else {
+                p[KEY_DEBUG_AUTO_STOP_SECONDS] = value
             }
         }
     }

@@ -57,6 +57,9 @@ class SettingsViewModel @Inject constructor(
     val mapThemeMode: StateFlow<MapThemeMode> = settingsRepository.mapThemeMode
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SettingsRepository.DEFAULT_MAP_THEME_MODE)
 
+    val autoStopHours: StateFlow<Int> = settingsRepository.autoStopHours
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SettingsRepository.DEFAULT_AUTO_STOP_HOURS)
+
     private val _isSyncing = MutableStateFlow(false)
     val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
 
@@ -89,6 +92,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setMapThemeMode(value: MapThemeMode) {
         viewModelScope.launch { settingsRepository.setMapThemeMode(value) }
+    }
+
+    fun setAutoStopHours(value: Int) {
+        viewModelScope.launch { settingsRepository.setAutoStopHours(value) }
     }
 
     fun syncNow() {

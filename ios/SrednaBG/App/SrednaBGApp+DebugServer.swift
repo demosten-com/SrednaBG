@@ -44,54 +44,7 @@ extension AppContainer {
         let settings = self.settings
         let tracking = self.tracking
         return DebugActionRouter.Handlers(
-            applySetting: { key, value in
-                let lower = value.lowercased()
-                let asBool = (lower == "true" || lower == "1" || lower == "yes")
-                switch key {
-                case "voice_enabled": settings.voiceEnabled = asBool
-                case "periodic_voice_updates": settings.periodicVoiceUpdates = asBool
-                case "announce_only_when_over": settings.announceOnlyWhenOver = asBool
-                case "app_language":
-                    guard let lang = AppLanguage(rawValue: value) else { return false }
-                    settings.appLanguage = lang
-                case "vehicle_type":
-                    guard let v = VehicleType(rawValue: value) else { return false }
-                    settings.vehicleType = v
-                case "alert_threshold_kmh":
-                    guard let n = Int(value) else { return false }
-                    settings.alertThresholdKmh = n
-                case "map_heading_up":
-                    settings.mapHeadingUp = asBool
-                case "map_theme_mode":
-                    // Android sends UPPERCASE enum names (AUTO/LIGHT/DARK)
-                    // because its MapThemeMode is a Kotlin enum with
-                    // uppercase names; iOS's MapThemeMode is a lowercase
-                    // rawValue String enum. Lowercase before init so the
-                    // QA harness's single `set_setting("map_theme_mode", ...)`
-                    // call works on both platforms.
-                    guard let mode = MapThemeMode(rawValue: value.lowercased()) else { return false }
-                    settings.mapThemeMode = mode
-                case "map_zoom_override":
-                    if value.isEmpty {
-                        settings.mapZoomOverride = nil
-                    } else if let zoom = Double(value) {
-                        settings.mapZoomOverride = (zoom == 0) ? nil : zoom
-                    } else {
-                        return false
-                    }
-                case "debug_max_speed_override":
-                    if value.isEmpty {
-                        settings.debugMaxSpeedOverride = nil
-                    } else if let n = Int(value) {
-                        settings.debugMaxSpeedOverride = n
-                    } else {
-                        return false
-                    }
-                default:
-                    return false
-                }
-                return true
-            },
+            applySetting: { key, value in applyDebugSetting(settings, key: key, value: value) },
             runZoneSync: { [weak self] in
                 guard let self else { return .failed }
                 switch await self.runZoneSync() {
@@ -122,5 +75,67 @@ extension AppContainer {
             }
         )
     }
+}
+
+/// Free-function form of the settings dispatch so the closure inside
+/// `debugHandlers()` stays under SwiftLint's function_body_length limit.
+@MainActor
+private func applyDebugSetting(_ settings: SettingsStore, key: String, value: String) -> Bool {
+    let lower = value.lowercased()
+    let asBool = (lower == "true" || lower == "1" || lower == "yes")
+    switch key {
+    case "voice_enabled": settings.voiceEnabled = asBool
+    case "periodic_voice_updates": settings.periodicVoiceUpdates = asBool
+    case "announce_only_when_over": settings.announceOnlyWhenOver = asBool
+    case "app_language":
+        guard let lang = AppLanguage(rawValue: value) else { return false }
+        settings.appLanguage = lang
+    case "vehicle_type":
+        guard let v = VehicleType(rawValue: value) else { return false }
+        settings.vehicleType = v
+    case "alert_threshold_kmh":
+        guard let n = Int(value) else { return false }
+        settings.alertThresholdKmh = n
+    case "map_heading_up":
+        settings.mapHeadingUp = asBool
+    case "map_theme_mode":
+        // Android sends UPPERCASE enum names (AUTO/LIGHT/DARK) because its
+        // MapThemeMode is a Kotlin enum with uppercase names; iOS's
+        // MapThemeMode is a lowercase rawValue String enum. Lowercase
+        // before init so the QA harness's single
+        // `set_setting("map_theme_mode", ...)` call works on both platforms.
+        guard let mode = MapThemeMode(rawValue: value.lowercased()) else { return false }
+        settings.mapThemeMode = mode
+    case "map_zoom_override":
+        if value.isEmpty {
+            settings.mapZoomOverride = nil
+        } else if let zoom = Double(value) {
+            settings.mapZoomOverride = (zoom == 0) ? nil : zoom
+        } else {
+            return false
+        }
+    case "debug_max_speed_override":
+        if value.isEmpty {
+            settings.debugMaxSpeedOverride = nil
+        } else if let n = Int(value) {
+            settings.debugMaxSpeedOverride = n
+        } else {
+            return false
+        }
+    case "auto_stop_hours":
+        guard let n = Int(value) else { return false }
+        settings.autoStopHours = n
+    case "debug_auto_stop_seconds":
+        if value.isEmpty {
+            settings.debugAutoStopSeconds = nil
+        } else if let n = Int(value) {
+            settings.debugAutoStopSeconds = (n > 0) ? n : nil
+        } else {
+            return false
+        }
+    default:
+        return false
+    }
+    return true
 }
 #endif
