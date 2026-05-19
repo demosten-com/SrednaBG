@@ -9,7 +9,7 @@ Package ID: `com.demosten.srednabg` | Bulgaria-only scope | MIT license.
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 1 | Monorepo scaffolding, Gradle, CI/CD | Done |
-| 2 | Zone data schema and Python scrapers | Done (`zones.json` populated with 100+ real zones) |
+| 2 | Zone data schema and Python scrapers | Done (`zones.json` ships with ~70 real zones; exact count tracked by the scraper) |
 | 3 | Core calculation engine (pure Kotlin) | Done + comprehensive tests |
 | 4 | Backend infrastructure (Docker, nginx) | Done (Planetiler-generated Bulgaria tiles, tileserver-gl verified) |
 | 5 | Android app foundation (phone UI) | Done (Compose UI, Room, Hilt, location service, audio alerts) |

@@ -14,8 +14,8 @@ android {
         applicationId = "com.demosten.srednabg"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.0.0"
+        versionCode = (project.findProperty("SREDNABG_VERSION_CODE") as String?)?.toInt() ?: 2
+        versionName = (project.findProperty("SREDNABG_VERSION_NAME") as String?) ?: "1.0.0"
         resourceConfigurations += listOf("bg", "en")
 
         // Both debug and release hit the production Namecheap host so dev

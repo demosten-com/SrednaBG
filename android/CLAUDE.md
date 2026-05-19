@@ -27,6 +27,8 @@ UI has BG + EN (`res/values/strings.xml`, `res/values-bg/strings.xml`).
 ./gradlew lint                   # Lint
 ```
 
+Pushing a tag matching `v[0-9]+.[0-9]+.[0-9]+` triggers `.github/workflows/android-release.yml`, which builds a signed APK (`-PSREDNABG_VERSION_NAME` / `-PSREDNABG_VERSION_CODE` overrides parsed from the tag; `MAJOR*10000 + MINOR*100 + PATCH`) and attaches `srednabg-<version>.apk` + `.sha256` to a GitHub Release. Required repo secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `MAP_BUNDLE_URL` (HTTPS URL the workflow `curl`s for `map-bundle.zip` — re-upload when the bundle changes).
+
 ## Offline map bundle (Android side)
 
 Bundle is produced by `backend/scripts/build-map-bundle.sh` — see `backend/CLAUDE.md` for the build pipeline.
