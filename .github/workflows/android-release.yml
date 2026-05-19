@@ -36,6 +36,13 @@ jobs:
           mkdir -p backend/data
           curl -fsSL "$MAP_BUNDLE_URL" -o backend/data/map-bundle.zip
           unzip -q backend/data/map-bundle.zip -d backend/data/map-bundle
+          # Keep in sync with `requiredMapFiles` in android/app/build.gradle.kts.
+          for f in style-light.json style-dark.json bulgaria.mbtiles; do
+            if [ ! -f "backend/data/map-bundle/$f" ]; then
+              echo "::error::map-bundle.zip is missing $f. Regenerate with 'bash backend/scripts/build-map-bundle.sh' and re-upload to \$MAP_BUNDLE_URL."
+              exit 1
+            fi
+          done
 
       - name: Decode keystore
         env:
