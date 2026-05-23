@@ -106,12 +106,15 @@ ANDROID_TAB_COORDS = {
 def navigate_tab(tab: str, channel: CueChannel, *, allow_adb_fallback: bool) -> None:
     """Switch to one of the bottom tabs.
 
-    Preferred path: emit a cue and let the Claude session do an
-    accessibility-id tap via mobile-mcp.
+    iOS path: drive the RootView's TabView selection over HTTP via the
+    in-app debug listener's `/tab` endpoint (no mobile-mcp needed). A cue
+    file is still emitted for log/debugging continuity, immediately self-
+    acked so the skill (when present) sees a closed handshake.
 
-    Fallback (Android only): tap by coordinate. iOS has no equivalent
-    fallback because simctl can't synthesize taps; the cue must be
-    acked by the skill.
+    Android paths:
+      - Preferred: emit a cue and let the Claude session do an
+        accessibility-id tap via mobile-mcp.
+      - `--allow-adb-fallback` (headless): tap by coordinate immediately.
     """
     accessibility_id = f"tab-{tab}"
     seq = channel.emit("tap_tab", {
@@ -120,7 +123,15 @@ def navigate_tab(tab: str, channel: CueChannel, *, allow_adb_fallback: bool) -> 
     })
     d = device_mod.current()
 
-    # Headless path: skip the wait, tap immediately, ack ourselves.
+    # iOS path: HTTP-drive the TabView selection. Self-ack so any tailing
+    # skill sees a closed handshake without contending for the tap.
+    if d.platform == "ios":
+        d.select_tab(tab)
+        (channel.dir / f"ack-{seq:04d}.json").write_text(
+            json.dumps({"by": "ios-http", "tab": tab}), encoding="utf-8")
+        return
+
+    # Android headless: skip the wait, tap immediately, ack ourselves.
     if d.platform == "android" and allow_adb_fallback:
         from qa import adb
         x, y = ANDROID_TAB_COORDS[tab]
@@ -129,7 +140,7 @@ def navigate_tab(tab: str, channel: CueChannel, *, allow_adb_fallback: bool) -> 
             json.dumps({"by": "adb-fallback", "tab": tab}), encoding="utf-8")
         return
 
-    # Skill-driven path: poll for an ack from the Claude session.
+    # Android skill-driven path: poll for an ack from the Claude session.
     # 30s budget — each cue costs the Claude session one model turn
     # (notification → mobile-mcp tap → ack file write). Model-turn latency
     # is typically 4-8s; 30s leaves headroom for slow tool calls without
@@ -176,12 +187,16 @@ def teardown(device) -> None:
 # ─────────────────────────── Shot execution ───────────────────────────
 
 
-def apply_shot_settings(device, shot: shots_loader.Shot) -> None:
+def apply_shot_settings(device, shot: shots_loader.Shot, run_theme: str = "light") -> None:
     if shot.map_heading_up is not None:
         device.set_setting("map_heading_up", "true" if shot.map_heading_up else "false")
-    if shot.map_theme_mode is not None:
+    # Resolve the in-app map theme. Shots that lock a specific theme (e.g.
+    # map-heading-yellow-dark) take precedence; shots that leave it unset
+    # mirror the run's --theme so OS-dark captures actually get a dark map.
+    map_theme = shot.map_theme_mode if shot.map_theme_mode is not None else run_theme
+    if shot.tab == "map" or shot.map_theme_mode is not None:
         # Android DataStore stores the enum NAME (uppercase).
-        device.set_setting("map_theme_mode", shot.map_theme_mode.upper())
+        device.set_setting("map_theme_mode", map_theme.upper())
     device.set_zoom_override(shot.map_zoom_override)
     # Force a story-friendly "Max now" — the live computation often lands at
     # the 250 cap (huge headroom) or near 0 (already over limit). The chip /
@@ -211,19 +226,28 @@ def drive_band_for_shot(seq: sequencer.ZoneSequencer, shot: shots_loader.Shot,
                         warmup: Optional[sequencer.Walker]) -> Optional[sequencer.Walker]:
     """Drive the GPS sequence required by `shot.band`.
 
-    Every in-zone shot is driven from a fresh zone entry: we briefly leave
-    the zone first so the on-device `ZoneDetector` exits → resets → re-
-    enters with a clean `entryTime`. Without this, the running-average
-    denominator (currentTime - entryTime) accumulates the wall-clock pause
-    between shots (cue/ack round-trips, locale flip, screencap, tab nav)
-    and pulls the displayed "Средна" speed well below the driven speed —
-    skill-driven iOS runs were showing ~40 km/h in a 90-limit zone simply
-    because each shot inherited several shots' worth of paused-clock time.
+    Every in-zone shot is driven from a fresh tracking session: we
+    stop+restart tracking before driving so the on-device `ZoneDetector`
+    AND `SpeedInference` (GpsPointBuilder) both reset cleanly. The
+    earlier "brief outside burst" approach injected a GPS fix at Sofia
+    immediately before fixes at the zone start, producing a hundreds-of-km
+    position jump between consecutive fixes. iOS `SpeedInference` (mirroring
+    AAOS's `LocationTrackingService.kt`) clamps the derived speed at
+    250 km/h on that jump and `max()`es it with the reported value, which
+    then dragged the in-zone running average above the limit and turned
+    every "green" shot red.
 
     `warmup` is retained in the signature for backward compatibility but
     no longer carried across shots — each in-zone shot owns its sequence.
     """
     band = shot.band
+    if not shot.tracking_active:
+        # Cold-start marketing shots (home idle, map overview): tracking
+        # must be off so the Start button / empty user-arrow state shows.
+        # Loader already enforces band==none for this combination.
+        device_mod.current().stop_tracking()
+        time.sleep(0.5)
+        return None
     if band == "none":
         return None
     if band == "outside":
@@ -231,11 +255,17 @@ def drive_band_for_shot(seq: sequencer.ZoneSequencer, shot: shots_loader.Shot,
         sequencer.drive_outside(cur_speed_kmh=shot.cur_speed_kmh, duration_s=6.0)
         return None
     if band in ("green", "yellow", "red"):
-        # Brief outside burst forces handleInZone → exitZone → handleExiting →
-        # resetTrackingState on the next update. Two seconds at the band's
-        # nominal speed are plenty to flush the prior state on both platforms.
-        sequencer.drive_outside(cur_speed_kmh=seq.zone.speed_limit_kmh,
-                                duration_s=2.0)
+        # Restart tracking to fully reset detector + GpsPointBuilder
+        # (SpeedInference, BearingFallback, GpsFilter). On iOS this routes
+        # through CLLocationTracker.stop() which calls `builder.reset()`;
+        # on Android the LocationTrackingService rebuild has the same
+        # effect.
+        d = device_mod.current()
+        d.stop_tracking()
+        time.sleep(0.5)
+        d.start_tracking()
+        time.sleep(1.5)
+        sequencer._reset_pacing()  # noqa: SLF001 — module-private by intent
         if band == "red":
             # RED needs running avg > limit. The detector integrates the
             # in-zone history, so we lift the avg by driving the preamble
@@ -339,7 +369,7 @@ def main(argv: list[str]) -> int:
                       f"{args.theme}/{lang} ===")
                 device.set_setting("app_language", lang)
                 wait_locale_applied(device)
-                apply_shot_settings(device, shot)
+                apply_shot_settings(device, shot, run_theme=args.theme)
                 navigate_tab(shot.tab, channel,
                              allow_adb_fallback=args.allow_adb_fallback)
                 time.sleep(0.5)  # UI settle

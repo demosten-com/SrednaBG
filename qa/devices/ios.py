@@ -204,6 +204,19 @@ class IosDevice(Device):
     def set_zoom_override(self, zoom: float | None) -> None:
         self.set_setting("map_zoom_override", "" if zoom is None else f"{zoom}")
 
+    def select_tab(self, name: str) -> None:
+        """Switch the RootView's TabView selection over HTTP.
+
+        Replaces the cue/ack handshake with mobile-mcp for iOS — the
+        Simulator has no `simctl`-level synthetic-tap path, so without
+        this the screenshot harness can't run standalone. Backed by
+        `DebugActionRouter.swift`'s `/tab` case which posts the
+        `DebugTabName.selectionNotification` observed by `RootView`.
+        """
+        if name not in ("home", "map", "settings"):
+            raise ValueError(f"unknown tab {name!r}; want home|map|settings")
+        self._debug_get("/tab", {"which": name})
+
     def start_tracking(self) -> None:
         self._debug_get("/tracking", {"action": "start"})
 

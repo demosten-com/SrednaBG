@@ -126,14 +126,14 @@ h3 { font-size: 18px; font-weight: 600; letter-spacing: 0; line-height: 1.3; }
   height: 64px;
 }
 .brand {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: 8px;
   color: var(--text-high);
   font-family: var(--font-display);
   font-weight: 700;
   letter-spacing: -0.01em;
   font-size: 17px;
 }
-.brand svg { width: 22px; height: 22px; color: var(--accent); }
+.brand svg { width: 28px; height: 28px; color: var(--accent); transform: translateY(2px); }
 .brand:hover { color: var(--text-high); }
 .brand .wm-sub { color: var(--text-low); font-weight: 400; margin-left: 2px; font-size: 13px; letter-spacing: 0; }
 
@@ -352,7 +352,7 @@ section { padding: 88px 0; position: relative; }
   font-weight: 600;
 }
 .step-shot {
-  aspect-ratio: 9 / 20;
+  aspect-ratio: 1206 / 2622;
   background: var(--bg-0);
   border: 1px solid var(--stroke-soft);
   border-radius: 28px;
@@ -405,7 +405,7 @@ section { padding: 88px 0; position: relative; }
   gap: 20px;
   align-items: center;
 }
-.screen-card .step-shot { aspect-ratio: 9 / 20; width: 100%; }
+.screen-card .step-shot { aspect-ratio: 1206 / 2622; width: 100%; }
 .screen-card .caption { color: var(--text-mid); font-size: 14.5px; line-height: 1.5; }
 .screen-card .caption .label {
   font-family: var(--font-mono);

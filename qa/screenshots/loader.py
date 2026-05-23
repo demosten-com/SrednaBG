@@ -75,6 +75,11 @@ class Shot:
     map_theme_mode: Optional[str]
     map_zoom_override: Optional[float]
     max_now_override: Optional[int]
+    # Whether tracking should be running for this shot. Defaults to True
+    # (almost every shot needs the live state). Set False for cold-start
+    # marketing shots like the Home idle "Start tracking" screen and the
+    # map overview without a user-location arrow.
+    tracking_active: bool = True
     frame: Optional[FrameSpec] = None
 
 
@@ -164,6 +169,15 @@ def load(path: Path = SHOTS_YAML) -> ShotConfig:
         cur_speed = sr.get("cur_speed_kmh")
         if band == "outside" and cur_speed is None:
             raise ValueError(f"{path}: shot {name!r} band=outside requires cur_speed_kmh")
+        tracking_active_raw = sr.get("tracking_active", True)
+        if not isinstance(tracking_active_raw, bool):
+            raise ValueError(
+                f"{path}: shot {name!r} tracking_active must be a bool, got {tracking_active_raw!r}"
+            )
+        if not tracking_active_raw and band != "none":
+            raise ValueError(
+                f"{path}: shot {name!r} tracking_active=false requires band=none"
+            )
         shots.append(Shot(
             nn=i,
             name=name,
@@ -175,6 +189,7 @@ def load(path: Path = SHOTS_YAML) -> ShotConfig:
             map_theme_mode=mtm,
             map_zoom_override=_as_float_or_none(sr.get("map_zoom_override")),
             max_now_override=_as_int_or_none(sr.get("max_now_override")),
+            tracking_active=tracking_active_raw,
             frame=_parse_frame_spec(sr, name, palette_keys, path),
         ))
 

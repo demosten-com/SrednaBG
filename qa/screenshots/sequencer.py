@@ -152,26 +152,54 @@ def _kmh_to_ms(v: float) -> float:
     return v / 3.6
 
 
+# Monotonic timestamp of the most-recent feed_point fired by drive_steady /
+# drive_outside, shared across calls. Lets back-to-back drive_steady calls
+# preserve the inter-fix interval — without it, the first fix of the next
+# call lands ~5ms after the last fix of the previous call, which the in-app
+# SpeedInference reads as a 250 km/h positional jump, contaminates the
+# Kalman filter, and drags the running average above the speed limit.
+_last_fix_monotonic: Optional[float] = None
+
+
+def _reset_pacing() -> None:
+    global _last_fix_monotonic
+    _last_fix_monotonic = None
+
+
+def _wait_for_next_slot(interval_s: float) -> None:
+    """Sleep so the next fix lands `interval_s` after the previous one (across
+    drive_steady / drive_outside calls). No-op on the very first fix."""
+    global _last_fix_monotonic
+    if _last_fix_monotonic is not None:
+        delay = _last_fix_monotonic + interval_s - time.monotonic()
+        if delay > 0:
+            time.sleep(delay)
+
+
+def _mark_fix() -> None:
+    global _last_fix_monotonic
+    _last_fix_monotonic = time.monotonic()
+
+
 def drive_steady(walker: Walker, *, speed_kmh: float, duration_s: float,
                  hz: float = 1.0) -> None:
     """Push `feed_point`s at `hz` for `duration_s` while walking forward.
 
     Blocks. Uses real wall-clock pacing because the in-app average-speed
-    calculator integrates against system time.
+    calculator integrates against system time. Honors the module-level
+    `_last_fix_monotonic` so consecutive drive_steady calls don't double-
+    fire (which would alias as a 250 km/h SpeedInference jump).
     """
     d = device_mod.current()
     speed_ms = _kmh_to_ms(speed_kmh)
     step_m = speed_ms / hz
     n = max(1, int(round(duration_s * hz)))
     interval_s = 1.0 / hz
-    t0 = time.monotonic()
-    for i in range(n):
-        deadline = t0 + i * interval_s
-        delay = deadline - time.monotonic()
-        if delay > 0:
-            time.sleep(delay)
+    for _ in range(n):
+        _wait_for_next_slot(interval_s)
         lat, lng = walker.position()
         d.feed_point(lat, lng, speed_ms, walker.bearing())
+        _mark_fix()
         walker.advance(step_m)
 
 
@@ -190,13 +218,10 @@ def drive_outside(*, cur_speed_kmh: float, duration_s: float = 6.0,
     step_m = speed_ms / hz
     n = max(1, int(round(duration_s * hz)))
     interval_s = 1.0 / hz
-    t0 = time.monotonic()
-    for i in range(n):
-        deadline = t0 + i * interval_s
-        delay = deadline - time.monotonic()
-        if delay > 0:
-            time.sleep(delay)
+    for _ in range(n):
+        _wait_for_next_slot(interval_s)
         d.feed_point(pos[0], pos[1], speed_ms, bearing)
+        _mark_fix()
         pos = _step(pos, bearing, step_m)
 
 

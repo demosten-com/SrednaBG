@@ -134,6 +134,22 @@ public final class DebugActionRouter {
             handlers.feedLocation(lat, lng, speed, bearing)
             return Result(status: 200, body: "ok")
 
+        case "/tab":
+            // Switch the RootView's TabView selection. Lets the screenshot
+            // harness drive tab navigation over HTTP instead of needing a
+            // mobile-mcp session to tap by accessibility id — iOS Simulator
+            // has no `simctl`-level synthetic-tap path, so without this the
+            // harness can't run standalone on iOS.
+            guard let which = params["which"], DebugTabName.isValid(which) else {
+                return Result(status: 400, body: "tab requires which in {home,map,settings}")
+            }
+            NotificationCenter.default.post(
+                name: DebugTabName.selectionNotification,
+                object: nil,
+                userInfo: [DebugTabName.userInfoKey: which]
+            )
+            return Result(status: 200, body: "ok")
+
         default:
             return Result(status: 404, body: "no such endpoint: \(path)")
         }

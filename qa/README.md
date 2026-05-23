@@ -128,16 +128,118 @@ fails loudly with a pointer to the affected line. Fix the regex in
 - AAOS support is a planned tier (different LocationManager source path +
   Surface rendering).
 
-## Sibling tooling
+## Store screenshots (Android + iOS)
 
-`qa/srednabg_screenshots.py` (skill: `/screenshot-app`) drives the running
-emulator / Simulator to capture raw store PNGs. `qa/srednabg_frame_screenshots.py`
-(skill: `/frame-screenshots`) is an offline post-processor that composes
-Waze-style marketing frames from those raw PNGs. Both share
-`qa/screenshots/shots.yaml` but are independent of the suites above. See
-`qa/CLAUDE.md` "Store-screenshot tooling" for the workflow.
+Two-step pipeline that shares `qa/screenshots/shots.yaml` but is otherwise
+independent of the QA suites above:
+
+1. **Capture** raw PNGs from a running emulator / Simulator
+   → `qa/srednabg_screenshots.py` (skill: `/screenshot-app`)
+2. **Frame** them offline into Waze-style marketing PNGs
+   → `qa/srednabg_frame_screenshots.py` (skill: `/frame-screenshots`)
+
+Outputs (both trees are `.gitignore`d):
+
+- Raw:    `web/screenshots/<platform>/NN-<platform>-<theme>-<lang>.png`
+- Framed: `web/screenshots/<platform>/framed/NN-<theme>-<lang>.png`
+
+### Prerequisites
+
+| Platform | What must be running before capture |
+|----------|-------------------------------------|
+| Android  | Booted emulator with the **debug** APK installed (`adb install -r android/app/build/outputs/apk/debug/app-debug.apk`). |
+| iOS      | macOS host, booted Simulator with the **Debug** build installed (`xcrun simctl install booted <path>.app`). Debug-only — the loopback HTTP debug listener + `QALog` are `#if DEBUG`. Simulator needs an active GUI session (Metal); no headless. |
+
+Framing additionally needs Pillow: `pip install -r qa/requirements.txt`.
+
+### Capture — `qa/srednabg_screenshots.py`
+
+```
+python qa/srednabg_screenshots.py <android|ios> [shot] [lang] [--theme T] [--allow-adb-fallback]
+```
+
+| Arg / flag | Values | Default | Meaning |
+|------------|--------|---------|---------|
+| `platform` (positional, required) | `android`, `ios` | — | Which backend to drive. |
+| `shot` (positional, optional) | NN (e.g. `3`) or name slug (e.g. `map-north-green`) | all shots | Run a single shot from `shots.yaml`. |
+| `lang` (positional, optional) | `en`, `bg` | both | Single language. May also be passed as `--lang` when you want all shots in one language without naming a shot. |
+| `--theme` | `light`, `dark` | `light` | Forces the device theme **and** is embedded in the output filename so light/dark PNGs coexist. |
+| `--allow-adb-fallback` | flag | off | Android-only, headless mode: tap the bottom-nav by coordinate when no Claude session is acking `tap_tab` cues. Off by default — the skill normally drives taps via mobile-mcp. |
+
+Shot names currently in `shots.yaml`: `home-outside-90`,
+`home-in-zone-green`, `home-in-zone-yellow`, `map-north-green`,
+`map-heading-yellow-dark`, `map-heading-yellow-light`,
+`map-heading-red-light`, `settings-top`.
+
+#### Common capture invocations
+
+```bash
+# Full set, light theme, both languages — Android
+python qa/srednabg_screenshots.py android
+
+# Full set, dark theme, both languages — iOS
+python qa/srednabg_screenshots.py ios --theme dark
+
+# All shots, BG only — Android, dark
+python qa/srednabg_screenshots.py android --theme dark --lang bg
+
+# A single shot by index, both languages — iOS
+python qa/srednabg_screenshots.py ios 4
+
+# A single shot by name + single language — Android
+python qa/srednabg_screenshots.py android map-north-green en
+
+# Both themes (run twice — theme is part of the filename, no overwrite)
+python qa/srednabg_screenshots.py android --theme light
+python qa/srednabg_screenshots.py android --theme dark
+```
+
+> To produce the **full marketing set** (both platforms × both themes ×
+> both languages), run the four `<platform> --theme <theme>` combinations.
+
+### Frame — `qa/srednabg_frame_screenshots.py`
+
+Operates only on PNGs already in `web/screenshots/<platform>/`. No
+emulator / Simulator involved.
+
+```
+python qa/srednabg_frame_screenshots.py <android|ios> [shot] [lang] [--theme T] [--force]
+```
+
+| Arg / flag | Values | Default | Meaning |
+|------------|--------|---------|---------|
+| `platform` (positional, required) | `android`, `ios` | — | Which raw tree to read from. |
+| `shot` (positional, optional) | NN or name slug | all | Render a single shot. |
+| `lang` (positional, optional) | `en`, `bg` | both | Single language. |
+| `--theme` | `light`, `dark` | `light` | Selects which raw PNG variant to frame (must match the `--theme` you captured under). |
+| `--force` | flag | off | Re-render even when the framed PNG is newer than the raw input. |
+
+#### Common framing invocations
+
+```bash
+# Frame everything captured for Android, light theme
+python qa/srednabg_frame_screenshots.py android
+
+# Frame iOS dark-theme set in both languages
+python qa/srednabg_frame_screenshots.py ios --theme dark
+
+# Re-render a single Android shot in EN (e.g. after tweaking title text)
+python qa/srednabg_frame_screenshots.py android 2 en --force
+
+# Re-render one shot across both languages and themes (two runs)
+python qa/srednabg_frame_screenshots.py android home-in-zone-green --theme light --force
+python qa/srednabg_frame_screenshots.py android home-in-zone-green --theme dark  --force
+```
+
+Iterating on a title or background color only requires re-running the
+framer — capture stays untouched. See `qa/CLAUDE.md` "Store-screenshot
+tooling" for the `shots.yaml` schema (`frame:` block, per-shot
+`background` / `title`, `chrome_mask`).
 
 ## Skill entry
 
-Invoke from a Claude Code session via `/qa-app` — it runs the orchestrator,
-parses the report, and summarizes results back to you in <200 words.
+Invoke from a Claude Code session via:
+
+- `/qa-app` — runs the orchestrator, parses the report, summarizes in <200 words.
+- `/screenshot-app` — captures raw store PNGs (wraps `srednabg_screenshots.py`).
+- `/frame-screenshots` — composes framed marketing PNGs (wraps `srednabg_frame_screenshots.py`).

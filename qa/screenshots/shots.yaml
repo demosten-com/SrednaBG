@@ -162,3 +162,20 @@ shots:
     title:
       en: "Free, open source,\nworks offline"
       bg: "Безплатно, отворен код,\nработи офлайн"
+
+  - name: home-idle
+    description: Home tab, tracking not yet started — cold-start "Start tracking" state
+    tab: home
+    band: none
+    tracking_active: false
+
+  - name: map-overview
+    description: Map tab, Bulgaria-wide overview with zones drawn but no active tracking / user arrow
+    tab: map
+    band: none
+    tracking_active: false
+    map_heading_up: false
+    # map_theme_mode intentionally unset — orchestrator mirrors the run's
+    # --theme onto the in-app map theme so dark-mode captures actually
+    # render a dark map (not just dark chrome around a light map).
+    map_zoom_override: 6.0

@@ -23,6 +23,12 @@ public struct RootView: View {
     /// `ZoneMapScreen`'s own `@State` would otherwise reset on every visit.
     @State private var mapSession = MapSessionStore()
 
+    /// Bound to `TabView`'s `selection` so the QA harness can drive tab
+    /// switches over HTTP (via `DebugActionRouter`'s `/tab` endpoint, only
+    /// observed under `#if DEBUG`). User taps update the binding directly,
+    /// matching default `TabView` behavior.
+    @State private var selectedTab: String = DebugTabName.home
+
     public init(
         tracking: ZoneTrackingService,
         settings: SettingsStore,
@@ -41,7 +47,7 @@ public struct RootView: View {
         // rebuild below) picks up the current language.
         _ = { L10n.currentLanguage = settings.appLanguage }()
 
-        return TabView {
+        return TabView(selection: $selectedTab) {
             NavigationStack {
                 HomeScreen(tracking: tracking, settings: settings)
                     .navigationTitle(L10n.navHome)
@@ -56,6 +62,7 @@ public struct RootView: View {
                     Image("HomeTabIcon", bundle: .module)
                 }
             }
+            .tag(DebugTabName.home)
             .accessibilityIdentifier("tab-home")
 
             NavigationStack {
@@ -68,14 +75,28 @@ public struct RootView: View {
                 )
             }
             .tabItem { Label(L10n.navMap, systemImage: "map") }
+            .tag(DebugTabName.map)
             .accessibilityIdentifier("tab-map")
 
             NavigationStack {
                 SettingsScreen(settings: settings, onSyncTap: onSyncTap)
             }
             .tabItem { Label(L10n.navSettings, systemImage: "gearshape") }
+            .tag(DebugTabName.settings)
             .accessibilityIdentifier("tab-settings")
         }
+        #if DEBUG
+        // QA back-channel: DebugActionRouter posts this notification on
+        // GET /tab?which=<name>. Only observed in Debug builds — release
+        // builds never load DebugControlServer so the notification can't
+        // arrive there anyway, but the modifier itself is also gated.
+        .onReceive(NotificationCenter.default.publisher(for: DebugTabName.selectionNotification)) { note in
+            if let tab = note.userInfo?[DebugTabName.userInfoKey] as? String,
+               DebugTabName.isValid(tab) {
+                selectedTab = tab
+            }
+        }
+        #endif
         // SwiftUI's Toggle uses a hardcoded system-green for its "on" state and
         // ignores the AccentColor asset. Forcing .tint here cascades to every
         // Toggle (and other tinted controls) under the tab view so they pick

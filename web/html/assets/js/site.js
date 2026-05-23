@@ -42,6 +42,7 @@
     const dict = await loadLang(code);
     document.documentElement.lang = code;
     apply(dict);
+    applyMediaSources(code);
     document.querySelectorAll(".lang-pill button").forEach((b) => {
       b.setAttribute("aria-pressed", String(b.dataset.lang === code));
     });
@@ -50,6 +51,38 @@
       const u = new URL(location.href); u.searchParams.set("lang", code);
       history.pushState({}, "", u);
     }
+  }
+
+  /* ------------------------- per-visitor platform screenshots (no storage) */
+  function detectPlatformBucket() {
+    const ua = navigator.userAgent || "";
+    const uad = navigator.userAgentData;
+    const uadPlat = (uad && uad.platform ? uad.platform : "").toLowerCase();
+    const navPlat = (navigator.platform || "").toLowerCase();
+    const isIPad = navPlat === "macintel" && (navigator.maxTouchPoints || 0) > 1;
+    const isIOS = /iPhone|iPad|iPod/.test(ua) || isIPad || uadPlat === "ios";
+    const isMac = !isIOS && (/Macintosh|Mac OS X/.test(ua) || uadPlat === "macos");
+    const isAndroid = /Android/.test(ua) || uadPlat === "android";
+    const isCrOS = /CrOS/.test(ua) || uadPlat === "chrome os" || uadPlat === "chromeos";
+    if (isIOS || isMac) return "ios";
+    if (isAndroid || isCrOS) return "android";
+    return "random";
+  }
+  function applyMediaSources(lang) {
+    const bucket = detectPlatformBucket();
+    const imgs = document.querySelectorAll(".step-shot img, .screen-card img");
+    imgs.forEach((img) => {
+      const src = img.getAttribute("src") || "";
+      const m = src.match(/screenshots\/(?:(?:android|ios)\/)?(?:(?:bg|en)\/)?([^\/]+\.png)$/i);
+      if (!m) return;
+      const filename = m[1];
+      let plat = img.dataset.platform;
+      if (!plat) {
+        plat = bucket === "random" ? (Math.random() < 0.5 ? "ios" : "android") : bucket;
+        img.dataset.platform = plat;
+      }
+      img.setAttribute("src", "screenshots/" + plat + "/" + lang + "/" + filename);
+    });
   }
 
   /* ------------------------------- screenshot onerror -> dark fallback tile */
