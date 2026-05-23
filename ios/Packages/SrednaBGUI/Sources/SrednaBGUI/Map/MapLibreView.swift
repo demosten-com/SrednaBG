@@ -51,13 +51,19 @@ struct MapLibreView: UIViewRepresentable {
         let mapView = MLNMapView(frame: .zero, styleURL: styleURL)
         mapView.delegate = context.coordinator
         mapView.compassView.isHidden = false
-        // Anchor the compass at bottom-right above the controls toolbar so it
-        // doesn't sit under the in-zone StatusChip when heading-up follow
-        // rotates the map (chip overlays the default top-right corner).
-        mapView.compassViewPosition = .bottomRight
-        mapView.compassViewMargins = CGPoint(x: 8, y: 76)
         mapView.logoView.isHidden = false
         mapView.attributionButton.isHidden = false
+        // Stack MapLibre chrome above the bottom controls pill: wordmark at
+        // bottom-left, (i) attribution at bottom-right on the same
+        // horizontal line, native compass lifted above the (i) so it
+        // doesn't sit under the in-zone StatusChip when heading-up rotates
+        // the map (chip overlays the default top-right corner).
+        mapView.logoViewPosition = .bottomLeft
+        mapView.logoViewMargins = CGPoint(x: 8, y: 76)
+        mapView.attributionButtonPosition = .bottomRight
+        mapView.attributionButtonMargins = CGPoint(x: 8, y: 76)
+        mapView.compassViewPosition = .bottomRight
+        mapView.compassViewMargins = CGPoint(x: 8, y: 120)
         mapView.showsUserLocation = false
         // MapLibre reads the enclosing UIViewController's (deprecated)
         // `automaticallyAdjustsScrollViewInsets` unless we opt out here —

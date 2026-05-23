@@ -42,12 +42,14 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -63,6 +65,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -218,12 +221,23 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
                     .bearing(initialCameraSnapshot?.bearing ?: 0.0)
                     .tilt(initialCameraSnapshot?.tilt ?: 0.0)
                     .build()
-                // Anchor the compass at bottom-right above the zoom FAB column
-                // so it doesn't sit under the in-zone status chip when heading-up
-                // follow rotates the map.
+                // Stack MapLibre chrome above our bottom FAB columns:
+                // wordmark at bottom-left, (i) attribution at bottom-right
+                // on the same horizontal line, native compass lifted above
+                // the (i) so it doesn't sit under the in-zone status chip
+                // when heading-up follow rotates the map.
                 val density = context.resources.displayMetrics.density
+                map.uiSettings.setLogoMargins(
+                    (8 * density).toInt(), 0, 0, (120 * density).toInt(),
+                )
+                map.uiSettings.attributionGravity = Gravity.BOTTOM or Gravity.END
+                map.uiSettings.setAttributionMargins(
+                    0, 0, (8 * density).toInt(), (120 * density).toInt(),
+                )
                 map.uiSettings.compassGravity = Gravity.BOTTOM or Gravity.END
-                map.uiSettings.setCompassMargins(0, 0, (16 * density).toInt(), (124 * density).toInt())
+                map.uiSettings.setCompassMargins(
+                    0, 0, (8 * density).toInt(), (168 * density).toInt(),
+                )
                 map.addOnMoveListener(object : MapLibreMap.OnMoveListener {
                     override fun onMoveBegin(detector: org.maplibre.android.gestures.MoveGestureDetector) {}
                     override fun onMove(detector: org.maplibre.android.gestures.MoveGestureDetector) {
@@ -421,31 +435,38 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
             modifier = Modifier.fillMaxSize(),
         )
 
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            SmallFloatingActionButton(
-                onClick = {
-                    mapView.getMapAsync { it.animateCamera(CameraUpdateFactory.zoomIn()) }
-                },
+        // SmallFloatingActionButton applies Material's 48dp min-interactive
+        // padding around its 40dp visual; the left-side custom FABs don't,
+        // so without this opt-out the +/- column is 16dp taller than the
+        // compass/recenter column and the visual gap between + and - is
+        // doubled. Disable enforcement here to match the left side.
+        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Icon(
-                    imageVector = Icons.Filled.Add,
-                    contentDescription = stringResource(R.string.map_zoom_in),
-                )
-            }
-            SmallFloatingActionButton(
-                onClick = {
-                    mapView.getMapAsync { it.animateCamera(CameraUpdateFactory.zoomOut()) }
-                },
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Remove,
-                    contentDescription = stringResource(R.string.map_zoom_out),
-                )
+                SmallFloatingActionButton(
+                    onClick = {
+                        mapView.getMapAsync { it.animateCamera(CameraUpdateFactory.zoomIn()) }
+                    },
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = stringResource(R.string.map_zoom_in),
+                    )
+                }
+                SmallFloatingActionButton(
+                    onClick = {
+                        mapView.getMapAsync { it.animateCamera(CameraUpdateFactory.zoomOut()) }
+                    },
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Remove,
+                        contentDescription = stringResource(R.string.map_zoom_out),
+                    )
+                }
             }
         }
 
