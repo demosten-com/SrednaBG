@@ -47,6 +47,7 @@ test-data/
 
 # QA harness artifacts — reports + generated GPX fixtures (the YAMLs are checked in)
 qa/reports/
+qa/out/
 qa/fixtures/gpx/
 qa/fixtures/tts_phrases.yaml
 
