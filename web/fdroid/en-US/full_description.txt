@@ -1,0 +1,28 @@
+SrednaBG shows your real-time running average speed inside Bulgaria's section-control camera zones — and tells you the maximum speed you can sustain for the rest of the zone without going over the limit.
+
+Free. Open source. Bulgaria only.
+
+WHAT IT DOES
+
+• Running average, live — The moment you enter a zone, your running average becomes the hero number. No lag, no jitter. Updates every second.
+
+• Max now — Shows the top speed you can drive for the rest of the zone without breaking the limit. Waze tells you the zone exists; SrednaBG tells you what to do about it.
+
+• Green / amber / red at a glance — The screen color tracks your state. Green: within limit. Amber: careful, slow down. Red: already over.
+
+• Voice alerts in Bulgarian and English — Keep your eyes on the road. SrednaBG speaks zone entries, exits, and slowdown warnings in the language you choose.
+
+• Works fully offline — The Bulgaria map and zone list are bundled inside the app. No internet needed in the car. Updates arrive quietly when you're on Wi-Fi.
+
+• Alongside Waze, or instead of it — Run SrednaBG as a full navigator, or let it sit quietly behind Waze / Google Maps — you'll hear its voice when it matters.
+
+PRIVACY
+
+• No cookies, no trackers anywhere.
+• No account, no email, no signup. Install and drive.
+• No ads. No in-app purchases. Free forever.
+• No third-party SDKs. No Google Analytics. No Firebase.
+• Your location never leaves your phone.
+
+Open source — MIT License.
+Source code: https://github.com/demosten-com/SrednaBG

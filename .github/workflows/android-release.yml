@@ -31,15 +31,37 @@ jobs:
 
       - name: Download offline map bundle
         env:
-          MAP_BUNDLE_URL: ${{ secrets.MAP_BUNDLE_URL }}
+          MAP_BUNDLE_URL_OVERRIDE: ${{ secrets.MAP_BUNDLE_URL }}
+          TAG: ${{ github.ref_name }}
         run: |
           mkdir -p backend/data
-          curl -fsSL "$MAP_BUNDLE_URL" -o backend/data/map-bundle.zip
+          CHECKSUMS=web/fdroid/map-bundle-checksums.txt
+
+          if [ -n "$MAP_BUNDLE_URL_OVERRIDE" ]; then
+            URL="$MAP_BUNDLE_URL_OVERRIDE"
+            EXPECTED_SHA=""
+            echo "::notice::Using MAP_BUNDLE_URL override (no checksum check)"
+          else
+            URL="https://srednabg.com/assets/map-bundle-${TAG}.zip"
+            EXPECTED_SHA="$(awk -v t="$TAG" '$0 !~ /^#/ && $2 == t {print $1; exit}' "$CHECKSUMS" || true)"
+            if [ -z "$EXPECTED_SHA" ]; then
+              echo "::error::No SHA-256 for $TAG in $CHECKSUMS. Run 'bash web/fdroid/scripts/publish-map-bundle.sh $TAG' before tagging."
+              exit 1
+            fi
+          fi
+
+          echo "Downloading $URL"
+          curl -fsSL "$URL" -o backend/data/map-bundle.zip
+
+          if [ -n "$EXPECTED_SHA" ]; then
+            echo "$EXPECTED_SHA  backend/data/map-bundle.zip" | sha256sum -c -
+          fi
+
           unzip -q backend/data/map-bundle.zip -d backend/data/map-bundle
           # Keep in sync with `requiredMapFiles` in android/app/build.gradle.kts.
           for f in style-light.json style-dark.json bulgaria.mbtiles; do
             if [ ! -f "backend/data/map-bundle/$f" ]; then
-              echo "::error::map-bundle.zip is missing $f. Regenerate with 'bash backend/scripts/build-map-bundle.sh' and re-upload to \$MAP_BUNDLE_URL."
+              echo "::error::map-bundle.zip is missing $f. Regenerate with 'bash backend/scripts/build-map-bundle.sh' and re-upload."
               exit 1
             fi
           done

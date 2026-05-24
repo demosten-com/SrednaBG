@@ -14,7 +14,7 @@ Package ID: `com.demosten.srednabg` | Bulgaria-only scope | MIT license.
 | 4 | Backend infrastructure (Docker, nginx) | Done (Planetiler-generated Bulgaria tiles, tileserver-gl verified) |
 | 5 | Android app foundation (phone UI) | Done (Compose UI, Room, Hilt, location service, audio alerts) |
 | 6 | Android Auto integration | Done in code — WIP, not in initial release (kept for developer testing on DHU/AAOS) |
-| 7 | Polish, testing, release prep | Signing wired; Play listing screenshots/metadata in prep (see `android/CLAUDE.md`) |
+| 7 | Polish, testing, release prep | Signing wired; signed-APK release workflow shipping `srednabg-<version>.apk` + `.sha256` to GitHub Releases; F-Droid submission drafted in `web/fdroid/` (metadata, locale descriptions, SHA-pinned map-bundle pipeline) — pending submission. Play listing screenshots/metadata in prep (see `android/CLAUDE.md`) |
 | 8a | iOS phone port (Swift 6 + SwiftUI) | Functionally complete (Xcode app shell, MapLibre map, Live Activity + Dynamic Island, permission gating). App Store submission is Phase 8c. |
 | 8b | CarPlay | WIP — not in initial release. Code complete (`SrednaBGCarPlay` package — scene delegate, `CPMapTemplate`, `CPNavigationSession`). **Unwired from the app target** until Apple grants `com.apple.developer.carplay-navigation` (iOS 18+ Simulator's `amfi` rejects the un-granted entitlement). Re-link path is documented in `ios/CLAUDE.md`. |
 | 8c | Phone-only App Store release | Privacy manifest, App Store metadata + screenshots, TestFlight, App Store submission. CarPlay entitlement filed once TestFlight build exists. |
@@ -28,7 +28,7 @@ Each subfolder owns its own `CLAUDE.md` with build commands, key files, and subf
 - `backend/` — Docker stack (tileserver-gl + nginx) + offline map bundle builder. See `backend/CLAUDE.md`.
 - `qa/` — End-to-end QA harness driving the emulator via adb. See `qa/CLAUDE.md`.
 - `ios/` — SwiftPM monorepo (Swift 6) + Xcode app shell. See `ios/CLAUDE.md`.
-- `web/` — Static marketing site for `srednabg.com`; same Namecheap host runs the scraper cron and serves `/api/*`. See `web/CLAUDE.md`.
+- `web/` — Static marketing site for `srednabg.com`; same Namecheap host runs the scraper cron and serves `/api/*`. Also hosts `/assets/map-bundle-<tag>.zip` for the release workflow and houses the F-Droid submission draft in `web/fdroid/`. See `web/CLAUDE.md`.
 
 ## Three-Tier Data Flow
 
@@ -50,7 +50,10 @@ Each subfolder owns its own `CLAUDE.md` with build commands, key files, and subf
 ## CI/CD
 
 - `.github/workflows/android-build.yml` — on push/PR: core tests, assemble debug APK, lint, upload APK artifact
+- `.github/workflows/android-release.yml` — on `v*.*.*` tag: signed release APK + `.sha256` published to a GitHub Release. Pulls the offline map bundle from `srednabg.com/assets/map-bundle-<tag>.zip` and SHA-256-pins it against `web/fdroid/map-bundle-checksums.txt`; the `MAP_BUNDLE_URL` secret is an optional override that skips the pin. See `android/CLAUDE.md` for the release tag → versionCode mapping.
 - `.github/workflows/scraper.yml` — PR validation only (scrapers/** path filter) + manual trigger; production scheduling lives on the Namecheap cron (see `scrapers/CLAUDE.md` "Hosted deployment")
+
+Per-locale F-Droid release notes go in `web/fdroid/{en-US,bg}/changelogs/<versionCode>.txt`.
 
 Store assets (Play Store + App Store screenshots) are produced locally by the `/screenshot-app` skill (raw PNGs from the running emulator / Simulator) followed by `/frame-screenshots` (offline Waze-style framing). See `qa/CLAUDE.md` "Store-screenshot tooling".
 

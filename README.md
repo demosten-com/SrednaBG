@@ -2,6 +2,16 @@
 
 Free, open-source Android + iOS phone app for tracking average speed in Bulgaria's section control camera zones. Android Auto and CarPlay surfaces exist in the codebase as WIP and are not part of the initial release.
 
+## Install
+
+- F-Droid: _coming soon — submission in review_
+- GitHub Releases: <https://github.com/demosten-com/SrednaBG/releases>
+
+- **SourceCode:** <https://github.com/demosten-com/SrednaBG>
+- **IssueTracker:** <https://github.com/demosten-com/SrednaBG/issues>
+- **License:** [MIT](LICENSE)
+- **Website:** <https://srednabg.com>
+
 ## Quick Start
 
 ```bash

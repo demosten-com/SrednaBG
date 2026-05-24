@@ -1,0 +1,32 @@
+Categories:
+  - Navigation
+  - Sports & Health
+License: MIT
+AuthorName: Stanimir Karoserov
+AuthorEmail: demosten@gmail.com
+WebSite: https://srednabg.com
+SourceCode: https://github.com/demosten-com/SrednaBG
+IssueTracker: https://github.com/demosten-com/SrednaBG/issues
+AutoName: SrednaBG
+
+RepoType: git
+Repo: https://github.com/demosten-com/SrednaBG.git
+
+Builds:
+  - versionName: 1.0.2
+    versionCode: 10002
+    commit: v1.0.2
+    subdir: android
+    gradle:
+      - yes
+    prebuild:
+      - mkdir -p ../backend/data
+      - curl -fsSL -o ../backend/data/map-bundle.zip https://srednabg.com/assets/map-bundle-v1.0.2.zip
+      - echo "0513907ed5108c34a5a13646f5c4dc8968c44f372587bef888543c80b757bcd1  ../backend/data/map-bundle.zip" | sha256sum -c -
+      - unzip -q ../backend/data/map-bundle.zip -d ../backend/data/map-bundle
+    output: app/build/outputs/apk/release/app-release-unsigned.apk
+
+AutoUpdateMode: Version v%v
+UpdateCheckMode: Tags ^v[0-9.]+$
+CurrentVersion: 1.0.2
+CurrentVersionCode: 10002
