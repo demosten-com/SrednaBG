@@ -80,8 +80,8 @@ CarPlay is intentionally unwired from the app target for the first release. The 
 
 - **Privacy manifest**: add `ios/SrednaBG/PrivacyInfo.xcprivacy` declaring `NSPrivacyTracking = false`, an empty `NSPrivacyCollectedDataTypes` array, and `NSPrivacyAccessedAPITypes` reasons for `UserDefaults` (`CA92.1`), file timestamp (`C617.1`) if used. MapLibre + ZIPFoundation already ship their own.
 - **App Store metadata** (BG primary, EN secondary): name `SrednaBG`, subtitle (≤30 char) `Секционен контрол`, promotional text, description, keywords (mirror `android/CLAUDE.md` line 80), Support URL + Privacy Policy URL pointing at `srednabg.com`, category Navigation primary / Travel secondary.
-- **Screenshots**: 6.9" iPhone (1320×2868), 6.5" iPhone (1284×2778), 13" iPad (2064×2752 — `TARGETED_DEVICE_FAMILY = "1,2"`). Capture from Simulator running the app.
-- **Version bump**: `MARKETING_VERSION` is `0.1.0` — bump to `1.0.0` for first TestFlight build. `CURRENT_PROJECT_VERSION` increments per upload.
+- **Screenshots**: 6.9" iPhone (1320×2868) — the only required size since `TARGETED_DEVICE_FAMILY = "1"` (iPhone-only; iPad was dropped pre-1.0.2 to keep the launch scope to in-car phone use). Capture 2–6 from the Simulator running the app. 6.5" iPhone is no longer required and 13" iPad doesn't apply.
+- **Version bump**: `MARKETING_VERSION` is `1.0.2` across all targets (main app + widgets + tests + UI tests), matching the Android version. `CURRENT_PROJECT_VERSION` is `1` and increments per upload to App Store Connect.
 - **First TestFlight upload**: `Product → Archive` → Organizer → Distribute → App Store Connect. Beta App Review takes <24h for first build.
 
 ### Phase 8b — CarPlay re-enable (post-grant)

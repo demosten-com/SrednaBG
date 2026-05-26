@@ -63,7 +63,9 @@ frame:
     red:    "#EF5350"
   canvas:
     android: [1080, 1920]
-    ios:     [1290, 2796]
+    # iOS: App Store Connect 6.7" iPhone slot — must be exactly 1284 × 2778
+    # (or one of the other three listed sizes). 1290 × 2796 is rejected.
+    ios:     [1284, 2778]
   # Paint a solid band over the OS status bar at the top of each raw
   # screenshot before rounded-corner cropping. Band color is sampled at
   # render time from the bottom tab bar (uniform per theme, reliable on
