@@ -83,6 +83,7 @@ CarPlay is intentionally unwired from the app target for the first release. The 
 - **Screenshots**: 6.9" iPhone (1320×2868) — the only required size since `TARGETED_DEVICE_FAMILY = "1"` (iPhone-only; iPad was dropped pre-1.0.2 to keep the launch scope to in-car phone use). Capture 2–6 from the Simulator running the app. 6.5" iPhone is no longer required and 13" iPad doesn't apply.
 - **Version bump**: `MARKETING_VERSION` is `1.0.2` across all targets (main app + widgets + tests + UI tests), matching the Android version. `CURRENT_PROJECT_VERSION` is `1` and increments per upload to App Store Connect.
 - **First TestFlight upload**: `Product → Archive` → Organizer → Distribute → App Store Connect. Beta App Review takes <24h for first build.
+- **MapLibre dSYM**: the `maplibre-gl-native-distribution` XCFramework ships no dSYM (stripped binary, symbol table only), so App Store Connect would warn "archive did not include a dSYM for MapLibre.framework". The `Package MapLibre dSYM` Run Script phase on the app target (last in `buildPhases`) regenerates one with `dsymutil` from the embedded binary — UUID matches what ships, symbolicates MapLibre frames at function granularity (no line numbers). Gated to the Archive action (`[ "${ACTION}" = "install" ]`), so it's a no-op for Debug/Run builds; lands the dSYM in the archive's `dSYMs/` automatically.
 
 ### Phase 8b — CarPlay re-enable (post-grant)
 

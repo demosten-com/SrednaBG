@@ -14,6 +14,11 @@
 		<string>bg</string>
 		<string>en</string>
 	</array>
+	<!-- SrednaBG uses only standard HTTPS/TLS (sync to srednabg.com); no custom
+	     or proprietary cryptography. Declaring exempt encryption here auto-clears
+	     App Store Connect's "Missing Compliance" on every upload. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<!-- MapLibre fetches vector tiles from our loopback HTTP tile server at
 	     http://127.0.0.1:<ephemeral>. Default ATS blocks HTTP; this exception
 	     allows only local-network HTTP traffic. No arbitrary-internet HTTP
