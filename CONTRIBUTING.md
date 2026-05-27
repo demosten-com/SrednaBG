@@ -17,7 +17,7 @@ Open a GitHub issue with:
 - **Logs** if you have them. On Android: `adb logcat -s SrednaBG:V LocationTrackingService:V`. On iOS: Console.app filtered to the `SrednaBG` subsystem.
 - **Zone-data problems** (wrong limit, wrong endpoints, missing zone, decommissioned zone) are especially useful — please cite the BG TOLL or other source if you have one.
 
-Security issues: please do **not** file a public issue. Email demosten@gmail.com instead and include SrednaBG in the subject.
+Security issues: please do **not** file a public issue. See [SECURITY.md](SECURITY.md) for how to report a vulnerability privately.
 
 ## Suggesting features
 
