@@ -1,0 +1,3 @@
+v1.0.3 — Maintenance release.
+
+• Bug fixes and stability improvements.

@@ -11,7 +11,7 @@ import SwiftUI
 public struct AboutScreen: View {
     public let appVersion: String
 
-    public init(appVersion: String = "0.1.0") {
+    public init(appVersion: String = Bundle.appShortVersion) {
         self.appVersion = appVersion
     }
 

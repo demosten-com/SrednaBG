@@ -52,6 +52,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.demosten.srednabg.BuildConfig
 import com.demosten.srednabg.R
 import com.demosten.srednabg.app.data.SyncResult
 import com.demosten.srednabg.app.ui.viewmodel.SettingsViewModel
@@ -434,7 +435,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = stringResource(R.string.about_version, "0.1.0"),
+            text = stringResource(R.string.about_version, BuildConfig.VERSION_NAME),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

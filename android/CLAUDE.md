@@ -29,6 +29,8 @@ UI has BG + EN (`res/values/strings.xml`, `res/values-bg/strings.xml`).
 
 Pushing a tag matching `v[0-9]+.[0-9]+.[0-9]+` triggers `.github/workflows/android-release.yml`, which builds a signed APK (`-PSREDNABG_VERSION_NAME` / `-PSREDNABG_VERSION_CODE` overrides parsed from the tag; `MAJOR*10000 + MINOR*100 + PATCH`) and attaches `srednabg-<version>.apk` + `.sha256` to a GitHub Release.
 
+Release builds set `ndk { debugSymbolLevel = "SYMBOL_TABLE" }` so the AAB bundles a symbol table for MapLibre's `libmapbox-gl.so` — Play Console can then symbolicate native crashes/ANRs without the "missing debug symbols" upload warning. `SYMBOL_TABLE` keeps the size hit small (function names only); `FULL` would also embed line numbers but balloons the AAB.
+
 Map bundle fetch: the workflow downloads `https://srednabg.com/assets/map-bundle-<tag>.zip` and verifies it against the SHA-256 listed for that tag in `web/fdroid/map-bundle-checksums.txt`. Before tagging, run `bash web/fdroid/scripts/publish-map-bundle.sh <tag>` locally to rebuild + hash the bundle and commit the updated checksums file (the script also prints the SCP command for manual upload to Namecheap). The optional `MAP_BUNDLE_URL` repo secret overrides the URL and skips the hash check — useful for hotfix tags where re-uploading the bundle is impractical.
 
 Required repo secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`. Optional: `MAP_BUNDLE_URL` (override).

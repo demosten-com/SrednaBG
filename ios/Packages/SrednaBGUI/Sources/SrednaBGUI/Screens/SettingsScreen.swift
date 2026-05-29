@@ -156,7 +156,7 @@ public struct SettingsScreen: View {
 
     private var aboutSection: some View {
         Section {
-            Text(String(format: L10n.aboutVersion, "0.1.0"))
+            Text(String(format: L10n.aboutVersion, Bundle.appShortVersion))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
             Text(L10n.aboutLicense)

@@ -7,9 +7,16 @@ seriously and handled on a best-effort basis by the maintainers.
 
 **Please do not open a public GitHub issue for security problems.**
 
-Email **demosten@gmail.com** with `SrednaBG security` in the subject line.
-If you'd like to encrypt or verify before sending sensitive details, say so in
-a first short email and we'll arrange a channel.
+The preferred way to report is GitHub's **private vulnerability reporting**:
+go to the repository's [**Security** tab → **Report a vulnerability**](https://github.com/demosten-com/SrednaBG/security/advisories/new),
+or use the button at <https://github.com/demosten-com/SrednaBG/security/advisories>.
+This keeps the report private to the maintainers and lets us coordinate a fix
+and advisory in one place.
+
+If you'd rather use email, that works too: write to **demosten@gmail.com** with
+`SrednaBG security` in the subject line. If you'd like to encrypt or verify
+before sending sensitive details, say so in a first short email and we'll
+arrange a channel.
 
 Please include, where you can:
 

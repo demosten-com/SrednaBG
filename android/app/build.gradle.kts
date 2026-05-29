@@ -14,8 +14,8 @@ android {
         applicationId = "com.demosten.srednabg"
         minSdk = 26
         targetSdk = 35
-        versionCode = (project.findProperty("SREDNABG_VERSION_CODE") as String?)?.toInt() ?: 10002
-        versionName = (project.findProperty("SREDNABG_VERSION_NAME") as String?) ?: "1.0.2"
+        versionCode = (project.findProperty("SREDNABG_VERSION_CODE") as String?)?.toInt() ?: 10003
+        versionName = (project.findProperty("SREDNABG_VERSION_NAME") as String?) ?: "1.0.3"
         resourceConfigurations += listOf("bg", "en")
 
         // Both debug and release hit the production Namecheap host so dev
@@ -50,6 +50,13 @@ android {
             )
             if (hasReleaseKeystore) {
                 signingConfig = signingConfigs.getByName("release")
+            }
+            // Bundle a symbol table for native libs (MapLibre's libmapbox-gl.so) into the
+            // AAB so Play Console can symbolicate native crashes/ANRs. Without this, Play
+            // warns about missing debug symbols on every upload. SYMBOL_TABLE keeps the
+            // size hit small (vs. FULL, which also embeds line numbers).
+            ndk {
+                debugSymbolLevel = "SYMBOL_TABLE"
             }
         }
     }
