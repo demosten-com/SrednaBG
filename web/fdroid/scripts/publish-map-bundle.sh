@@ -43,7 +43,7 @@ if [[ ! -x "$BUILD_SCRIPT" && ! -f "$BUILD_SCRIPT" ]]; then
     exit 1
 fi
 
-echo "==> Building map bundle (this requires tileserver-gl running on localhost)"
+echo "==> Building map bundle (generates tiles with Planetiler; needs Java 21+, no tileserver-gl/Docker)"
 bash "$BUILD_SCRIPT"
 
 if [[ ! -f "$SRC_ZIP" ]]; then

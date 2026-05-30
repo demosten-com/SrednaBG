@@ -48,14 +48,14 @@ and F-Droid; there are no backports to older versions.
 In scope:
 
 - The Android and iOS phone apps in this repository.
-- The backend stack (`backend/` — tileserver-gl + nginx) and the scraper
+- The backend map-bundle build tooling (`backend/`) and the scraper
   pipeline (`scrapers/`) as published here.
 - Integrity of the zone data (`zones.json`) and the offline map bundle as
   shipped in releases.
 
 Out of scope / report upstream instead:
 
-- Vulnerabilities in third-party dependencies (MapLibre, tileserver-gl, Gradle
+- Vulnerabilities in third-party dependencies (MapLibre, Planetiler, Gradle
   plugins, Python/Swift packages) — please report those to the respective
   upstream projects. We'll still want to know so we can bump the dependency.
 - The author's self-hosted infrastructure (the Mac Mini host, `srednabg.com`

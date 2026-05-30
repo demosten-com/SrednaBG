@@ -38,14 +38,8 @@ cd scrapers && pip install -r requirements-dev.txt && python -m pytest
 # Generate a drive-through GPX for emulator testing (defaults to AM Trakiya east @ 130 km/h)
 cd scrapers && python scripts/make_test_route.py --out /tmp/route.gpx
 
-# Generate Bulgaria map tiles (requires Docker; capped at z5–z12 so the mbtiles fits in the APK)
-bash backend/scripts/download-tiles.sh
-
-# Start backend (tileserver-gl + nginx) — serves zones, tiles, and /api/map/bundle.zip
-cd backend && docker compose up
-
-# Build the offline map bundle (style + sprites + glyphs + mbtiles) for the APK and sync endpoint
-# Requires tileserver-gl to be running locally.
+# Build the offline map bundle (mbtiles z5–z12 + vendored style/glyphs) for the APK and sync endpoint
+# Self-contained: pinned Planetiler JAR + Geofabrik OSM; needs Java 21+. Cleans up scratch.
 bash backend/scripts/build-map-bundle.sh
 
 # End-to-end QA harness against a running phone emulator (debug APK installed)
@@ -104,7 +98,7 @@ On iOS, `scripts/feed_gpx_ios.py` is the Simulator-side equivalent — it shells
 
 - `android/` - Android phone app (Compose, MapLibre, Car App Library); the Android Auto target is WIP and dev-only — not in the initial release. The pure-Kotlin calculation engine lives at `android/core/`
 - `scrapers/` - Python data pipeline for zone data
-- `backend/` - Docker Compose config for tile server + API (+ offline map-bundle builder)
+- `backend/` - Offline map-bundle builder (self-contained Planetiler JAR) + local zone-data staging
 - `qa/` - End-to-end QA harness (drives the phone emulator via adb, asserts on logcat events)
 - `ios/` - iOS phone app (Swift 6, SwiftUI, MapLibre Native) — SPM packages + Xcode shell, ships with the same offline map bundle. CarPlay package is code-complete but unwired (WIP, not in the initial release; pending Apple's `carplay-navigation` entitlement).
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Update zone data from scrapers output.
 #
-# Copies scrapers/data/zones.json to the nginx serving directory
-# and generates a version.json metadata file.
+# Stages scrapers/data/zones.json into backend/data/ (local inspection copy)
+# and generates a matching version.json metadata file.
 #
 # Usage:
 #   ./update-zones.sh [path/to/zones.json]

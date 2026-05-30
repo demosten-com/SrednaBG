@@ -1,133 +1,52 @@
 # SrednaBG Backend
 
-Self-hosted infrastructure for serving Bulgaria map tiles and zone data. Runs on a Mac Mini M4 with Docker.
-
-## Services
-
-- **tileserver-gl** — Serves Bulgaria OpenMapTiles vector tiles (host port 8070 → container 8080)
-- **nginx** — Reverse proxy with rate limiting, gzip, and CORS (port 80)
-
-## Endpoints
-
-| Endpoint | Description | Cache |
-|----------|-------------|-------|
-| `/tiles/` | Vector tile proxy to tileserver-gl | 24 hours |
-| `/api/zones` | Zone database (zones.json) | 1 hour |
-| `/api/version` | Version metadata | 5 minutes |
-| `/health` | Health check | None |
+Build-time tooling for the **offline map bundle** that ships inside the Android
+APK and iOS app, plus a small helper for staging zone data locally. No services
+to run — the apps are offline-first, and the production zone API (`/api/zones`,
+`/api/version`) is served by the scraper cron on the Namecheap shared host (see
+`scrapers/CLAUDE.md` "Hosted deployment" and `web/CLAUDE.md`).
 
 ## Prerequisites
 
-- Docker and Docker Compose (Docker must be running for the tile build)
-- ~4 GB free RAM (for the Planetiler JVM)
-- ~1 GB free disk (PBF download + mbtiles output + sources)
+- `java` (>=21), `jq`, `curl`, `zip`, `shasum`, `python3`.
+- ~4 GB free RAM + ~2 GB scratch disk for tile generation.
+
+No Docker, no tile server.
 
 ## Quick Start
 
-### 1. Generate Bulgaria tiles
+### 1. Build the offline map bundle
 
 ```bash
-./scripts/download-tiles.sh
+bash scripts/build-map-bundle.sh           # add --keep-tiles to also drop a standalone mbtiles in tiles/
 ```
 
-The script runs [Planetiler](https://github.com/onthegomap/planetiler) in
-Docker against the Geofabrik Bulgaria OSM extract (~200 MB) and writes
-`tiles/bulgaria.mbtiles` (z5–z12, ~50 MB). No API key needed; takes a few
-minutes on first run. Tile data © OpenStreetMap contributors (ODbL).
+Self-contained: downloads the pinned [Planetiler](https://github.com/onthegomap/planetiler)
+JAR and, via Planetiler, the Geofabrik Bulgaria OSM extract (~200 MB); generates
+the z5–z12 vector tiles; assembles the bundle from the in-repo static assets in
+`map-assets/` (style + glyphs); derives the dark style; computes a deterministic
+`map_hash` (`scripts/compute-map-hash.py`); and zips to `data/map-bundle.zip`.
+All scratch data is removed on exit — only the bundle + zip remain. Android/iOS
+builds stage `data/map-bundle/` automatically. Tile data © OpenStreetMap
+contributors (ODbL); see `map-assets/LICENSE-NOTES.md`.
 
-### 2. Update zone data
+### 2. (Optional) Stage zone data locally
 
-If you have generated `zones.json` from the scrapers:
+`scripts/update-zones.sh` copies a generated `zones.json` into `data/` and writes
+a matching `data/version.json` — handy for local inspection. The live API is
+produced by the scraper cron, not from here.
 
 ```bash
-./scripts/update-zones.sh
+cd ../scrapers && python -m src.output    # regenerate zones.json
+cd ../backend  && ./scripts/update-zones.sh
 ```
 
-### 3. Start services
+## Layout
 
-```bash
-docker compose up -d
-```
-
-### 4. Verify
-
-```bash
-# Health check
-curl http://localhost/health
-
-# Zone data
-curl http://localhost/api/zones | python3 -m json.tool | head -20
-
-# Version info
-curl http://localhost/api/version
-
-# Tile server (open in browser)
-open http://localhost/tiles/
-```
-
-## Updating Zone Data
-
-After running the scraper pipeline:
-
-```bash
-cd ../scrapers
-python -m src.output
-cd ../backend
-./scripts/update-zones.sh
-```
-
-Nginx serves the files directly — no restart needed (cache expires in 1 hour for zones, 5 minutes for version).
-
-## Production Setup
-
-### Dynamic DNS
-
-For a home server, set up dynamic DNS so the app can reach it:
-
-1. Register at [DuckDNS](https://www.duckdns.org/) (free)
-2. Create a subdomain (e.g., `srednabg.duckdns.org`)
-3. Set up a cron job to update the IP:
-   ```bash
-   */5 * * * * curl -s "https://www.duckdns.org/update?domains=srednabg&token=YOUR_TOKEN"
-   ```
-
-### HTTPS with Let's Encrypt
-
-Option A: Use Caddy as a reverse proxy (automatic HTTPS):
-```bash
-# Replace nginx with Caddy in docker-compose.yml
-# Caddy handles Let's Encrypt certificates automatically
-```
-
-Option B: Use certbot with nginx:
-```bash
-# Install certbot
-brew install certbot
-
-# Get certificate
-sudo certbot certonly --standalone -d srednabg.duckdns.org
-
-# Update nginx config to use HTTPS (port 443 with ssl_certificate directives)
-```
-
-### Firewall / Port Forwarding
-
-1. Forward port 80 (HTTP) and 443 (HTTPS) to the Mac Mini's local IP
-2. On macOS, ensure the firewall allows Docker connections:
-   ```bash
-   sudo /usr/libexec/ApplicationFirewall/socketfilterfw --add /usr/local/bin/docker
-   ```
-
-## Monitoring
-
-Check service status:
-```bash
-docker compose ps
-docker compose logs -f nginx
-docker compose logs -f tileserver
-```
-
-Restart services:
-```bash
-docker compose restart
-```
+- `scripts/build-map-bundle.sh` — the offline map-bundle builder (above).
+- `scripts/compute-map-hash.py` — deterministic content hash for `map_hash`.
+- `scripts/derive-dark-style.py` — derives `style-dark.json` from the light style.
+- `scripts/update-zones.sh` — stage `zones.json` + `version.json` into `data/`.
+- `map-assets/` — vendored static style template + Noto Sans glyphs (build inputs).
+- `data/` — build output (`map-bundle/`, `map-bundle.zip`) + staged zone data; gitignored bundle.
+- `tiles/` — only used if you pass `--keep-tiles` (a standalone mbtiles copy); gitignored.

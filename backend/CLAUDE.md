@@ -1,31 +1,33 @@
 # backend/
 
-Docker Compose config for Mac Mini M4 running tileserver-gl (Bulgaria OpenMapTiles) + nginx (zones API, tile proxy, map-bundle download). Self-hosted — no recurring cloud costs; 1 Gbit upload handles thousands of users.
+Build-time tooling for the offline map bundle the apps ship — a single self-contained script needing only Java + standard CLI tools. No services to run; the apps are offline-first and the production zone API is served by the scraper cron on the Namecheap shared host (see `scrapers/CLAUDE.md` "Hosted deployment"). The former Docker Compose serving stack (tileserver-gl + nginx) and `download-tiles.sh` are retired.
 
-Setup scripts:
-- `download-tiles.sh` — Planetiler → capped at z5–z12 so mbtiles fit in the APK
-- `build-map-bundle.sh` — fetches style/sprites/fonts from tileserver-gl, rewrites URIs to placeholders, zips with mbtiles
-- `update-zones.sh`
+Scripts:
+- `build-map-bundle.sh` — self-contained: downloads the pinned Planetiler JAR + Geofabrik Bulgaria OSM, generates z5–z12 tiles, packs the bundle from the in-repo `map-assets/`, cleans all scratch. `--keep-tiles` also drops a standalone mbtiles in `tiles/`.
+- `compute-map-hash.py` — deterministic content hash for `map_hash` (see below).
+- `derive-dark-style.py` — derives `style-dark.json` from the light style.
+- `update-zones.sh` — stage `zones.json` + `version.json` into `data/` for local inspection.
+- `map-assets/` — vendored static style template + Noto Sans glyph PBFs (the build's inputs; see `map-assets/LICENSE-NOTES.md`).
 
 ## Build commands
 
 ```bash
-bash backend/scripts/download-tiles.sh   # Planetiler → z5–z12 bulgaria.mbtiles
-cd backend && docker compose up          # tileserver-gl + nginx
-bash backend/scripts/build-map-bundle.sh # Offline map bundle (needs tileserver-gl running)
-bash backend/scripts/update-zones.sh     # Refresh /api/version + zones payload
+bash backend/scripts/build-map-bundle.sh # Self-contained offline map bundle (Java 21+)
+bash backend/scripts/update-zones.sh     # Stage zones.json + version.json into data/
 ```
 
 ## Offline map bundle (build step)
 
-Fully self-contained MapLibre style + MBTiles + glyphs + sprites so the phone UI works without network. This folder is the canonical producer — Android and iOS each have their own staging/install/sync steps documented in their respective `CLAUDE.md`.
+Fully self-contained MapLibre style + MBTiles + glyphs so the phone UI works without network. This folder is the canonical producer — Android and iOS each have their own staging/install/sync steps documented in their respective `CLAUDE.md`.
 
-`build-map-bundle.sh`:
+**Key split:** only `bulgaria.mbtiles` changes between map updates. The style + glyphs are static, vendored once in `backend/map-assets/`, so the build needs no tile server. `build-map-bundle.sh`:
 
-1. Queries local tileserver-gl for `basic-preview` style/sprites/glyph PBFs (every fontstack referenced by symbol layers).
-2. Rewrites the style's vector source to `{MBTILES_URI}` (plus `{GLYPHS_URI}` / `{SPRITE_URI}`), emitting `style-light.json` and deriving a `style-dark.json` variant from it (runtime picks one per the map-theme setting).
-3. Copies the shrunk `bulgaria.mbtiles`, records sha256 in `version.json`.
-4. Outputs `backend/data/map-bundle/` + `map-bundle.zip`; patches `/api/version` with the new `map_hash`.
+1. Ensures the pinned Planetiler JAR (sha256-verified, cached in gitignored `backend/.cache/`) and generates `bulgaria.mbtiles` (z5–z12) in a scratch dir via `java -jar` — no Docker.
+2. Copies `map-assets/style-template.json` → `style-light.json` (already carries `{MBTILES_URI}` / `{GLYPHS_URI}` placeholders) and derives `style-dark.json` (runtime picks one per the map-theme setting); copies the vendored `fonts/`.
+3. Computes a **deterministic `map_hash`** via `compute-map-hash.py` (hashes the static files + the *decompressed* mbtiles tile rows ordered by z/x/y; excludes the mbtiles `metadata` table so unchanged content yields the same hash); writes `version.json`.
+4. Outputs `backend/data/map-bundle/` + `map-bundle.zip`; patches `/api/version` with the new `map_hash`. A `trap` removes all scratch (OSM extract, Planetiler tmp, scratch mbtiles) on exit — only the bundle + zip remain.
+
+This `map_hash` is the runtime sync change-detector and is distinct from the per-release zip checksum that `web/fdroid/scripts/publish-map-bundle.sh` pins in `map-bundle-checksums.txt` (that one legitimately changes every build).
 
 `/api/version` response carries `hash` (zones), `map_hash` (bundle), and `zone_count`; each hash gates its own re-fetch on the client.
 

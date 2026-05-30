@@ -1,19 +1,17 @@
 # Tiles
 
-`bulgaria.mbtiles` (Bulgaria OpenMapTiles, vector) lives here. The file is
-gitignored — generate it locally before bringing up the docker compose
-stack.
-
-## Build
+Normally empty. The offline map bundle does **not** read from here —
+`../scripts/build-map-bundle.sh` generates the tiles in a scratch dir and packs
+them directly. This directory only receives a `bulgaria.mbtiles` if you pass
+`--keep-tiles` (a standalone copy for inspection or other tooling); it's gitignored.
 
 ```bash
-../scripts/download-tiles.sh    # run from backend/ (or call with the full path)
+../scripts/build-map-bundle.sh --keep-tiles   # run from backend/scripts/ or via full path
 ```
 
-Runs [Planetiler](https://github.com/onthegomap/planetiler) in Docker against
-the Geofabrik Bulgaria OSM extract. No API key needed. Output: `bulgaria.mbtiles`
-at z5–z12 (~50 MB), the same shape tileserver-gl and the offline-bundle
-builder consume.
+That runs [Planetiler](https://github.com/onthegomap/planetiler) (pinned JAR)
+against the Geofabrik Bulgaria OSM extract and writes `bulgaria.mbtiles` at
+z5–z12 (~50 MB), OpenMapTiles schema.
 
 ## Expected file
 

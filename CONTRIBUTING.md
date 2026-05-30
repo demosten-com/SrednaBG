@@ -30,7 +30,7 @@ The repo is a monorepo. Each area has its own `CLAUDE.md` with build commands, k
 - `android/CLAUDE.md` — phone app (shipping) + the WIP Android Auto / AAOS targets. The pure-Kotlin calculation engine (no Android dependency; runs on JVM) lives at `android/core/CLAUDE.md`.
 - `ios/CLAUDE.md` — Swift 6 / SwiftUI phone app + the WIP, currently-unwired CarPlay target.
 - `scrapers/CLAUDE.md` — Python pipeline that produces `zones.json`.
-- `backend/CLAUDE.md` — tileserver-gl + nginx Docker stack and the offline map-bundle builder.
+- `backend/CLAUDE.md` — the self-contained offline map-bundle builder (Planetiler JAR).
 - `qa/CLAUDE.md` — end-to-end harness driving the phone emulator via `adb`.
 - `web/CLAUDE.md` — static marketing site at `srednabg.com`.
 

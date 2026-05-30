@@ -11,7 +11,7 @@ Package ID: `com.demosten.srednabg` | Bulgaria-only scope | MIT license.
 | 1 | Monorepo scaffolding, Gradle, CI/CD | Done |
 | 2 | Zone data schema and Python scrapers | Done (`zones.json` ships with ~70 real zones; exact count tracked by the scraper) |
 | 3 | Core calculation engine (pure Kotlin) | Done + comprehensive tests |
-| 4 | Backend infrastructure (Docker, nginx) | Done (Planetiler-generated Bulgaria tiles, tileserver-gl verified) |
+| 4 | Offline map-bundle build pipeline | Done (self-contained Planetiler-JAR builder; the former Docker/tileserver-gl serving stack is retired) |
 | 5 | Android app foundation (phone UI) | Done (Compose UI, Room, Hilt, location service, audio alerts) |
 | 6 | Android Auto integration | Done in code — WIP, not in initial release (kept for developer testing on DHU/AAOS) |
 | 7 | Polish, testing, release prep | Signing wired; signed-APK release workflow shipping `srednabg-<version>.apk` + `.sha256` to GitHub Releases; F-Droid submission drafted in `web/fdroid/` (metadata, locale descriptions, SHA-pinned map-bundle pipeline) — pending submission. Play listing screenshots/metadata in prep (see `android/CLAUDE.md`) |
@@ -25,7 +25,7 @@ Each subfolder owns its own `CLAUDE.md` with build commands, key files, and subf
 
 - `scrapers/` — Python data pipeline (3 sources → `zones.json`). See `scrapers/CLAUDE.md`.
 - `android/` — Kotlin phone app (Compose UI, offline map, WorkManager sync); the Android Auto target is in-tree as WIP (developer-only testing on DHU/AAOS, not part of the shipping build). Pure-Kotlin engine at `android/core/` (see `android/core/CLAUDE.md`); the rest is in `android/CLAUDE.md`.
-- `backend/` — Docker stack (tileserver-gl + nginx) + offline map bundle builder. See `backend/CLAUDE.md`.
+- `backend/` — Offline map-bundle builder (self-contained Planetiler JAR; no Docker) + local zone-data staging. See `backend/CLAUDE.md`.
 - `qa/` — End-to-end QA harness driving the emulator via adb. See `qa/CLAUDE.md`.
 - `ios/` — SwiftPM monorepo (Swift 6) + Xcode app shell. See `ios/CLAUDE.md`.
 - `web/` — Static marketing site for `srednabg.com`; same Namecheap host runs the scraper cron and serves `/api/*`. Also hosts `/assets/map-bundle-<tag>.zip` for the release workflow and houses the F-Droid submission draft in `web/fdroid/`. See `web/CLAUDE.md`.
@@ -38,11 +38,11 @@ Each subfolder owns its own `CLAUDE.md` with build commands, key files, and subf
 
 ## Key Design Decisions
 
-- **MapLibre over Google Maps/Mapbox** — zero per-request cost with self-hosted tiles
+- **MapLibre over Google Maps/Mapbox** — zero per-request cost with self-generated, in-app bundled tiles
 - **NavigationTemplate** — only AA template providing a Surface for custom map rendering
 - **Pure Kotlin core** — testable without Android emulator; portable to iOS
 - **Offline-first** — zones.json + map bundle ship in APK / iOS bundle; network sync is optional updates
-- **Self-hosted Mac Mini** — no recurring cloud costs; 1 Gbit upload handles thousands of users
+- **No recurring cloud costs** — offline-first apps need no tile server; the zone API runs on the existing Namecheap shared host (scraper cron), and map bundles are built locally / on a future Mac Mini CI runner
 - **Adaptive GPS polling** — 1s inside zones, 5s when far from any zone (battery)
 - **Inactivity auto-stop** — tracking shuts itself down after a settable timeout (default 3h, also 6h / Never) of no zone state transitions, so a forgotten-in-background session doesn't drain the battery. Setting key `auto_stop_hours`; QA scenarios dial it down via the DEBUG-only `debug_auto_stop_seconds` override
 - **Map bundle in APK, not PAD** — mbtiles capped at z12 to fit the APK; avoids Play Asset Delivery so F-Droid / sideload stay open
