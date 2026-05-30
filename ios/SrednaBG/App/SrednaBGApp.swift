@@ -305,7 +305,7 @@ final class AppContainer {
 
         // Runtime paths — must be re-derived every launch. The iOS data
         // container UUID can change (reinstall, simulator state rotation, OS
-        // restore), so baking `file://` paths into the on-disk style.json is
+        // restore), so baking `file://` paths into the on-disk style file is
         // a latent bug that resurfaces the moment the UUID moves. The
         // bundled style is a raw placeholder template; we substitute here.
         let mbtilesURI = "mbtiles://" + layout.mbtilesURL.path

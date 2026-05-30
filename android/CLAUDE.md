@@ -39,9 +39,9 @@ Required repo secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `
 
 Bundle is produced by `backend/scripts/build-map-bundle.sh` — see `backend/CLAUDE.md` for the build pipeline.
 
-1. **Stage** (`validateMapBundle` + `prepareMapAssets` Gradle tasks, wired to `preBuild`): copies `backend/data/map-bundle/` into `android/app/src/main/assets/map/`. `validateMapBundle` FAILS the build if the source dir is missing or doesn't contain both `style.json` and `bulgaria.mbtiles` — offline-first means shipping without the bundle would hand users a blank map. `assets/map/` is gitignored.
+1. **Stage** (`validateMapBundle` + `prepareMapAssets` Gradle tasks, wired to `preBuild`): copies `backend/data/map-bundle/` into `android/app/src/main/assets/map/`. `validateMapBundle` FAILS the build if the source dir is missing or doesn't contain `style-light.json`, `style-dark.json`, and `bulgaria.mbtiles` (the `requiredMapFiles` list) — offline-first means shipping without the bundle would hand users a blank map. `assets/map/` is gitignored.
 2. **Install** (`MapRepository.ensureLoaded()`): on first launch, copies `assets/map/` into `filesDir/map/` (SQLite can't mmap APK assets) and rewrites placeholders to absolute `mbtiles://` / `file://` paths. The MBTiles URI must be bare `mbtiles://<abs-path>` — **no `{z}/{x}/{y}`** — or MapLibre's `MBTilesFileSource` fails to open SQLite.
-3. **Sync** (`MapSyncWorker` → `MapRepository.syncFromServer()`): compares server `map_hash` to `SettingsRepository.cachedMapHash`, downloads zip via `MapApi`, unzips into `map.staging/`, validates `style.json` + `bulgaria.mbtiles` present, atomically renames `map/ → map.old/`, `map.staging/ → map/`, deletes `map.old/`. Any failure leaves the previous bundle intact.
+3. **Sync** (`MapSyncWorker` → `MapRepository.syncFromServer()`): compares server `map_hash` to `SettingsRepository.cachedMapHash`, downloads zip via `MapApi`, unzips into `map.staging/`, validates `style-light.json` + `style-dark.json` + `bulgaria.mbtiles` present, atomically renames `map/ → map.old/`, `map.staging/ → map/`, deletes `map.old/`. Any failure leaves the previous bundle intact.
 
 ## Debug receivers (debug build only)
 

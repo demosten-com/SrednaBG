@@ -23,7 +23,7 @@ Fully self-contained MapLibre style + MBTiles + glyphs + sprites so the phone UI
 `build-map-bundle.sh`:
 
 1. Queries local tileserver-gl for `basic-preview` style/sprites/glyph PBFs (every fontstack referenced by symbol layers).
-2. Rewrites the style's vector source to `{MBTILES_URI}` (plus `{GLYPHS_URI}` / `{SPRITE_URI}`).
+2. Rewrites the style's vector source to `{MBTILES_URI}` (plus `{GLYPHS_URI}` / `{SPRITE_URI}`), emitting `style-light.json` and deriving a `style-dark.json` variant from it (runtime picks one per the map-theme setting).
 3. Copies the shrunk `bulgaria.mbtiles`, records sha256 in `version.json`.
 4. Outputs `backend/data/map-bundle/` + `map-bundle.zip`; patches `/api/version` with the new `map_hash`.
 

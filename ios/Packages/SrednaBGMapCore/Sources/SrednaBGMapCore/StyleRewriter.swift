@@ -8,7 +8,7 @@ import Foundation
 /// Rewrites a MapLibre style JSON so that `"url": "mbtiles://..."` vector
 /// sources point at a loopback HTTP tile server instead. MapLibre Native
 /// iOS has no `mbtiles://` scheme handler — we bridge SQLite reads through
-/// `LocalTileServer`. The disk copy of `style.json` stays untouched
+/// `LocalTileServer`. The disk copy of the style file stays untouched
 /// (byte-identical to Android, which consumes `mbtiles://` directly).
 ///
 /// Glyphs and sprite URLs are already rewritten to `file://…` by

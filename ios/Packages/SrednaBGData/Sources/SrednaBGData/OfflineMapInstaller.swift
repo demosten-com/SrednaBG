@@ -13,8 +13,8 @@ public enum OfflineMapInstallerError: Error, Sendable {
     case zipExtractFailed(any Error & Sendable)
 }
 
-/// Manages the on-disk MapLibre bundle (`style.json`, `bulgaria.mbtiles`,
-/// `fonts/`, optional `sprite.*`, `version.json`). Mirrors the Android
+/// Manages the on-disk MapLibre bundle (`style-light.json` / `style-dark.json`,
+/// `bulgaria.mbtiles`, `fonts/`, optional `sprite.*`, `version.json`). Mirrors the Android
 /// `MapRepository.kt` placeholder rewrite + atomic-swap pipeline.
 ///
 /// Layout under `rootDir`:
@@ -90,14 +90,14 @@ public actor OfflineMapInstaller {
     }
 
     /// First-launch bootstrap: copy the in-app bundled `OfflineMap/` directory
-    /// into our managed `map/` dir. `style.json` is kept as the raw placeholder
-    /// template (`{MBTILES_URI}` / `{GLYPHS_URI}` / `{SPRITE_URI}`) so the
+    /// into our managed `map/` dir. The style files are kept as raw placeholder
+    /// templates (`{MBTILES_URI}` / `{GLYPHS_URI}` / `{SPRITE_URI}`) so the
     /// runtime rewriter can substitute the current data container's absolute
     /// paths on every launch — iOS relocates the sandbox container on reinstall,
     /// OS restore, and some simulator rotations, and paths baked in at install
     /// time would point to a container UUID that no longer exists.
     ///
-    /// When an existing `style.json` has no placeholders (old binary that
+    /// When an existing style file has no placeholders (old binary that
     /// rewrote them at install time), replace it from the bundle so the
     /// runtime rewriter has something to work with.
     public func installFromBundle(_ bundleSourceDir: URL) async throws {
@@ -110,7 +110,7 @@ public actor OfflineMapInstaller {
             return
         }
 
-        // Migration: pre-fix installs rewrote `style.json` to absolute paths.
+        // Migration: pre-fix installs rewrote the style files to absolute paths.
         // Detect by absence of the placeholder markers and refresh every
         // bundled style file from the template so the container-relocation
         // bug stops biting. Loops over both light and dark variants because
@@ -134,8 +134,8 @@ public actor OfflineMapInstaller {
     }
 
     /// Network sync path: the caller has already downloaded the bundle zip;
-    /// extract → verify → atomic swap. `style.json` is left as the raw
-    /// placeholder template; see `installFromBundle` for why.
+    /// extract → verify → atomic swap. The style files are left as raw
+    /// placeholder templates; see `installFromBundle` for why.
     public func installDownloadedBundle(_ zipURL: URL) async throws {
         let fm = FileManager.default
         // Wipe staging if a previous attempt left it behind.
