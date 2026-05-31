@@ -43,7 +43,13 @@ don't, so it's moot — `gen-fastlane-metadata.sh` writes the Fastlane names.
 
 ## Reviewer-facing notes (not in the YAML)
 
-- `subdir: android` — Gradle root, not repo root.
+- `subdir: android/app` — the app module dir (where `build/` is generated), so
+  F-Droid auto-detects the APK under `<subdir>/build/outputs/apk/aosp/release/`
+  and no `output:` field is needed. Gradle is invoked from there and walks up to
+  `android/settings.gradle.kts` for the multi-module build. `commit:` is the full
+  40-char SHA (not a tag — tags can move).
+- `prebuild` runs in `android/app`, so it calls the map-bundle fetch script via
+  `../../backend/scripts/fetch-fdroid-map-bundle.sh` (two levels up to repo root).
 - `gradle: [aosp]` — F-Droid builds the **aosp** product flavor
   (`assembleAospRelease`). The app has two flavors differing only in the
   location provider: `aosp` uses the platform `LocationManager` and has **no

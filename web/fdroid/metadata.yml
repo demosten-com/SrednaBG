@@ -16,12 +16,11 @@ Repo: https://github.com/demosten-com/SrednaBG.git
 Builds:
   - versionName: 1.0.3
     versionCode: 10003
-    commit: v1.0.3
-    subdir: android
+    commit: e1698584b98e6af765f1aef46c4435d6e84c87be
+    subdir: android/app
     gradle:
       - aosp
-    output: app/build/outputs/apk/aosp/release/app-aosp-release-unsigned.apk
-    prebuild: bash ../backend/scripts/fetch-fdroid-map-bundle.sh
+    prebuild: bash ../../backend/scripts/fetch-fdroid-map-bundle.sh
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags ^v[0-9.]+$
