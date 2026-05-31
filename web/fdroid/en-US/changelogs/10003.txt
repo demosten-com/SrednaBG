@@ -1,3 +1,8 @@
-v1.0.3 — Maintenance release.
+v1.0.3 — Initial public F-Droid release.
 
-• Bug fixes and stability improvements.
+• Real-time running average speed inside Bulgaria's section-control camera zones.
+• "Max now" indicator — the top speed you can drive for the rest of the zone without going over.
+• Color-coded status (green / amber / red).
+• Voice alerts in Bulgarian and English.
+• Fully offline: Bulgaria map and zone list bundled in the app.
+• Phone-only release. Android Auto support is in progress.

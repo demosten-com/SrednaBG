@@ -24,13 +24,20 @@ execution status.
 ## Reviewer-facing notes (not in the YAML)
 
 - `subdir: android` — Gradle root, not repo root.
-- `gradle: [yes]` — no product flavors; F-Droid runs `assembleRelease`.
+- `gradle: [aosp]` — F-Droid builds the **aosp** product flavor
+  (`assembleAospRelease`). The app has two flavors differing only in the
+  location provider: `aosp` uses the platform `LocationManager` and has **no
+  Google Play Services dependency**; `gms` adds `play-services-location`
+  (FusedLocationProvider) and is published to the Play Store only. The
+  GMS-specific code lives in `android/app/src/gms/`, the dependency is declared
+  with the `gmsImplementation` configuration, and `src/main/` references no GMS
+  type — so the aosp variant compiles and links entirely free of proprietary
+  Google libraries.
 - No `AntiFeatures`: backend sync is feature-flagged off
-  (`FeatureFlags.IS_MAP_SYNC_ENABLED = false`), no tracking, no non-free deps.
-- The only Google dependency is `play-services-location`
-  (FusedLocationProvider). Standard accepted use.
+  (`FeatureFlags.IS_MAP_SYNC_ENABLED = false`), no tracking, and the built
+  (aosp) variant has no non-free dependencies.
 - Map bundle is fetched by F-Droid's sandbox from
   `srednabg.com/assets/map-bundle-<tag>.zip` and SHA-256 pinned in the
   metadata YAML.
 - Reproducible builds are deferred to a later release; F-Droid signs the
-  APK with its own key for v1.0.2.
+  APK with its own key for v1.0.3.

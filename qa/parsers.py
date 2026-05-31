@@ -34,6 +34,7 @@ from .events import (
     DisplaySpeed,
     Event,
     IntervalChanged,
+    LocationSourceSelected,
     LocationUpdate,
     SettingChanged,
     SyncResult,
@@ -83,6 +84,10 @@ SYNC_RE = re.compile(
     r"(?P<action>[\w.]+\.debug\.SYNC_\w+) -> (?:SyncResult\.)?(?P<outcome>\w+)(?:\((?P<detail>.*)\))?"
 )
 SETTING_RE = re.compile(r"set (?P<key>\w+)=(?P<value>.+)$")
+# Emitted by the flavor-specific createLocationSource() (LocationSourceFactory.kt
+# in src/aosp + src/gms). "Selecting FusedLocationSource" / "Selecting
+# SystemLocationSource …" — the trailing parenthetical detail is ignored.
+LOC_SRC_RE = re.compile(r"Selecting (?P<src>Fused|System)LocationSource")
 AUTO_STOP_RE = re.compile(
     r"auto-stop: idle for (?P<elapsed>\d+)s \(threshold=(?P<threshold>\d+)s\)"
 )
@@ -140,6 +145,16 @@ def parse_message(tag: str, msg: str, raw: str) -> Optional[Event]:
                 raw=raw,
                 elapsed_s=int(mas.group("elapsed")),
                 threshold_s=int(mas.group("threshold")),
+            )
+        return UnparsedLog(monotonic_ms=ts, raw=raw, tag=tag)
+
+    if tag == "SrednaBG.LocSrc":
+        msrc = LOC_SRC_RE.search(msg)
+        if msrc:
+            return LocationSourceSelected(
+                monotonic_ms=ts,
+                raw=raw,
+                source="fused" if msrc.group("src") == "Fused" else "system",
             )
         return UnparsedLog(monotonic_ms=ts, raw=raw, tag=tag)
 

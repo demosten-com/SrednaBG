@@ -4,7 +4,7 @@ Kotlin app using Jetpack Compose, Car App Library, MapLibre, Room, Hilt. ~40 Kot
 
 ## Runtime
 
-`LocationTrackingService` (foreground, adaptive 1s/5s GPS via `FusedLocationProviderClient`) feeds the core engine (`core/`). A second `lifecycleScope` coroutine runs the inactivity auto-stop: tracks `lastActivityMs` (monotonic, reset on tracking start and on every `ZoneState` class transition), polls `SettingsRepository.autoStopHours` every 60 s, and calls `stopSelf()` when the threshold elapses (the DEBUG-only `debug_auto_stop_seconds` override drops the check cadence to 1 s so the QA scenario fires in ~10 s instead of 3 h). Phone-side `ZoneMapScreen` uses MapLibre against a fully-offline bundled map; `ZoneMapViewModel.styleUri` = `MapRepository.localStyleUri()`, falling back to `BuildConfig.MAP_STYLE_URL` only when no bundle is installed. `AudioAlertManager` uses TTS with navigation audio focus for background mode. *(WIP / dev-only)* On the Android Auto surface, `NavigationScreen` renders a canvas-based zone map (`MapRenderer` + custom `MercatorProjection`) with `SpeedOverlay`; `NavigationTemplate.mapActionStrip` carries +/- zoom controls that flow into `MapRenderer.draw(zoomOverride)`.
+`LocationTrackingService` (foreground, adaptive 1s/5s GPS via the flavor-specific `LocationSource` — `FusedLocationProviderClient` on `gms`, platform `LocationManager` on `aosp`; see "Product flavors" below) feeds the core engine (`core/`). A second `lifecycleScope` coroutine runs the inactivity auto-stop: tracks `lastActivityMs` (monotonic, reset on tracking start and on every `ZoneState` class transition), polls `SettingsRepository.autoStopHours` every 60 s, and calls `stopSelf()` when the threshold elapses (the DEBUG-only `debug_auto_stop_seconds` override drops the check cadence to 1 s so the QA scenario fires in ~10 s instead of 3 h). Phone-side `ZoneMapScreen` uses MapLibre against a fully-offline bundled map; `ZoneMapViewModel.styleUri` = `MapRepository.localStyleUri()`, falling back to `BuildConfig.MAP_STYLE_URL` only when no bundle is installed. `AudioAlertManager` uses TTS with navigation audio focus for background mode. *(WIP / dev-only)* On the Android Auto surface, `NavigationScreen` renders a canvas-based zone map (`MapRenderer` + custom `MercatorProjection`) with `SpeedOverlay`; `NavigationTemplate.mapActionStrip` carries +/- zoom controls that flow into `MapRenderer.draw(zoomOverride)`.
 
 `ZoneRepository.syncFromServer()` returns `SyncResult` (`Updated | UpToDate | Failed`) consumed by `ZoneSyncWorker` (WorkManager, 6h) and surfaced as Snackbars + retry CTA; falls back to bundled `zones.json`. `MapSyncWorker` (6h, unmetered-only) would pull `/api/map/bundle.zip` when `map_hash` from `/api/version` changes — **currently feature-gated off** (`FeatureFlags.IS_MAP_SYNC_ENABLED = false` in `app/src/main/kotlin/com/demosten/srednabg/app/FeatureFlags.kt`) because the production backend doesn't serve the bundle endpoint or populate `map_hash` yet. The gate is enforced both at `SrednaBGApp.onCreate` (don't enqueue the periodic work) and inside `MapSyncWorker.doWork` (early-return `Result.success()` to no-op any WorkManager queue persisted from a prior install). Mirrors `FeatureFlags.isMapSyncEnabled` on iOS; flip both when the backend pipeline ships. Room (`ZoneDatabase`/`ZoneDao`/`ZoneEntity`) for local persistence. Full Hilt DI.
 
@@ -20,12 +20,35 @@ UI has BG + EN (`res/values/strings.xml`, `res/values-bg/strings.xml`).
 
 ```bash
 # Gradle Kotlin DSL, JDK 17 — run from android/ (this folder is the Gradle root)
-./gradlew build                  # Full build
-./gradlew :app:test              # Unit tests (JUnit 5, MockK, Turbine)
-./gradlew :app:assembleDebug     # Debug APK
-./gradlew :app:assembleRelease   # Release APK (R8 minified)
-./gradlew lint                   # Lint
+./gradlew build                       # Full build (all flavors)
+./gradlew :app:test                   # Unit tests, all variants (JUnit 5, MockK, Turbine)
+./gradlew :app:testAospDebugUnitTest  # aosp-flavor unit tests only
+./gradlew :app:testGmsDebugUnitTest   # gms-flavor unit tests only
+./gradlew :app:assembleAospDebug      # aosp Debug APK (LocationManager; F-Droid + GitHub)
+./gradlew :app:assembleGmsDebug       # gms Debug APK (FusedLocationProvider; Play Store)
+./gradlew :app:assembleAospRelease    # aosp Release APK (R8 minified) — GitHub Releases
+./gradlew :app:assembleGmsRelease     # gms Release APK (R8 minified) — Play Store
+./gradlew lint                        # Lint
 ```
+
+### Product flavors (`distribution` dimension)
+
+The app ships in two flavors that differ **only in the GPS location provider**;
+all other code is shared in `src/main/`.
+
+| Flavor | Location source | Google Play Services | Ships to |
+|--------|-----------------|----------------------|----------|
+| `aosp` (default) | `SystemLocationSource` (platform `LocationManager`) | none | F-Droid + GitHub Releases |
+| `gms` | `FusedLocationProviderClient`, falling back to `LocationManager` on AAOS or when Play Services is unavailable | `play-services-location` (`gmsImplementation`) | Play Store |
+
+The provider-specific `createLocationSource(context, listener)` factory lives in
+`src/aosp/` and `src/gms/` (the gms one also holds `FusedLocationSource` and the
+pure `chooseLocationSourceKind()` fallback policy + its unit test). `src/main/`
+references no GMS type, so the aosp variant compiles without
+`play-services-location` and passes F-Droid's flavor-aware source scanner. Both
+flavors log the chosen source under `SrednaBG.LocSrc` (`Selecting
+{Fused,System}LocationSource`); the QA harness asserts this matches the
+installed flavor (see `qa/CLAUDE.md`, `--flavor`).
 
 Pushing a tag matching `v[0-9]+.[0-9]+.[0-9]+` triggers `.github/workflows/android-release.yml`, which builds a signed APK (`-PSREDNABG_VERSION_NAME` / `-PSREDNABG_VERSION_CODE` overrides parsed from the tag; `MAJOR*10000 + MINOR*100 + PATCH`) and attaches `srednabg-<version>.apk` + `.sha256` to a GitHub Release.
 
@@ -89,7 +112,7 @@ Exercises the full GPS pipeline without a real car. For manual exploration; for 
 
 ## Dependencies (`gradle/libs.versions.toml`)
 
-Kotlin 2.1.10, AGP 8.8.2, Compose BOM 2025.02.00, Car App Library 1.7.0, MapLibre 11.8.0, Room 2.7.1, Hilt 2.56.2, OkHttp 4.12.0, Coroutines 1.10.1, Play Services Location 21.3.0, MockK 1.13.14, Turbine 1.2.1.
+Kotlin 2.1.10, AGP 8.8.2, Compose BOM 2025.02.00, Car App Library 1.7.0, MapLibre 11.8.0, Room 2.7.1, Hilt 2.56.2, OkHttp 4.12.0, Coroutines 1.10.1, Play Services Location 21.3.0 (`gmsImplementation` — gms flavor only), MockK 1.13.14, Turbine 1.2.1.
 
 ## Remaining work
 

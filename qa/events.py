@@ -111,6 +111,19 @@ class ZonesLoaded(Event):
 
 
 @dataclass(frozen=True)
+class LocationSourceSelected(Event):
+    """Which GPS source the app picked when tracking started — emitted on tag
+    `SrednaBG.LocSrc` by the flavor-specific `createLocationSource()`.
+
+    `source` is "fused" (gms flavor, FusedLocationProvider) or "system"
+    (aosp flavor, or the gms flavor's LocationManager fallback). The QA
+    harness's `--flavor` assertion checks this matches the installed build —
+    a tripwire against the aosp/FOSS build accidentally re-linking GMS.
+    """
+    source: str
+
+
+@dataclass(frozen=True)
 class IntervalChanged(Event):
     """LocationTrackingService bumped GPS polling interval."""
     interval_ms: int

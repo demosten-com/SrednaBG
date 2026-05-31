@@ -24,6 +24,27 @@ android {
         buildConfigField("String", "MAP_STYLE_URL", "\"https://srednabg.com/tiles/styles/basic-preview/style.json\"")
     }
 
+    // Two distribution flavors differing only in the location provider:
+    //   aosp — LocationManager only, zero Google dependencies. Ships to
+    //          F-Droid (which rejects proprietary GMS libs) and GitHub
+    //          Releases (works on every phone, incl. de-Googled). Default.
+    //   gms  — adds FusedLocationProviderClient (better fused/batched fixes
+    //          where Play Services exists), with a runtime fallback to the
+    //          AOSP path. Ships to the Play Store.
+    // The provider-specific code lives in src/{aosp,gms}/; src/main/ never
+    // references a GMS type, so the aosp variant compiles without
+    // play-services-location and passes F-Droid's source scanner.
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("aosp") {
+            dimension = "distribution"
+            isDefault = true
+        }
+        create("gms") {
+            dimension = "distribution"
+        }
+    }
+
     val hasReleaseKeystore = project.hasProperty("SREDNABG_RELEASE_STORE_FILE")
 
     signingConfigs {
@@ -123,8 +144,11 @@ dependencies {
     // DataStore
     implementation(libs.datastore.preferences)
 
-    // Google Play Services
-    implementation(libs.play.services.location)
+    // Google Play Services — gms flavor only. Declared with the
+    // `gmsImplementation` configuration so it's absent from the aosp variant's
+    // dependency graph (and from F-Droid's flavor-aware source scanner, which
+    // keys off the metadata `gradle: [aosp]` compile commands).
+    "gmsImplementation"(libs.play.services.location)
 
     // Network / JSON
     implementation(libs.okhttp)

@@ -40,6 +40,13 @@ from qa.scenarios.bulk_loader import build_scenario, load_specs_from_dir  # noqa
 
 REPORTS_ROOT = _HERE / "reports"
 BULK_DIR = _HERE / "scenarios" / "bulk"
+
+# Which location source the installed flavor is expected to select, set from
+# the --flavor CLI arg before suites are built: "system" (aosp), "fused" (gms),
+# or None (auto — record-only, don't pin the flavor). Read by the
+# location.source_selected scenario prepended to smoke + representative.
+EXPECTED_LOCATION_SOURCE: str | None = None
+_FLAVOR_TO_SOURCE = {"aosp": "system", "gms": "fused", "auto": None}
 REPRESENTATIVE_DIR = _HERE / "scenarios" / "representative"
 EDGE_DIR = _HERE / "scenarios" / "edge"
 SYNC_DIR = _HERE / "scenarios" / "sync"
@@ -74,6 +81,13 @@ def _load_module_scenarios(package: str, names: list[str]) -> list[Scenario]:
     return out
 
 
+def _location_source_scenario() -> Scenario:
+    """The flavor tripwire — asserts the installed build selects the GPS source
+    its flavor implies (or, in --flavor auto, just that one was selected)."""
+    mod = importlib.import_module("qa.scenarios.location.source_selected")
+    return mod.build(EXPECTED_LOCATION_SOURCE)
+
+
 def _smoke_suite() -> list[Scenario]:
     """1 zone, 1 settings combo, basic UI walk, single zone sync, parser self-test.
 
@@ -95,11 +109,15 @@ def _smoke_suite() -> list[Scenario]:
 
     sync_one = importlib.import_module("qa.scenarios.sync.zones_happy").build()
 
-    return [bulk_one, sync_one]
+    return [_location_source_scenario(), bulk_one, sync_one]
 
 
 def _representative_suite() -> list[Scenario]:
-    return load_representative() + _load_module_scenarios("sync", SYNC_SCENARIOS)
+    return (
+        [_location_source_scenario()]
+        + load_representative()
+        + _load_module_scenarios("sync", SYNC_SCENARIOS)
+    )
 
 
 def load_representative() -> list[Scenario]:
@@ -169,7 +187,16 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--platform", choices=["auto", "android", "ios"], default="auto",
                    help="Target platform. 'auto' picks whatever's booted; "
                         "iOS requires macOS.")
+    p.add_argument("--flavor", choices=["auto", "aosp", "gms"], default="auto",
+                   help="Android product flavor under test. 'aosp' asserts the "
+                        "app selects the LocationManager source; 'gms' asserts "
+                        "FusedLocationProvider; 'auto' (default) only records "
+                        "which source was selected. The harness does not build "
+                        "or install — install the matching flavor APK first.")
     args = p.parse_args(argv)
+
+    global EXPECTED_LOCATION_SOURCE
+    EXPECTED_LOCATION_SOURCE = _FLAVOR_TO_SOURCE[args.flavor]
 
     # Translate SIGTERM into KeyboardInterrupt so the `with SuiteRunner(...)`
     # block's __exit__ runs and we don't leave the app's foreground service

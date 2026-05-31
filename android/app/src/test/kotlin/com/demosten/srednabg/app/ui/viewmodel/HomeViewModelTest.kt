@@ -7,6 +7,7 @@ package com.demosten.srednabg.app.ui.viewmodel
 
 import android.content.Context
 import com.demosten.srednabg.app.data.MapRepository
+import com.demosten.srednabg.app.data.SettingsRepository
 import com.demosten.srednabg.app.data.ZoneRepository
 import com.demosten.srednabg.app.permissions.PermissionRepository
 import com.demosten.srednabg.app.permissions.PermissionState
@@ -38,6 +39,7 @@ class HomeViewModelTest {
     private lateinit var zoneRepository: ZoneRepository
     private lateinit var mapRepository: MapRepository
     private lateinit var permissionRepository: PermissionRepository
+    private lateinit var settingsRepository: SettingsRepository
     private lateinit var context: Context
     private val permissionFlow = MutableStateFlow(PermissionState())
 
@@ -53,6 +55,9 @@ class HomeViewModelTest {
         permissionRepository = mockk()
         every { permissionRepository.state } returns permissionFlow
         every { permissionRepository.refresh() } answers {}
+
+        settingsRepository = mockk(relaxed = true)
+        every { settingsRepository.debugMaxSpeedOverride } returns flowOf<Int?>(null)
 
         context = mockk(relaxed = true) {
             every { packageName } returns "com.demosten.srednabg"
@@ -81,7 +86,7 @@ class HomeViewModelTest {
 
     private fun viewModelWith(state: PermissionState): HomeViewModel {
         permissionFlow.value = state
-        return HomeViewModel(zoneRepository, mapRepository, permissionRepository, context)
+        return HomeViewModel(zoneRepository, mapRepository, permissionRepository, settingsRepository, context)
     }
 
     @Test

@@ -30,7 +30,6 @@ import com.demosten.srednabg.core.ZoneDetector
 import com.demosten.srednabg.core.ZoneState
 import com.demosten.srednabg.core.bearingBetween
 import com.demosten.srednabg.core.haversineDistance
-import com.google.android.gms.location.FusedLocationProviderClient
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -91,7 +90,6 @@ class LocationTrackingService : LifecycleService() {
         internal var debugInjector: ((android.location.Location) -> Unit)? = null
     }
 
-    @Inject lateinit var fusedLocationClient: FusedLocationProviderClient
     @Inject lateinit var zoneRepository: ZoneRepository
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var audioAlertManager: AudioAlertManager
@@ -227,7 +225,7 @@ class LocationTrackingService : LifecycleService() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        locationSource = createLocationSource(this, fusedLocationClient, locationListener)
+        locationSource = createLocationSource(this, locationListener)
         debugInjector = { loc -> locationListener.onLocation(loc) }
     }
 

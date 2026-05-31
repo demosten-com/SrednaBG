@@ -39,6 +39,43 @@ python qa/srednabg_qa.py --suite full-zones      # ~75 min @4× — all 72 zones
 python qa/srednabg_qa.py --suite nightly         # ~2 hr — representative + full-zones + scenarios + ui
 ```
 
+#### Product flavors (`--flavor`)
+
+The Android app ships two flavors differing only in the GPS provider (see
+`android/CLAUDE.md` "Product flavors"): `aosp` (LocationManager — F-Droid +
+GitHub) and `gms` (FusedLocationProvider — Play Store). The harness **does not
+build or install** — install the flavor you want to test first (both share the
+`com.demosten.srednabg` applicationId, so only one is installed at a time and
+the harness tests whichever that is).
+
+`--flavor {auto,aosp,gms}` (default `auto`) controls the `location.source_selected`
+scenario that's prepended to the **smoke** and **representative** suites:
+
+- `aosp` — asserts the app selects the LocationManager source (`SrednaBG.LocSrc:
+  Selecting SystemLocationSource`). Fails if it sees `Fused…`, i.e. the FOSS
+  build re-linked GMS or the wrong APK is installed.
+- `gms` — asserts `FusedLocationSource` (on a **Google-APIs** emulator image;
+  a plain AOSP image legitimately falls back to System).
+- `auto` — only records which source was selected; doesn't pin the flavor.
+
+```bash
+# Install the aosp debug APK, then:
+python qa/srednabg_qa.py --suite smoke --flavor aosp
+# Install the gms debug APK, then:
+python qa/srednabg_qa.py --suite smoke --flavor gms
+```
+
+Full flavor matrix (nightly-grade): build+install each flavor and run its
+suite with the matching `--flavor`; the `/qa-app` skill orchestrates the
+build+install+run loop since the harness itself doesn't build.
+
+**Manual-only edge (not automated):** verifying the gms flavor's *fallback* —
+`gms` APK on a device with **no** Play Services should select System — needs a
+non-Google emulator image (plain AOSP, no GMS). The unit test
+`LocationSourceSelectionTest` already covers the decision logic
+(`chooseLocationSourceKind`) headlessly; the on-device fallback is a manual
+check when a de-Googled image is available.
+
 ### iOS Simulator (macOS only; Debug build installed in a booted simulator)
 
 ```bash

@@ -55,7 +55,11 @@ jobs:
         working-directory: android
         run: ./gradlew :core:test
 
-      - name: Build Android app
+      - name: Run app unit tests (both flavors)
+        working-directory: android
+        run: ./gradlew :app:testAospDebugUnitTest :app:testGmsDebugUnitTest
+
+      - name: Build Android app (both flavors)
         working-directory: android
         run: ./gradlew :app:assembleDebug
 
@@ -67,5 +71,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: debug-apk
-          path: android/app/build/outputs/apk/debug/*.apk
+          # Flavored: aosp/debug + gms/debug.
+          path: android/app/build/outputs/apk/*/debug/*.apk
           retention-days: 14

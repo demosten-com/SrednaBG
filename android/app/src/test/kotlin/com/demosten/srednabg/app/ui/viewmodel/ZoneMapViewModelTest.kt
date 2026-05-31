@@ -54,6 +54,8 @@ class ZoneMapViewModelTest {
         settingsRepository = mockk()
         every { settingsRepository.mapHeadingUp } returns flowOf(false)
         every { settingsRepository.mapThemeMode } returns flowOf(MapThemeMode.AUTO)
+        every { settingsRepository.mapZoomOverride } returns flowOf<Float?>(null)
+        every { settingsRepository.debugMaxSpeedOverride } returns flowOf<Int?>(null)
 
         mapRepository = mockk()
         every { mapRepository.localStyleUri(MapTheme.LIGHT) } returns "file:///dev/null/style-light.json"
@@ -89,6 +91,8 @@ class ZoneMapViewModelTest {
         settingsRepository = mockk()
         every { settingsRepository.mapHeadingUp } returns flowOf(false)
         every { settingsRepository.mapThemeMode } returns flowOf(MapThemeMode.AUTO)
+        every { settingsRepository.mapZoomOverride } returns flowOf<Float?>(null)
+        every { settingsRepository.debugMaxSpeedOverride } returns flowOf<Int?>(null)
 
         mapRepository = mockk()
         every { mapRepository.localStyleUri(MapTheme.LIGHT) } returns "file:///dev/null/style-light.json"

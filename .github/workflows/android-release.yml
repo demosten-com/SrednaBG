@@ -81,7 +81,10 @@ jobs:
           SREDNABG_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           SREDNABG_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          ./gradlew :app:assembleRelease \
+          # GitHub Releases ship the aosp flavor (LocationManager, no Google
+          # Play Services) — works on every phone incl. de-Googled, and matches
+          # what F-Droid builds. The gms flavor goes to the Play Store only.
+          ./gradlew :app:assembleAospRelease \
             -PSREDNABG_RELEASE_STORE_FILE="$SREDNABG_RELEASE_STORE_FILE" \
             -PSREDNABG_RELEASE_STORE_PASSWORD="$SREDNABG_RELEASE_STORE_PASSWORD" \
             -PSREDNABG_RELEASE_KEY_ALIAS="$SREDNABG_RELEASE_KEY_ALIAS" \
@@ -92,7 +95,7 @@ jobs:
       - name: Rename APK + generate checksum
         id: artifact
         run: |
-          SRC=android/app/build/outputs/apk/release/app-release.apk
+          SRC=android/app/build/outputs/apk/aosp/release/app-aosp-release.apk
           OUT=srednabg-${{ steps.ver.outputs.name }}.apk
           mv "$SRC" "$OUT"
           sha256sum "$OUT" > "$OUT.sha256"

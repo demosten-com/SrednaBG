@@ -15,8 +15,6 @@ import com.demosten.srednabg.app.data.local.ZoneDao
 import com.demosten.srednabg.app.data.local.ZoneDatabase
 import com.demosten.srednabg.app.data.remote.MapApi
 import com.demosten.srednabg.app.data.remote.ZoneApi
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationServices
 import com.google.gson.FieldNamingPolicy
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
@@ -63,11 +61,10 @@ object AppModule {
     @Singleton
     fun provideMapApi(client: OkHttpClient): MapApi = MapApi(client)
 
-    @Provides
-    @Singleton
-    fun provideFusedLocationProviderClient(
-        @ApplicationContext context: Context,
-    ): FusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(context)
+    // The FusedLocationProviderClient provider used to live here. It moved out
+    // of DI when the location source became flavor-specific: the gms flavor's
+    // createLocationSource() builds the client itself, and the aosp flavor has
+    // no GMS dependency at all. See src/{aosp,gms}/.../LocationSourceFactory.kt.
 
     @Provides
     @Singleton
