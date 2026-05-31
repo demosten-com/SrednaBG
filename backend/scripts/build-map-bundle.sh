@@ -69,7 +69,18 @@ for cmd in java jq curl zip shasum python3; do
 done
 
 # --- Preflight: Java >= 21 ----------------------------------------------------
-JAVA_MAJOR=$(java -version 2>&1 | head -1 | sed -E 's/.*version "([0-9]+).*/\1/')
+# On macOS, /usr/bin/java is a stub present even with no JDK installed, so the
+# `command -v java` check above passes; invoking it then fails. Probe inside an
+# `if` so a non-runnable java surfaces a clear error instead of `set -e`/pipefail
+# aborting the script silently (this runs before the cleanup trap is installed).
+if ! java_version_output=$(java -version 2>&1); then
+    echo "ERROR: 'java' is present but not runnable — no JDK installed?" >&2
+    echo "       Planetiler $PLANETILER_VERSION needs Java >= $JAVA_MIN_MAJOR." >&2
+    echo "       Install e.g. 'brew install openjdk@21' and ensure 'java' is on PATH." >&2
+    echo "       Reported by java: ${java_version_output:-<no output>}" >&2
+    exit 1
+fi
+JAVA_MAJOR=$(printf '%s\n' "$java_version_output" | head -1 | sed -E 's/.*version "([0-9]+).*/\1/')
 if ! [[ "$JAVA_MAJOR" =~ ^[0-9]+$ ]] || [ "$JAVA_MAJOR" -lt "$JAVA_MIN_MAJOR" ]; then
     echo "ERROR: Planetiler $PLANETILER_VERSION needs Java >= $JAVA_MIN_MAJOR; found '$JAVA_MAJOR'." >&2
     echo "       Install e.g. 'brew install openjdk@21' and ensure 'java' is on PATH." >&2
