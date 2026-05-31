@@ -1,4 +1,4 @@
-SrednaBG shows your real-time running average speed inside Bulgaria's section-control camera zones — and tells you the maximum speed you can sustain for the rest of the zone without going over the limit.
+SrednaBG shows your real-time running average speed inside Bulgaria's average-speed camera zones — and tells you the maximum speed you can sustain for the rest of the zone without going over the limit.
 
 Free. Open source. Bulgaria only.
 

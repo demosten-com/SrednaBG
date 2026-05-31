@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: 2026 SrednaBG Contributors
 #
+# SrednaBG — web / fdroid
+
 # Builds a versioned, SHA-256-pinned map bundle for an F-Droid release.
 #
 # Per-release immutability is required because F-Droid's build sandbox fetches

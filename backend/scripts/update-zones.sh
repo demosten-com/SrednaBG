@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: 2026 SrednaBG Contributors
+#
+# SrednaBG — backend / scripts
+
 # Update zone data from scrapers output.
 #
 # Stages scrapers/data/zones.json into backend/data/ (local inspection copy)

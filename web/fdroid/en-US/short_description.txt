@@ -1,1 +1,1 @@
-Real-time average speed inside Bulgaria's section-control camera zones.
+Real-time average speed inside Bulgaria's average-speed camera zones.

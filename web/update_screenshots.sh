@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: 2026 SrednaBG Contributors
+#
+# SrednaBG — web
+
 # update_screenshots.sh — copy raw screenshots from web/screenshots/<platform>/
 # into the marketing site's positional slots at web/html/screenshots/<platform>/<lang>/phone_NN.png.
 #

@@ -124,14 +124,14 @@ Two orchestrators live alongside the QA harness — they share `qa/screenshots/l
 - `qa/srednabg_screenshots.py` — drives the running emulator / Simulator to capture the raw store PNGs. Skill: `/screenshot-app`.
 - `qa/srednabg_frame_screenshots.py` — **offline** post-processor that composes Waze-style marketing frames (solid bg + centered title + smaller phone screenshot with rounded corners + thin black border) from the raw PNGs. Skill: `/frame-screenshots`. No emulator / Simulator involved.
 
-### Outputs (gitignored)
+### Outputs (tracked in git)
 
-Both write under `web/screenshots/`, which is in `.gitignore`:
+Both write under `web/screenshots/`, which is committed so the F-Droid staging script can stage the framed shots and the store listing stays reproducible:
 
 - Raw: `web/screenshots/<platform>/NN-<platform>-<theme>-<lang>.png`
 - Framed: `web/screenshots/<platform>/framed/NN-<theme>-<lang>.png`
 
-Regenerate via the skills. Don't commit either tree — `web/CLAUDE.md` explains how the marketing site picks up the framed PNGs at deploy time.
+Regenerate via the skills and commit the result. `web/CLAUDE.md` explains how the marketing site picks up the framed PNGs at deploy time.
 
 ### `qa/screenshots/shots.yaml`
 

@@ -30,8 +30,6 @@ htmlcov/
 
 # Backend
 backend/tiles/*.mbtiles
-backend/tiles/sources/
-backend/tiles/tile_weights.tsv.gz
 backend/data/map-bundle/
 backend/data/map-bundle.zip
 backend/.cache/
@@ -51,9 +49,6 @@ qa/reports/
 qa/out/
 qa/fixtures/gpx/
 qa/fixtures/tts_phrases.yaml
-
-# Screenshots (you can regenerate using /screenshot-app)
-web/screenshots/
 
 # Claude Code local harness state (skills/ stays tracked for contributors)
 .claude/settings.local.json

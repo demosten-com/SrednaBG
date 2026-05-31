@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: 2026 SrednaBG Contributors
 #
+# SrednaBG — web / fdroid
+
 # Copies the F-Droid metadata for SrednaBG into a local clone of fdroiddata,
 # ready for `git add && git commit` against the user's MR branch.
 #
@@ -18,14 +22,15 @@
 #   web/fdroid/{en-US,bg}/changelogs/*.txt
 #     -> <target>/metadata/com.demosten.srednabg/<locale>/...
 #
-#   test-data/design/SrednaBG complete files 2/play-store/icon-512.png
+#   design/android/512px-custom.png
 #     -> <target>/metadata/com.demosten.srednabg/<locale>/icon.png
 #
-#   test-data/design/SrednaBG complete files 2/temp/feature_graphic_dark_gradient_95.png
+#   design/android/feature_graphic_white_95.png
 #     -> <target>/metadata/com.demosten.srednabg/<locale>/featureGraphic.png
 #
-#   web/screenshots/android/framed/<6 chosen shots per locale>
-#     -> <target>/metadata/com.demosten.srednabg/<locale>/phoneScreenshots/
+#   web/screenshots/android/framed/<6 chosen shots per locale, ordered
+#   04-light, 05-dark, 07-light, 01-light, 02-light, 08-dark>
+#     -> <target>/metadata/com.demosten.srednabg/<locale>/phoneScreenshots/01..06.png
 #
 # F-Droid's tooling does not follow symlinks — files are copied, not linked.
 #
@@ -49,8 +54,14 @@ APP_ID="com.demosten.srednabg"
 DEST_YAML="$TARGET/metadata/${APP_ID}.yml"
 DEST_DIR="$TARGET/metadata/${APP_ID}"
 
-ICON_SRC="$REPO_ROOT/test-data/design/SrednaBG complete files 2/play-store/icon-512.png"
-FEATURE_SRC="$REPO_ROOT/test-data/design/SrednaBG complete files 2/temp/feature_graphic_dark_gradient_95.png"
+# Icon: 512px-custom.png matches the shipped app launcher icon more closely than
+# the play-store icon-512.png variant (pixel-diff RMS 7.73 vs 10.67 against the
+# app's adaptive icon), so the F-Droid listing icon stays consistent with the
+# installed app.
+ICON_SRC="$REPO_ROOT/design/android/512px-custom.png"
+# Feature graphic: light/white variant to match the Play Store listing (the dark
+# gradient was the previous F-Droid-only choice).
+FEATURE_SRC="$REPO_ROOT/design/android/feature_graphic_white_95.png"
 FRAMED_DIR="$REPO_ROOT/web/screenshots/android/framed"
 
 for f in "$ICON_SRC" "$FEATURE_SRC"; do
@@ -60,8 +71,10 @@ for f in "$ICON_SRC" "$FEATURE_SRC"; do
     fi
 done
 
-EN_SHOTS=(01-light-en.png 02-light-en.png 04-dark-en.png 05-dark-en.png 07-light-en.png 08-dark-en.png)
-BG_SHOTS=(01-light-bg.png 02-light-bg.png 04-dark-bg.png 05-dark-bg.png 07-light-bg.png 08-dark-bg.png)
+# Order chosen for maximum listing impact (becomes phoneScreenshots/01..06.png):
+#   04-light, 05-dark, 07-light, 01-light, 02-light, 08-dark
+EN_SHOTS=(04-light-en.png 05-dark-en.png 07-light-en.png 01-light-en.png 02-light-en.png 08-dark-en.png)
+BG_SHOTS=(04-light-bg.png 05-dark-bg.png 07-light-bg.png 01-light-bg.png 02-light-bg.png 08-dark-bg.png)
 
 echo "==> Copying metadata.yml"
 cp "$SRC/metadata.yml" "$DEST_YAML"

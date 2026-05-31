@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: 2026 SrednaBG Contributors
+#
+# SrednaBG — backend / scripts
+
 # Build the offline map bundle that ships inside the Android APK and iOS app.
 #
 # Self-contained: downloads everything it needs (the pinned Planetiler jar and,

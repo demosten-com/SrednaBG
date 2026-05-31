@@ -48,10 +48,10 @@ None. The site is static. Edit `web/html/`, copy to `$HOME/srednabg_com/` on Nam
 
 ## Screenshot tree (`web/screenshots/`)
 
-**Gitignored.** Landing zone for the screenshot tooling under `qa/` — regenerable, not committed:
+**Tracked in git.** Landing zone for the screenshot tooling under `qa/` — regenerable via the skills, but committed so the store listing is reproducible: `web/fdroid/scripts/stage-fdroiddata.sh` stages the framed PNGs straight from here.
 
 - `web/screenshots/<platform>/NN-<platform>-<theme>-<lang>.png` — raw store screenshots produced by `/screenshot-app` (`qa/srednabg_screenshots.py`).
 - `web/screenshots/<platform>/framed/NN-<theme>-<lang>.png` — Waze-style marketing frames produced by `/frame-screenshots` (`qa/srednabg_frame_screenshots.py`).
-- `web/screenshots/playground/` — local-only scratch area.
+- `web/screenshots/playground/` — local scratch area (also tracked; keep throwaway experiments out of it).
 
 Re-run the skills to rebuild; don't hand-edit. The deploy rsync target is `web/html/` only — this tree is **not** part of the marketing site. Anything that needs to be published has to be copied into `web/html/assets/img/` (or sibling) and committed there.

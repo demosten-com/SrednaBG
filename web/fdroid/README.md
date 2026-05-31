@@ -4,9 +4,6 @@ Draft of the F-Droid submission for SrednaBG. None of this is read directly
 by F-Droid — at submission time, `scripts/stage-fdroiddata.sh` copies the
 relevant files into a local clone of the `fdroiddata` repo.
 
-See `test-data/f-droid-release.md` for the full release plan and the current
-execution status.
-
 ## Layout
 
 - `metadata.yml` — draft of `metadata/com.demosten.srednabg.yml` for fdroiddata.
@@ -19,7 +16,12 @@ execution status.
 - `scripts/publish-map-bundle.sh` — builds the map bundle, computes SHA-256,
   prints the SCP/rsync command for manual upload to `srednabg.com/assets/`.
 - `scripts/stage-fdroiddata.sh` — copies the files above into a target
-  fdroiddata clone, ready for `git add`.
+  fdroiddata clone, ready for `git add`. It also pulls listing graphics from
+  outside this folder: the launcher icon (`design/android/512px-custom.png`)
+  and feature graphic (`design/android/feature_graphic_white_95.png`), plus the
+  six framed phone screenshots per locale from
+  `web/screenshots/android/framed/`. All three sources are tracked in git so a
+  staging run is reproducible.
 
 ## Reviewer-facing notes (not in the YAML)
 

@@ -7,8 +7,8 @@
 """Insert SPDX license headers into first-party SrednaBG source files.
 
 Walks an explicit allow-list of source roots under the repo and inserts a
-4-line SPDX header block at the top of every `.kt`, `.swift`, and `.py` file
-that does not already carry one. Idempotent: re-running is a no-op.
+4-line SPDX header block at the top of every `.kt`, `.swift`, `.py`, and `.sh`
+file that does not already carry one. Idempotent: re-running is a no-op.
 
 Usage:
     python3 scripts/add_license_headers.py            # write changes in place
@@ -58,12 +58,14 @@ ROOTS: tuple[Root, ...] = (
     Root("ios/Packages/SrednaBGMapCore", "ios / SrednaBGMapCore", (".swift",)),
     Root("ios/Packages/SrednaBGUI", "ios / SrednaBGUI", (".swift",)),
     Root("ios/Packages/SrednaBGCarPlay", "ios / SrednaBGCarPlay", (".swift",)),
-    # Python — most specific first so backend/scripts wins over a backend root
-    Root("backend/scripts", "backend / scripts", (".py",)),
-    Root("scrapers", "scrapers", (".py",)),
-    Root("qa", "qa", (".py",)),
-    Root("scripts", "scripts", (".py",)),
-    Root("test-data", "test-data", (".py",)),
+    # Python + shell — most specific first so backend/scripts wins over a backend root
+    Root("backend/scripts", "backend / scripts", (".py", ".sh")),
+    Root("scrapers", "scrapers", (".py", ".sh")),
+    Root("qa", "qa", (".py", ".sh")),
+    Root("scripts", "scripts", (".py", ".sh")),
+    # Shell — web tooling (specific web/fdroid/scripts root before the broad web root)
+    Root("web/fdroid/scripts", "web / fdroid", (".sh",)),
+    Root("web", "web", (".sh",)),
 )
 
 # Defense-in-depth: even if a Root path includes one of these, skip.
@@ -104,7 +106,7 @@ def header_block(label: str, comment: str) -> list[str]:
 def comment_marker_for(ext: str) -> str:
     if ext in (".kt", ".swift"):
         return "//"
-    if ext == ".py":
+    if ext in (".py", ".sh"):
         return "#"
     raise ValueError(f"unsupported extension: {ext}")
 
@@ -124,8 +126,11 @@ def detect_line_ending(content_bytes: bytes) -> bytes:
     return b"\n"
 
 
-def split_python_prologue(lines: list[bytes]) -> tuple[list[bytes], list[bytes]]:
-    """Pull off shebang and PEP 263 coding declaration from the start of a Python file.
+def split_script_prologue(lines: list[bytes], ext: str) -> tuple[list[bytes], list[bytes]]:
+    """Pull off the shebang (and, for Python, a PEP 263 coding declaration).
+
+    Applies to `#`-comment scripts (`.py`, `.sh`) so the SPDX block lands just
+    below any `#!...` line rather than displacing it.
 
     Returns (prologue_lines, remaining_lines).
     """
@@ -134,8 +139,8 @@ def split_python_prologue(lines: list[bytes]) -> tuple[list[bytes], list[bytes]]
     if rest and rest[0].startswith(b"#!"):
         prologue.append(rest.pop(0))
     # PEP 263: coding declaration must be in line 1 or 2. If we already took a
-    # shebang from line 1, the coding line (if any) is now rest[0].
-    if rest and rest[0].startswith(b"#") and CODING_RE.search(rest[0]):
+    # shebang from line 1, the coding line (if any) is now rest[0]. Python only.
+    if ext == ".py" and rest and rest[0].startswith(b"#") and CODING_RE.search(rest[0]):
         prologue.append(rest.pop(0))
     return prologue, rest
 
@@ -165,8 +170,8 @@ def insert_header(path: Path, label: str) -> bool:
     header_lines = [s.encode() for s in header_block(label, comment)]
     blank = b""
 
-    if ext == ".py":
-        prologue, remaining = split_python_prologue(lines)
+    if ext in (".py", ".sh"):
+        prologue, remaining = split_script_prologue(lines, ext)
         if remaining and remaining[0] == b"":
             # Avoid double-blank between header and remaining content.
             remaining = remaining[1:]

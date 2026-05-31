@@ -1,0 +1,187 @@
+/* SrednaBG framing playground — visual sandbox for shots.yaml frame: values.
+   No build step; matches web/CLAUDE.md "pure HTML/CSS/JS" policy. */
+
+:root {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px;
+  color: #1a1a1a;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  min-height: 100vh;
+}
+
+/* --- Controls panel ---------------------------------------------------- */
+
+.controls {
+  padding: 20px 18px;
+  background: #fafafa;
+  border-right: 1px solid #e0e0e0;
+  overflow-y: auto;
+}
+
+.controls h2 {
+  margin: 0 0 4px;
+  font-size: 16px;
+  letter-spacing: 0.02em;
+}
+
+.controls .hint {
+  margin: 0 0 16px;
+  font-size: 12px;
+  color: #666;
+  line-height: 1.4;
+}
+
+.controls code {
+  background: #ececec;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 11px;
+}
+
+.controls fieldset {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid #dcdcdc;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.controls legend {
+  padding: 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #555;
+}
+
+.controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 8px;
+  font-size: 13px;
+}
+
+.controls label.row {
+  display: flex;
+  justify-content: space-between;
+  margin: 6px 0 0;
+}
+
+.swatches {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.swatches button {
+  width: 36px;
+  height: 36px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  outline: 1px solid #ccc;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.08s ease-out;
+}
+
+.swatches button:hover { transform: scale(1.08); }
+.swatches button:active { transform: scale(0.96); }
+
+.controls input[type="text"],
+.controls input[type="color"],
+.controls select,
+.controls textarea {
+  font: inherit;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 4px 6px;
+  background: #fff;
+}
+
+.controls input[type="text"] { width: 96px; font-family: ui-monospace, monospace; }
+.controls input[type="color"] { width: 48px; height: 28px; padding: 1px; cursor: pointer; }
+.controls select { width: 100%; }
+.controls textarea {
+  width: 100%;
+  resize: vertical;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+}
+
+.controls input[type="range"] { width: 100%; margin-top: 4px; }
+.controls output { font-variant-numeric: tabular-nums; font-size: 12px; color: #555; }
+.controls small { color: #777; font-size: 11px; display: block; margin-top: 6px; }
+
+/* --- Stage + preview frame -------------------------------------------- */
+
+.stage {
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    repeating-conic-gradient(#2a2a2a 0% 25%, #333 0% 50%) 0 / 32px 32px;
+}
+
+/* The .frame mirrors the Python renderer's 1080x1920 canvas at small scale.
+   aspect-ratio: 9/16 + max-width keeps it phone-shaped no matter the viewport. */
+.frame {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  aspect-ratio: 9 / 16;
+  background: #66BB6A;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 7% 7% 5%;
+  gap: 4%;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+}
+
+.title {
+  margin: 0;
+  text-align: center;
+  line-height: 1.15;
+  font-weight: 700;
+  color: #000;
+  white-space: pre-line;     /* renders explicit \n as a break */
+  word-break: break-word;
+  font-family: "Nunito", system-ui, sans-serif;
+}
+
+/* Wrapper takes whatever vertical space the title leaves; the phone img
+   then fits inside it. This is the canonical "img scales to available
+   flex space" pattern. */
+.phone-wrap {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+/* The phone thumbnail. max-width 80% matches phone_max_width_frac=0.80 in
+   the Python renderer. max-height + object-fit lets it shrink when the
+   title is tall. border-radius in %/% stays visually consistent. */
+.phone {
+  max-width: 80%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border: 2px solid #000;
+  border-radius: 7% / 3.5%;
+  display: block;
+}

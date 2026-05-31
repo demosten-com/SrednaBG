@@ -138,7 +138,7 @@ independent of the QA suites above:
 2. **Frame** them offline into Waze-style marketing PNGs
    → `qa/srednabg_frame_screenshots.py` (skill: `/frame-screenshots`)
 
-Outputs (both trees are `.gitignore`d):
+Outputs (both trees are tracked in git):
 
 - Raw:    `web/screenshots/<platform>/NN-<platform>-<theme>-<lang>.png`
 - Framed: `web/screenshots/<platform>/framed/NN-<theme>-<lang>.png`

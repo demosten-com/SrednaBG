@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: 2026 SrednaBG Contributors
+#
+# SrednaBG — scrapers
+
 # Cron wrapper for the SrednaBG zone scraper on Namecheap shared hosting.
 # Loads env, runs the scraper into the public api dir, then pings Telegram.
 #

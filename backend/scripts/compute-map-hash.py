@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: 2026 SrednaBG Contributors
+#
+# SrednaBG — backend / scripts
+
 """Compute a deterministic content hash for the offline map bundle.
 
 The result becomes ``map_hash`` in the bundle's ``version.json`` and gates client

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>SrednaBG framing playground</title>
+  <link rel="stylesheet" href="playground.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Nunito:wght@700&family=Roboto:wght@700&family=Open+Sans:wght@700&family=Montserrat:wght@700&family=Manrope:wght@700&display=swap">
+</head>
+<body>
+  <aside class="controls">
+    <h2>Framing playground</h2>
+    <p class="hint">Shot 02 · <code>home-in-zone-green</code> · Android raw PNGs from sibling <code>../android/</code>.</p>
+
+    <fieldset>
+      <legend>Theme</legend>
+      <label><input type="radio" name="theme" value="light" checked> Light</label>
+      <label><input type="radio" name="theme" value="dark"> Dark</label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Background</legend>
+      <div class="swatches">
+        <button type="button" data-color="#66BB6A" style="background:#66BB6A" title="Brand green"></button>
+        <button type="button" data-color="#FDD835" style="background:#FDD835" title="Brand yellow"></button>
+        <button type="button" data-color="#EF5350" style="background:#EF5350" title="Brand red"></button>
+      </div>
+      <label class="row">Picker <input type="color" id="bgPicker" value="#66BB6A"></label>
+      <label class="row">Hex <input type="text" id="bgHex" value="#66BB6A" maxlength="7" spellcheck="false"></label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Title font</legend>
+      <select id="font">
+        <option>Nunito</option>
+        <option>Roboto</option>
+        <option>Open Sans</option>
+        <option>Montserrat</option>
+        <option>Manrope</option>
+      </select>
+    </fieldset>
+
+    <fieldset>
+      <legend>Title size</legend>
+      <input type="range" id="titleSize" min="24" max="96" value="48">
+      <output id="titleSizeOut" for="titleSize">48 px</output>
+    </fieldset>
+
+    <fieldset>
+      <legend>Title text</legend>
+      <textarea id="titleText" rows="3" spellcheck="false">В секционен контрол?
+Карай в зелено.</textarea>
+      <small>Newline = hard line break (matches the Python renderer).</small>
+    </fieldset>
+  </aside>
+
+  <main class="stage">
+    <div class="frame" id="frame">
+      <h1 class="title" id="title"></h1>
+      <div class="phone-wrap">
+        <img class="phone" id="phone" alt="SrednaBG app screenshot">
+      </div>
+    </div>
+  </main>
+
+  <script src="playground.js"></script>
+</body>
+</html>
