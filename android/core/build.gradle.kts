@@ -9,7 +9,13 @@ java {
 }
 
 kotlin {
-    jvmToolchain(17)
+    // Target JVM 17 without pinning a Gradle *toolchain*: a strict toolchain
+    // forces JDK-17 discovery, which fails in F-Droid's build sandbox (no
+    // matching toolchain + auto-provisioning disabled). compilerOptions targets
+    // the bytecode level using whichever JDK (>= 17) runs Gradle instead.
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+    }
 }
 
 dependencies {

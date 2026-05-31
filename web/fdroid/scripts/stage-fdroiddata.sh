@@ -4,35 +4,22 @@
 #
 # SrednaBG — web / fdroid
 
-# Copies the F-Droid metadata for SrednaBG into a local clone of fdroiddata,
+# Stages the SrednaBG F-Droid build recipe into a local clone of fdroiddata,
 # ready for `git add && git commit` against the user's MR branch.
+#
+# Listing copy + graphics (name/summary/description, icon, featureGraphic,
+# screenshots) are NOT staged here: they live in the app's own repo under
+# `fastlane/metadata/android/<locale>/` (see gen-fastlane-metadata.sh) and
+# F-Droid imports them from the built tag at `fdroid update`. fdroiddata only
+# needs the build recipe, so this script copies a single file:
+#
+#   web/fdroid/metadata.yml -> <target>/metadata/com.demosten.srednabg.yml
 #
 # Usage:
 #   bash web/fdroid/scripts/stage-fdroiddata.sh <path-to-fdroiddata-clone>
 #
 # Example:
 #   bash web/fdroid/scripts/stage-fdroiddata.sh ~/dev/fdroiddata
-#
-# Mappings (source -> destination):
-#
-#   web/fdroid/metadata.yml
-#     -> <target>/metadata/com.demosten.srednabg.yml
-#
-#   web/fdroid/{en-US,bg}/{title,short_description,full_description}.txt
-#   web/fdroid/{en-US,bg}/changelogs/*.txt
-#     -> <target>/metadata/com.demosten.srednabg/<locale>/...
-#
-#   design/android/512px-custom.png
-#     -> <target>/metadata/com.demosten.srednabg/<locale>/icon.png
-#
-#   design/android/feature_graphic_white_95.png
-#     -> <target>/metadata/com.demosten.srednabg/<locale>/featureGraphic.png
-#
-#   web/screenshots/android/framed/<6 chosen shots per locale, ordered
-#   04-light, 05-dark, 07-light, 01-light, 02-light, 08-dark>
-#     -> <target>/metadata/com.demosten.srednabg/<locale>/phoneScreenshots/01..06.png
-#
-# F-Droid's tooling does not follow symlinks — files are copied, not linked.
 #
 set -euo pipefail
 
@@ -54,75 +41,30 @@ APP_ID="com.demosten.srednabg"
 DEST_YAML="$TARGET/metadata/${APP_ID}.yml"
 DEST_DIR="$TARGET/metadata/${APP_ID}"
 
-# Icon: 512px-custom.png matches the shipped app launcher icon more closely than
-# the play-store icon-512.png variant (pixel-diff RMS 7.73 vs 10.67 against the
-# app's adaptive icon), so the F-Droid listing icon stays consistent with the
-# installed app.
-ICON_SRC="$REPO_ROOT/design/android/512px-custom.png"
-# Feature graphic: light/white variant to match the Play Store listing (the dark
-# gradient was the previous F-Droid-only choice).
-FEATURE_SRC="$REPO_ROOT/design/android/feature_graphic_white_95.png"
-FRAMED_DIR="$REPO_ROOT/web/screenshots/android/framed"
-
-for f in "$ICON_SRC" "$FEATURE_SRC"; do
-    if [[ ! -f "$f" ]]; then
-        echo "error: missing source asset: $f" >&2
-        exit 1
-    fi
-done
-
-# Order chosen for maximum listing impact (becomes phoneScreenshots/01..06.png):
-#   04-light, 05-dark, 07-light, 01-light, 02-light, 08-dark
-EN_SHOTS=(04-light-en.png 05-dark-en.png 07-light-en.png 01-light-en.png 02-light-en.png 08-dark-en.png)
-BG_SHOTS=(04-light-bg.png 05-dark-bg.png 07-light-bg.png 01-light-bg.png 02-light-bg.png 08-dark-bg.png)
-
-echo "==> Copying metadata.yml"
+echo "==> Copying metadata.yml -> metadata/${APP_ID}.yml"
 cp "$SRC/metadata.yml" "$DEST_YAML"
 
-stage_locale() {
-    local locale="$1"
-    shift
-    local -a shots=("$@")
-    local locale_dir="$DEST_DIR/$locale"
-    local shots_dir="$locale_dir/phoneScreenshots"
-
-    echo "==> Staging locale: $locale"
-    mkdir -p "$locale_dir/changelogs" "$shots_dir"
-
-    cp "$SRC/$locale/title.txt" "$locale_dir/title.txt"
-    cp "$SRC/$locale/short_description.txt" "$locale_dir/short_description.txt"
-    cp "$SRC/$locale/full_description.txt" "$locale_dir/full_description.txt"
-
-    for f in "$SRC/$locale/changelogs"/*.txt; do
-        cp "$f" "$locale_dir/changelogs/"
-    done
-
-    cp "$ICON_SRC" "$locale_dir/icon.png"
-    cp "$FEATURE_SRC" "$locale_dir/featureGraphic.png"
-
-    local i=1
-    for shot in "${shots[@]}"; do
-        cp "$FRAMED_DIR/$shot" "$shots_dir/$(printf '%02d' "$i").png"
-        i=$((i + 1))
-    done
-}
-
-stage_locale en-US "${EN_SHOTS[@]}"
-stage_locale bg    "${BG_SHOTS[@]}"
+LEGACY_NOTE=""
+if [[ -d "$DEST_DIR" ]]; then
+    LEGACY_NOTE="
+  NOTE: a metadata/${APP_ID}/ directory exists in the clone. Listing copy now
+  lives in the app repo's fastlane/ tree, so remove the stale locale dir:
+    git -C \"$TARGET\" rm -r \"metadata/${APP_ID}\"
+"
+fi
 
 cat <<EOF
 
 ================================================================================
-  Staged at: $DEST_DIR
-  YAML at:   $DEST_YAML
-
+  Staged: $DEST_YAML
+$LEGACY_NOTE
   Next steps:
     cd "$TARGET"
-    git checkout -b $APP_ID
-    git add "metadata/${APP_ID}.yml" "metadata/${APP_ID}/"
+    git checkout -b $APP_ID    # or switch to your existing branch
+    git add "metadata/${APP_ID}.yml"
     git status
     git commit -m "New app: $APP_ID (SrednaBG)"
     git push origin $APP_ID
-    # Then open MR against master on gitlab.com/fdroid/fdroiddata
+    # Then open / update the MR against master on gitlab.com/fdroid/fdroiddata
 ================================================================================
 EOF

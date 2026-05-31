@@ -14,8 +14,14 @@ android {
         applicationId = "com.demosten.srednabg"
         minSdk = 26
         targetSdk = 35
-        versionCode = (project.findProperty("SREDNABG_VERSION_CODE") as String?)?.toInt() ?: 10003
-        versionName = (project.findProperty("SREDNABG_VERSION_NAME") as String?) ?: "1.0.3"
+        // Literal defaults so F-Droid's checkupdates can statically parse the
+        // version (a computed expression yields "no version information"). The
+        // android-release.yml workflow overrides these from the git tag for
+        // GitHub/Play builds; F-Droid builds use the literals as-is.
+        versionCode = 10003
+        versionName = "1.0.3"
+        (project.findProperty("SREDNABG_VERSION_CODE") as String?)?.let { versionCode = it.toInt() }
+        (project.findProperty("SREDNABG_VERSION_NAME") as String?)?.let { versionName = it }
         resourceConfigurations += listOf("bg", "en")
 
         // Both debug and release hit the production Namecheap host so dev

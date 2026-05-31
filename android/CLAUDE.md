@@ -58,6 +58,14 @@ Map bundle fetch: the workflow downloads `https://srednabg.com/assets/map-bundle
 
 Required repo secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`. Optional: `MAP_BUNDLE_URL` (override).
 
+F-Droid listing metadata lives **in this repo** under `fastlane/metadata/android/<locale>/` (name/summary/description, `changelogs/<versionCode>.txt`, `images/{icon,featureGraphic,phoneScreenshots}`) and F-Droid imports it from the **built tag's** checkout. So the fdroiddata submission is **just the build recipe** `metadata/com.demosten.srednabg.yml` — no locale copy, no images (see `web/fdroid/README.md`). `stage-fdroiddata.sh` stages only the yml; `gen-fastlane-metadata.sh` (re)builds the Fastlane tree from `web/fdroid/` copy + `design/` assets (EXIF-stripped — don't hand-edit `fastlane/`).
+
+F-Droid release checklist (each tag must build & auto-update cleanly):
+1. Bump the **literal** `versionCode`/`versionName` in `app/build.gradle.kts` (the `-P` props still override for GitHub/Play builds, but F-Droid + `checkupdates` parse the literals statically — a computed expression breaks them).
+2. Update `URL` + `SHA256` in `backend/scripts/fetch-fdroid-map-bundle.sh` to the new tag's bundle (digest must match `web/fdroid/map-bundle-checksums.txt`). The fetch+verify is a script, not inline prebuild, so the recipe stays within F-Droid's line-length/rewritemeta/lint rules.
+3. Add `fastlane/metadata/android/<locale>/changelogs/<versionCode>.txt`, run `gen-fastlane-metadata.sh`.
+4. Update `metadata.yml` (`versionName`/`versionCode`/`commit`/`CurrentVersion*`), run `fdroid rewritemeta` + `fdroid lint` to confirm canonical, then re-stage + push to fdroiddata.
+
 ## Offline map bundle (Android side)
 
 Bundle is produced by `backend/scripts/build-map-bundle.sh` — see `backend/CLAUDE.md` for the build pipeline.
