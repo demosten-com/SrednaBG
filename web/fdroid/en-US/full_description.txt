@@ -16,6 +16,12 @@ WHAT IT DOES
 
 • Alongside Waze, or instead of it — Run SrednaBG as a full navigator, or let it sit quietly behind Waze / Google Maps — you'll hear its voice when it matters.
 
+PERMISSIONS, EXPLAINED
+
+• Background location — Average-speed zones can be many kilometres long, and a drive often outlasts the screen timeout or runs behind another navigation app. SrednaBG needs location while in the background so your average keeps updating with the screen off or another app in front. It is used only to compute your speed inside zones — never shared, and it never leaves your phone.
+
+• Ignore battery optimizations (optional) — You can grant an exemption so the system doesn't suspend tracking mid-drive. It is optional and requested only from a card you tap; tracking still starts without it, just less reliably on devices with aggressive power management.
+
 PRIVACY
 
 • No cookies, no trackers anywhere.

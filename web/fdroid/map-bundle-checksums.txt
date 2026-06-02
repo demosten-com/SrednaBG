@@ -1,6 +1,12 @@
-# SHA-256 checksums for hosted map bundles, consumed by the release workflow.
-# Format: <sha256>  <tag>
-# Maintained by web/fdroid/scripts/publish-map-bundle.sh at release time.
-0513907ed5108c34a5a13646f5c4dc8968c44f372587bef888543c80b757bcd1  v1.0.2
-0513907ed5108c34a5a13646f5c4dc8968c44f372587bef888543c80b757bcd1  v1.0.3
-0513907ed5108c34a5a13646f5c4dc8968c44f372587bef888543c80b757bcd1  v1.0.4
+# SHA-256 of the current offline map bundle.
+#
+# The web host serves the mutable latest at srednabg.com/assets/map-bundle.zip.
+# android-release.yml verifies that download against this digest, then snapshots
+# it per tag into the GitHub Release as map-bundle-<tag>.zip (the immutable,
+# durable build input F-Droid's prebuild fetches).
+#
+# Update this single value ONLY when the map bundle is rebuilt — and keep it in
+# sync with SHA256 in backend/scripts/fetch-fdroid-map-bundle.sh.
+#
+# Format: <sha256>  map-bundle.zip
+0513907ed5108c34a5a13646f5c4dc8968c44f372587bef888543c80b757bcd1  map-bundle.zip

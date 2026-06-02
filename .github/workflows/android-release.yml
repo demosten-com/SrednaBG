@@ -42,10 +42,12 @@ jobs:
             EXPECTED_SHA=""
             echo "::notice::Using MAP_BUNDLE_URL override (no checksum check)"
           else
-            URL="https://srednabg.com/assets/map-bundle-${TAG}.zip"
-            EXPECTED_SHA="$(awk -v t="$TAG" '$0 !~ /^#/ && $2 == t {print $1; exit}' "$CHECKSUMS" || true)"
+            # The web host keeps only the mutable latest bundle; this workflow
+            # snapshots it into an immutable per-tag release asset further down.
+            URL="https://srednabg.com/assets/map-bundle.zip"
+            EXPECTED_SHA="$(awk '$0 !~ /^#/ && $2 == "map-bundle.zip" {print $1; exit}' "$CHECKSUMS" || true)"
             if [ -z "$EXPECTED_SHA" ]; then
-              echo "::error::No SHA-256 for $TAG in $CHECKSUMS. Run 'bash web/fdroid/scripts/publish-map-bundle.sh $TAG' before tagging."
+              echo "::error::No SHA-256 for map-bundle.zip in $CHECKSUMS. Update it to the current map bundle's digest."
               exit 1
             fi
           fi
@@ -101,6 +103,19 @@ jobs:
           sha256sum "$OUT" > "$OUT.sha256"
           echo "apk=$OUT" >> "$GITHUB_OUTPUT"
 
+      - name: Snapshot map bundle for the release
+        id: bundle
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          # Freeze the (mutable) latest bundle into an immutable, versioned
+          # release asset. This is the durable build input F-Droid's prebuild
+          # fetches — as long-lived as the source itself.
+          OUT="map-bundle-${TAG}.zip"
+          cp backend/data/map-bundle.zip "$OUT"
+          sha256sum "$OUT" > "$OUT.sha256"
+          echo "zip=$OUT" >> "$GITHUB_OUTPUT"
+
       - name: Cleanup keystore
         if: always()
         run: rm -f "$RUNNER_TEMP/keystore/srednabg-release.jks"
@@ -108,9 +123,20 @@ jobs:
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            --title "SrednaBG ${{ steps.ver.outputs.name }}" \
-            --generate-notes \
-            "${{ steps.artifact.outputs.apk }}" \
+          FILES=(
+            "${{ steps.artifact.outputs.apk }}"
             "${{ steps.artifact.outputs.apk }}.sha256"
+            "${{ steps.bundle.outputs.zip }}"
+            "${{ steps.bundle.outputs.zip }}.sha256"
+          )
+          # Idempotent: re-running on a moved tag updates assets instead of failing.
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${FILES[@]}" --clobber
+          else
+            gh release create "$TAG" \
+              --title "SrednaBG ${{ steps.ver.outputs.name }}" \
+              --generate-notes \
+              "${FILES[@]}"
+          fi

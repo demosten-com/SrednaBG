@@ -27,7 +27,7 @@ Fully self-contained MapLibre style + MBTiles + glyphs so the phone UI works wit
 3. Computes a **deterministic `map_hash`** via `compute-map-hash.py` (hashes the static files + the *decompressed* mbtiles tile rows ordered by z/x/y; excludes the mbtiles `metadata` table so unchanged content yields the same hash); writes `version.json`.
 4. Outputs `backend/data/map-bundle/` + `map-bundle.zip`; patches `/api/version` with the new `map_hash`. A `trap` removes all scratch (OSM extract, Planetiler tmp, scratch mbtiles) on exit — only the bundle + zip remain.
 
-This `map_hash` is the runtime sync change-detector and is distinct from the per-release zip checksum that `web/fdroid/scripts/publish-map-bundle.sh` pins in `map-bundle-checksums.txt` (that one legitimately changes every build).
+This `map_hash` is the runtime sync change-detector and is distinct from the zip checksum that `web/fdroid/scripts/publish-map-bundle.sh` pins in `map-bundle-checksums.txt` (a single current-bundle digest, updated only when the map is rebuilt; the zip is not byte-reproducible, so it changes on every rebuild).
 
 `/api/version` response carries `hash` (zones), `map_hash` (bundle), and `zone_count`; each hash gates its own re-fetch on the client.
 

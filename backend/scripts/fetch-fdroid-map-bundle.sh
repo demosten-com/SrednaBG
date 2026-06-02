@@ -15,16 +15,27 @@
 # satisfies both rewritemeta and lint. The URL + digest stay auditable here, in
 # the repo at the build tag.
 #
-# Release checklist: update URL + SHA256 below when cutting a new tag; the digest
-# must match the entry in web/fdroid/map-bundle-checksums.txt for that tag.
+# The bundle is the immutable per-tag asset that android-release.yml attaches to
+# the GitHub Release (durable as the source itself). The tag is derived from the
+# literal versionName, so this script needs NO per-release edit — only SHA256
+# changes, and only when the map bundle is actually rebuilt (matches the
+# `map-bundle.zip` line in web/fdroid/map-bundle-checksums.txt).
 set -euo pipefail
 
-URL="https://srednabg.com/assets/map-bundle-v1.0.4.zip"
 SHA256="0513907ed5108c34a5a13646f5c4dc8968c44f372587bef888543c80b757bcd1"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 DATA_DIR="$SCRIPT_DIR/../data"
 ZIP="$DATA_DIR/map-bundle.zip"
+
+# Derive vX.Y.Z from the build's own versionName so the URL tracks the tag.
+VN="$(grep -oE 'versionName = "[0-9]+\.[0-9]+\.[0-9]+"' "$REPO_ROOT/android/app/build.gradle.kts" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
+if [ -z "$VN" ]; then
+  echo "fetch-fdroid-map-bundle: could not read versionName from android/app/build.gradle.kts" >&2
+  exit 1
+fi
+URL="https://github.com/demosten-com/SrednaBG/releases/download/v${VN}/map-bundle-v${VN}.zip"
 
 mkdir -p "$DATA_DIR"
 curl -fsSL --http1.1 --retry 5 --retry-delay 3 --retry-all-errors -o "$ZIP" "$URL"
