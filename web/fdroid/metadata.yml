@@ -16,7 +16,7 @@ Repo: https://github.com/demosten-com/SrednaBG.git
 Builds:
   - versionName: 1.0.4
     versionCode: 10004
-    commit: 76ff4db3f86140ee04ff84e8c2805738163a07a5
+    commit: dba1ef75ee3fcd822718a3a55494fd0f588670ca
     subdir: android/app
     gradle:
       - aosp
