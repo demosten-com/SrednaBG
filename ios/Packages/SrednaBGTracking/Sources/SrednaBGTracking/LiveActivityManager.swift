@@ -52,12 +52,7 @@ public actor LiveActivityManager {
 
         // Drain any leftovers — iOS persists Live Activities across app
         // launches, so without this we'd accumulate ghost chips.
-        for stale in Activity<ZoneActivityAttributes>.activities {
-            await stale.end(nil, dismissalPolicy: .immediate)
-        }
-        self.activity = nil
-        self.lastZoneContent = nil
-        self.lastPushedPhase = nil
+        await drainSystemActivities()
 
         let placeholder = Self.trackingPlaceholder()
         do {
@@ -81,6 +76,19 @@ public actor LiveActivityManager {
         self.lastPushedPhase = nil
     }
 
+    /// End Live Activities left over from a prior, now-dead process. Call once
+    /// at launch: a user-killed app doesn't resume tracking, so any persisted
+    /// activity is an orphan whose stale chip would otherwise linger forever —
+    /// tapping it just cold-launches the app without re-arming a session, and
+    /// `update` / `endIfActive` can't touch it because this fresh process holds
+    /// no `activity` reference. Guarded by `activity == nil` so it can't race a
+    /// concurrent `sessionStart` and end a freshly-created chip.
+    public func endOrphanedActivities() async {
+        guard activity == nil else { return }
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        await drainSystemActivities()
+    }
+
     /// Push a content update for the current `ZoneState`. No-op if the activity
     /// hasn't been started yet (i.e., before `sessionStart`).
     public func update(state: ZoneState, currentSpeedKmh: Double?) async {
@@ -99,6 +107,18 @@ public actor LiveActivityManager {
         guard let activity else { return }
         await activity.end(nil, dismissalPolicy: .immediate)
         self.activity = nil
+    }
+
+    /// End every persisted Live Activity for our attributes and reset cached
+    /// push state. Shared by `sessionStart` (clean slate before a new session)
+    /// and `endOrphanedActivities` (launch reconcile).
+    private func drainSystemActivities() async {
+        for stale in Activity<ZoneActivityAttributes>.activities {
+            await stale.end(nil, dismissalPolicy: .immediate)
+        }
+        self.activity = nil
+        self.lastZoneContent = nil
+        self.lastPushedPhase = nil
     }
 
     // MARK: - Internal push paths

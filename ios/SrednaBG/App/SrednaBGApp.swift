@@ -110,6 +110,10 @@ final class AppContainer {
     let syncClient: SyncClient
     let alerts: AudioAlertManager
 
+    /// Ends any Live Activity orphaned by a prior, killed process — invoked
+    /// once on launch from `bootstrap()`. No-op on non-iOS.
+    private let onLaunchReconcile: @Sendable () async -> Void
+
     // Lazily started the first time `mapStyleURL(for:)` sees an installed
     // bundle. Kept for the lifetime of the process so MapLibre's tile cache
     // doesn't churn when the user switches tabs. Rewrite output is cached
@@ -188,11 +192,15 @@ final class AppContainer {
         let onSessionStop: @Sendable () async -> Void = {
             await liveActivity.sessionStop()
         }
+        let onLaunchReconcile: @Sendable () async -> Void = {
+            await liveActivity.endOrphanedActivities()
+        }
         #else
         let provider: any LocationProviding = SilentLocationProvider()
         let zoneStateSink: @Sendable (ZoneState, Double?) async -> Void = { _, _ in }
         let onSessionStart: @Sendable () async -> Void = {}
         let onSessionStop: @Sendable () async -> Void = {}
+        let onLaunchReconcile: @Sendable () async -> Void = {}
         #endif
         self.tracking = ZoneTrackingService(
             zones: [],
@@ -203,11 +211,15 @@ final class AppContainer {
             onSessionStart: onSessionStart,
             onSessionStop: onSessionStop
         )
+        self.onLaunchReconcile = onLaunchReconcile
     }
 
     /// Hydrate from disk (then attempt a fresh sync in the background) so the
     /// app comes up with last-known zones immediately.
     func bootstrap() async {
+        // End any Live Activity left orphaned by a prior, killed process so a
+        // stale chip doesn't linger after the user taps it back into the app.
+        await onLaunchReconcile()
         await zoneStore.loadFromDisk()
         let cached = await zoneStore.snapshot()
         if cached.isEmpty {

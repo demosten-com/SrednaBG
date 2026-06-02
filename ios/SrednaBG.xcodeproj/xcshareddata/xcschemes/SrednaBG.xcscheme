@@ -76,7 +76,7 @@
          </BuildableReference>
       </BuildableProductRunnable>
       <LocationScenarioReference
-         identifier = "../../../qa/fixtures/gpx-xcode/trakiya-01-east_160.gpx"
+         identifier = "../../../qa/fixtures/gpx-xcode/trakiya-01-east_overlimit.gpx"
          referenceType = "0">
       </LocationScenarioReference>
    </LaunchAction>

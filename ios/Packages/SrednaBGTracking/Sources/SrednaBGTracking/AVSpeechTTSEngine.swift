@@ -71,12 +71,15 @@ public final class AVSpeechTTSEngine: NSObject, TTSEngine, AVSpeechSynthesizerDe
         // way.
         let synth = synthesizer
         DispatchQueue.main.async {
-            // Self-heal a wedged synthesizer: clear any utterance left stuck in
-            // the serial queue by a prior speak that couldn't start (session was
-            // inactive). Announcements are ~2s long and >=30s apart, so the
-            // synth is only ever still speaking at this point when it's stuck —
-            // clearing it is safe rather than cutting off live guidance.
-            if synth.isSpeaking || synth.isPaused {
+            // Clear ONLY a paused/interrupted utterance (e.g. left over after a
+            // Siri or call interruption) so a fresh announcement isn't blocked
+            // behind stale, non-progressing speech. Deliberately do NOT clear an
+            // actively-speaking one: closely-spaced announcements — an over-limit
+            // warning moments after the zone-entry line, common on short zones
+            // entered while already speeding — must serialize (queue), not
+            // clobber each other mid-sentence. The background-deactivation wedge
+            // is handled by `activateSession()` above, not by force-stopping.
+            if synth.isPaused {
                 synth.stopSpeaking(at: .immediate)
             }
             let utterance = AVSpeechUtterance(string: phrase)
@@ -147,13 +150,21 @@ public final class AVSpeechTTSEngine: NSObject, TTSEngine, AVSpeechSynthesizerDe
     // MARK: AVSpeechSynthesizerDelegate
 
     /// Release the session on normal completion only — NOT on `didCancel`. The
-    /// wedge-clear path in `speak` cancels a stuck utterance immediately before
+    /// paused-clear path in `speak` cancels a stale utterance immediately before
     /// starting a fresh one; deactivating there would un-duck mid-announcement.
     /// The replacement utterance's own `didFinish` performs the release.
+    ///
+    /// Only relinquish once the WHOLE batch is done. When announcements queue
+    /// back-to-back (zone-entry line + an immediate over-limit warning),
+    /// `isSpeaking` stays true while the next utterance is still pending —
+    /// deactivating between them churns the session and produces an audible
+    /// "cough" at the boundary. Releasing only when nothing is left to speak
+    /// keeps the session active across the run, then un-ducks cleanly.
     nonisolated public func speechSynthesizer(
         _ synthesizer: AVSpeechSynthesizer,
         didFinish utterance: AVSpeechUtterance
     ) {
+        guard !synthesizer.isSpeaking else { return }
         Self.relinquishSession()
     }
 }
