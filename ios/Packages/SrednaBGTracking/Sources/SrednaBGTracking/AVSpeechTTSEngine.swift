@@ -11,8 +11,12 @@ import SrednaBGData
 /// Production `TTSEngine` backed by `AVSpeechSynthesizer`. Configures the
 /// shared `AVAudioSession` (iOS only) for navigation guidance:
 ///   * `.playback` category so we keep speaking with the screen locked.
-///   * `.duckOthers` so Apple Maps / Spotify stay audible at reduced volume.
+///   * `.duckOthers` (alone) so music *and* podcasts duck uniformly while we
+///     speak — Apple Maps / Spotify drop to reduced volume, not silenced.
 ///   * `.voicePrompt` mode so iOS knows this is short, time-sensitive speech.
+///   * The session is activated before each utterance and deactivated on
+///     completion (`.notifyOthersOnDeactivation`), so other audio ducks only
+///     for the ~2s announcement, not the whole drive.
 ///
 /// `@MainActor` rather than `actor` is deliberate: `AVSpeechSynthesizer` and
 /// the `AVAudioSession` setup are main-thread-only, and driving them from a
@@ -21,19 +25,32 @@ import SrednaBGData
 /// Swift Concurrent context." warning (paired with `AVAudioBuffer.mm:281
 /// mBuffers[0].mDataByteSize (0) should be non-zero` on the same line).
 @MainActor
-public final class AVSpeechTTSEngine: TTSEngine {
+public final class AVSpeechTTSEngine: NSObject, TTSEngine, AVSpeechSynthesizerDelegate {
 
     private let synthesizer = AVSpeechSynthesizer()
-    private var didConfigureSession = false
+    private var didConfigureCategory = false
 
-    public init() {}
+    public override init() {
+        super.init()
+        // Observe utterance completion so we can relinquish the audio session
+        // (un-duck other apps) as soon as each announcement finishes.
+        synthesizer.delegate = self
+    }
 
     public func speak(_ phrase: String, language: AppLanguage) async {
         // QA mute: parser self-test still sees the `speak:` log line emitted
         // by `AudioAlertManager`, but no audio plays. Used by the harness to
         // silence the simulator without breaking the tripwire.
         if QAFlags.ttsMuted { return }
-        configureSessionIfNeeded()
+        // Configure the category once, then re-assert `setActive(true)` on
+        // EVERY utterance. The system deactivates our session when the app
+        // backgrounds or after an audio interruption (call / Siri); a non-active
+        // session means the enqueued utterance never starts — and because
+        // AVSpeechSynthesizer plays serially, that stuck utterance blocks the
+        // queue head so nothing speaks again, even back in the foreground.
+        // (Why `audio` must stay in UIBackgroundModes: see ios/CLAUDE.md.)
+        configureCategoryIfNeeded()
+        activateSession()
         let bcp47: String
         switch language {
         case .bg: bcp47 = "bg-BG"
@@ -54,6 +71,14 @@ public final class AVSpeechTTSEngine: TTSEngine {
         // way.
         let synth = synthesizer
         DispatchQueue.main.async {
+            // Self-heal a wedged synthesizer: clear any utterance left stuck in
+            // the serial queue by a prior speak that couldn't start (session was
+            // inactive). Announcements are ~2s long and >=30s apart, so the
+            // synth is only ever still speaking at this point when it's stuck —
+            // clearing it is safe rather than cutting off live guidance.
+            if synth.isSpeaking || synth.isPaused {
+                synth.stopSpeaking(at: .immediate)
+            }
             let utterance = AVSpeechUtterance(string: phrase)
             utterance.voice = AVSpeechSynthesisVoice(language: bcp47)
             synth.speak(utterance)
@@ -65,27 +90,71 @@ public final class AVSpeechTTSEngine: TTSEngine {
         DispatchQueue.main.async {
             synth.stopSpeaking(at: .immediate)
         }
+        // Tracking stopped — relinquish so other audio returns to full volume.
+        // (stopSpeaking fires didCancel, which we deliberately ignore.)
+        Self.relinquishSession()
     }
 
-    private func configureSessionIfNeeded() {
-        guard !didConfigureSession else { return }
+    /// Sets the audio-session category once (it's sticky across activation
+    /// cycles). `.duckOthers` alone — NOT `.interruptSpokenAudioAndMixWithOthers`
+    /// — so EVERYTHING (music *and* podcasts) ducks uniformly while we speak.
+    /// The earlier mix directive let music play on top at full volume, which is
+    /// why announcements didn't lower Spotify. Ducking is scoped to each
+    /// utterance by the activate / `relinquishSession`-on-`didFinish` pair.
+    private func configureCategoryIfNeeded() {
+        guard !didConfigureCategory else { return }
         #if os(iOS)
-        let session = AVAudioSession.sharedInstance()
         do {
-            try session.setCategory(
+            try AVAudioSession.sharedInstance().setCategory(
                 .playback,
                 mode: .voicePrompt,
-                options: [.duckOthers, .interruptSpokenAudioAndMixWithOthers]
+                options: [.duckOthers]
             )
-            try session.setActive(true, options: [])
-            didConfigureSession = true
+            didConfigureCategory = true
         } catch {
-            // Audio session failures are non-fatal — speak() still attempts to
-            // play, possibly without ducking.
+            // Non-fatal — leave the flag false so the next utterance retries.
         }
         #else
-        didConfigureSession = true
+        didConfigureCategory = true
         #endif
+    }
+
+    /// Re-asserts an active session before every utterance so a session the
+    /// system deactivated on background / interruption can't permanently wedge
+    /// the synthesizer (see `speak`). `try?` — a transient activation failure
+    /// must never block the next announcement.
+    private func activateSession() {
+        #if os(iOS)
+        try? AVAudioSession.sharedInstance().setActive(true, options: [])
+        #endif
+    }
+
+    /// Hands other audio back to full volume once our announcement finishes.
+    /// `.notifyOthersOnDeactivation` asks the system to un-duck immediately;
+    /// `try?` because deactivation can fail harmlessly if the system already
+    /// tore the session down (e.g. an interruption cancelled the utterance).
+    nonisolated private static func relinquishSession() {
+        #if os(iOS)
+        DispatchQueue.main.async {
+            try? AVAudioSession.sharedInstance().setActive(
+                false,
+                options: [.notifyOthersOnDeactivation]
+            )
+        }
+        #endif
+    }
+
+    // MARK: AVSpeechSynthesizerDelegate
+
+    /// Release the session on normal completion only — NOT on `didCancel`. The
+    /// wedge-clear path in `speak` cancels a stuck utterance immediately before
+    /// starting a fresh one; deactivating there would un-duck mid-announcement.
+    /// The replacement utterance's own `didFinish` performs the release.
+    nonisolated public func speechSynthesizer(
+        _ synthesizer: AVSpeechSynthesizer,
+        didFinish utterance: AVSpeechUtterance
+    ) {
+        Self.relinquishSession()
     }
 }
 #endif

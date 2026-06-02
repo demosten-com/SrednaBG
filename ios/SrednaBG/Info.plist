@@ -45,7 +45,6 @@
 		<string>location</string>
 		<string>audio</string>
 		<string>fetch</string>
-		<string>processing</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
