@@ -14,7 +14,7 @@ Package ID: `com.demosten.srednabg` | Bulgaria-only scope | MIT license.
 | 4 | Offline map-bundle build pipeline | Done (self-contained Planetiler-JAR builder; the former Docker/tileserver-gl serving stack is retired) |
 | 5 | Android app foundation (phone UI) | Done (Compose UI, Room, Hilt, location service, audio alerts) |
 | 6 | Android Auto integration | Done in code — WIP, not in initial release (kept for developer testing on DHU/AAOS) |
-| 7 | Polish, testing, release prep | Signing wired; signed-APK release workflow shipping `srednabg-<version>.apk` + `.sha256` to GitHub Releases; F-Droid submission drafted in `web/fdroid/` (metadata, locale descriptions, SHA-pinned map-bundle pipeline) — pending submission. Play Store: listing + screenshots done; v1.0.2 **approved and live in open testing**, promotable to production at the user's discretion (not yet promoted). See `android/CLAUDE.md` |
+| 7 | Polish, testing, release prep | Signing wired; signed-APK release workflow shipping `srednabg-<version>.apk` + `.sha256` to GitHub Releases; F-Droid: build recipe **merged into `fdroiddata`** — the app publishes once F-Droid's build server signs the first build; `web/fdroid/` remains the source of truth for ongoing per-tag updates (metadata, locale descriptions, SHA-pinned map-bundle pipeline). Play Store: listing + screenshots done; v1.0.2 **approved and live in open testing**, promotable to production at the user's discretion (not yet promoted). See `android/CLAUDE.md` |
 | 8a | iOS phone port (Swift 6 + SwiftUI) | Functionally complete (Xcode app shell, MapLibre map, Live Activity + Dynamic Island, permission gating). App Store submission is Phase 8c. |
 | 8b | CarPlay | WIP — not in initial release. Code complete (`SrednaBGCarPlay` package — scene delegate, `CPMapTemplate`, `CPNavigationSession`). **Unwired from the app target** until Apple grants `com.apple.developer.carplay-navigation` (iOS 18+ Simulator's `amfi` rejects the un-granted entitlement). Re-link path is documented in `ios/CLAUDE.md`. |
 | 8c | Phone-only App Store release | Privacy manifest, App Store metadata + screenshots all done; phone build **submitted — in App Store review as v1.0.2**. v1.0.4 held back from App Store Connect until v1.0.2 clears review (re-submitting would pull the in-review build). CarPlay entitlement filed once TestFlight build exists. |
@@ -28,7 +28,7 @@ Each subfolder owns its own `CLAUDE.md` with build commands, key files, and subf
 - `backend/` — Offline map-bundle builder (self-contained Planetiler JAR; no Docker) + local zone-data staging. See `backend/CLAUDE.md`.
 - `qa/` — End-to-end QA harness driving the emulator via adb. See `qa/CLAUDE.md`.
 - `ios/` — SwiftPM monorepo (Swift 6) + Xcode app shell. See `ios/CLAUDE.md`.
-- `web/` — Static marketing site for `srednabg.com`; same Namecheap host runs the scraper cron and serves `/api/*`. Also hosts the latest `/assets/map-bundle.zip` (the release workflow snapshots it per-tag onto the GitHub Release) and houses the F-Droid submission draft in `web/fdroid/`. See `web/CLAUDE.md`.
+- `web/` — Static marketing site for `srednabg.com`; same Namecheap host runs the scraper cron and serves `/api/*`. Also hosts the latest `/assets/map-bundle.zip` (the release workflow snapshots it per-tag onto the GitHub Release) and houses the F-Droid metadata source of truth in `web/fdroid/` (recipe now merged into `fdroiddata`). See `web/CLAUDE.md`.
 
 ## Three-Tier Data Flow
 

@@ -1,8 +1,10 @@
 # web/fdroid/
 
-Draft of the F-Droid submission for SrednaBG. None of this is read directly
-by F-Droid — at submission time, `scripts/stage-fdroiddata.sh` copies the
-relevant files into a local clone of the `fdroiddata` repo.
+Upstream source of truth for the SrednaBG F-Droid listing. The build recipe is
+**merged into `fdroiddata`**; this dir is kept as the editable copy for ongoing
+per-tag updates. None of this is read directly by F-Droid — to push an update,
+`scripts/stage-fdroiddata.sh` copies the relevant files into a local clone of the
+`fdroiddata` repo for the next PR.
 
 ## Layout
 

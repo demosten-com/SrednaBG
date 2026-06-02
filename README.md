@@ -4,7 +4,7 @@ Free, open-source Android + iOS phone app for tracking average speed in Bulgaria
 
 ## Install
 
-- F-Droid: _coming soon — submission in review_
+- F-Droid: <https://f-droid.org/packages/com.demosten.srednabg/> — recipe merged into `fdroiddata`; the app appears once F-Droid's build server publishes the first signed build.
 - GitHub Releases: <https://github.com/demosten-com/SrednaBG/releases>
 
 - **SourceCode:** <https://github.com/demosten-com/SrednaBG>

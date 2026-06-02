@@ -20,9 +20,9 @@ Namecheap **addon domain**, served from `$HOME/srednabg_com/` on the cPanel host
 
 The `/api/*` tree is **not in git** — it's produced by the scraper cron on the same host. See `scrapers/CLAUDE.md` "Hosted deployment (Namecheap)".
 
-## F-Droid submission draft (`web/fdroid/`)
+## F-Droid metadata (`web/fdroid/`)
 
-Source of truth for the SrednaBG F-Droid listing. Nothing here is read by F-Droid directly — at submission time, `web/fdroid/scripts/stage-fdroiddata.sh` copies the relevant files into a local clone of the `fdroiddata` repo for PR.
+Source of truth for the SrednaBG F-Droid listing. The build recipe is **merged into `fdroiddata`**; this dir stays the upstream copy used for ongoing per-tag updates. Nothing here is read by F-Droid directly — to push an update, `web/fdroid/scripts/stage-fdroiddata.sh` copies the relevant files into a local clone of the `fdroiddata` repo for the next PR.
 
 - `metadata.yml` — draft of `metadata/com.demosten.srednabg.yml`. F-Droid's prebuild (`backend/scripts/fetch-fdroid-map-bundle.sh`) does `curl` + `sha256sum -c` on the per-tag `map-bundle-<tag>.zip` GitHub Release asset; the digest only changes when the map content does.
 - `{en-US,bg}/{title,short_description,full_description}.txt` + `changelogs/<versionCode>.txt` — locale-aware listing copy.
