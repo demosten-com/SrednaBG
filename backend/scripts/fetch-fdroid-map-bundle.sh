@@ -19,7 +19,7 @@
 # must match the entry in web/fdroid/map-bundle-checksums.txt for that tag.
 set -euo pipefail
 
-URL="https://srednabg.com/assets/map-bundle-v1.0.3.zip"
+URL="https://srednabg.com/assets/map-bundle-v1.0.4.zip"
 SHA256="0513907ed5108c34a5a13646f5c4dc8968c44f372587bef888543c80b757bcd1"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"

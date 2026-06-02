@@ -92,6 +92,26 @@ struct SyncClientTests {
     }
 
     @Test
+    func freshnessRequestsBypassHTTPCache() async throws {
+        // Regression guard: the backend serves `/api/version` with
+        // `Cache-Control: max-age=300`, so the default `.useProtocolCachePolicy`
+        // would let `URLSession` answer a "Sync now" tap from `URLCache` without
+        // a network round-trip. Every SyncClient request must force a reload.
+        let captured = CapturedCachePolicy()
+        let body = Data(#"{"version":"v","hash":"sha256:abc"}"#.utf8)
+        MockURLProtocol.setHandler { req in
+            captured.set(req.cachePolicy)
+            return (.ok(req.url!), body)
+        }
+        defer { MockURLProtocol.setHandler(nil) }
+
+        let client = SyncClient(urls: urls, session: MockURLProtocol.makeSession())
+        _ = try await client.fetchVersion()
+
+        #expect(captured.value == .reloadIgnoringLocalCacheData)
+    }
+
+    @Test
     func httpFailureSurfacesAsError() async {
         MockURLProtocol.setHandler { req in (.status(503, req.url!), Data()) }
         defer { MockURLProtocol.setHandler(nil) }
@@ -111,5 +131,23 @@ struct SyncClientTests {
         await #expect(throws: SyncClientError.self) {
             _ = try await client.fetchVersion()
         }
+    }
+}
+
+/// Lock-guarded capture box. The mock handler runs on the URL loading thread,
+/// not the test actor, so the captured value is read back after the awaited
+/// request returns (see `MockURLProtocol`'s strict-concurrency note).
+private final class CapturedCachePolicy: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: URLRequest.CachePolicy?
+
+    func set(_ policy: URLRequest.CachePolicy) {
+        lock.lock(); defer { lock.unlock() }
+        stored = policy
+    }
+
+    var value: URLRequest.CachePolicy? {
+        lock.lock(); defer { lock.unlock() }
+        return stored
     }
 }

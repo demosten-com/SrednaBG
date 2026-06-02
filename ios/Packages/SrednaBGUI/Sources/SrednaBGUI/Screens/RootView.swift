@@ -16,6 +16,7 @@ public struct RootView: View {
     public let tracking: ZoneTrackingService
     public let settings: SettingsStore
     public let onSyncTap: () async -> SyncResult
+    public let onZoneSyncToggle: (Bool) -> Void
     public let mapStyleURLProvider: (MapTheme) async -> URL?
 
     /// Outlives the Map tab so its camera + follow state survive a tab
@@ -33,11 +34,13 @@ public struct RootView: View {
         tracking: ZoneTrackingService,
         settings: SettingsStore,
         onSyncTap: @escaping () async -> SyncResult,
+        onZoneSyncToggle: @escaping (Bool) -> Void = { _ in },
         mapStyleURLProvider: @escaping (MapTheme) async -> URL?
     ) {
         self.tracking = tracking
         self.settings = settings
         self.onSyncTap = onSyncTap
+        self.onZoneSyncToggle = onZoneSyncToggle
         self.mapStyleURLProvider = mapStyleURLProvider
     }
 
@@ -79,7 +82,7 @@ public struct RootView: View {
             .accessibilityIdentifier("tab-map")
 
             NavigationStack {
-                SettingsScreen(settings: settings, onSyncTap: onSyncTap)
+                SettingsScreen(settings: settings, onSyncTap: onSyncTap, onZoneSyncToggle: onZoneSyncToggle)
             }
             .tabItem { Label(L10n.navSettings, systemImage: "gearshape") }
             .tag(DebugTabName.settings)

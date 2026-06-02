@@ -85,6 +85,10 @@ public final class SettingsStore {
         didSet { defaults.set(autoStopHours, forKey: SettingsKey.autoStopHours) }
     }
 
+    public var zoneSyncEnabled: Bool {
+        didSet { defaults.set(zoneSyncEnabled, forKey: SettingsKey.zoneSyncEnabled) }
+    }
+
     public var debugAutoStopSeconds: Int? {
         didSet {
             if let value = debugAutoStopSeconds, value > 0 {
@@ -125,6 +129,8 @@ public final class SettingsStore {
         self.debugMaxSpeedOverride = defaults.object(forKey: SettingsKey.debugMaxSpeedOverride) as? Int
         self.autoStopHours = (defaults.object(forKey: SettingsKey.autoStopHours) as? Int)
             ?? SettingsDefaults.autoStopHours
+        self.zoneSyncEnabled = (defaults.object(forKey: SettingsKey.zoneSyncEnabled) as? Bool)
+            ?? SettingsDefaults.zoneSyncEnabled
         self.debugAutoStopSeconds = defaults.object(forKey: SettingsKey.debugAutoStopSeconds) as? Int
     }
 }

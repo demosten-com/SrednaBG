@@ -125,6 +125,14 @@ private func applyDebugSetting(_ settings: SettingsStore, key: String, value: St
     case "auto_stop_hours":
         guard let n = Int(value) else { return false }
         settings.autoStopHours = n
+    case "zone_sync_enabled":
+        settings.zoneSyncEnabled = asBool
+    case "cached_zone_hash":
+        // QA poisons this to force the next manual sync into a full re-fetch
+        // (mismatch → fetchZones) — mirrors Android's DebugControlReceiver.
+        settings.cachedZoneHash = value
+    case "cached_map_hash":
+        settings.cachedMapHash = value
     case "debug_auto_stop_seconds":
         if value.isEmpty {
             settings.debugAutoStopSeconds = nil

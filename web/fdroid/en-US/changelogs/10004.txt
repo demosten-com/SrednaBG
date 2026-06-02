@@ -1,4 +1,4 @@
-v1.0.3 — Initial public F-Droid release.
+v1.0.4 — Initial public F-Droid release.
 
 • Real-time running average speed inside Bulgaria's average-speed camera zones.
 • "Max now" indicator — the top speed you can drive for the rest of the zone without going over.

@@ -85,6 +85,8 @@ public enum L10n {
     public static var mapThemeAuto: String { loc("mapThemeAuto") }
     public static var mapThemeLight: String { loc("mapThemeLight") }
     public static var mapThemeDark: String { loc("mapThemeDark") }
+    public static var settingZoneSync: String { loc("settingZoneSync") }
+    public static var settingZoneSyncDesc: String { loc("settingZoneSyncDesc") }
     public static var settingSyncNow: String { loc("settingSyncNow") }
     public static var syncUpdated: String { loc("syncUpdated") }
     public static var syncUpToDate: String { loc("syncUpToDate") }

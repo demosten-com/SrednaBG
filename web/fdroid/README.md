@@ -59,8 +59,12 @@ don't, so it's moot — `gen-fastlane-metadata.sh` writes the Fastlane names.
   with the `gmsImplementation` configuration, and `src/main/` references no GMS
   type — so the aosp variant compiles and links entirely free of proprietary
   Google libraries.
-- No `AntiFeatures`: backend sync is feature-flagged off
-  (`FeatureFlags.IS_MAP_SYNC_ENABLED = false`), no tracking, and the built
+- No `AntiFeatures`: the only network calls are first-party GETs to
+  `srednabg.com/api/{version,zones}` (zone data, no PII). That periodic zone
+  sync is a **user opt-out** — the *Automatic zone updates* setting
+  (`zone_sync_enabled`, default on); the manual *Sync zones now* button stays
+  available regardless. Map sync is a separate path, compile-time gated off
+  (`FeatureFlags.IS_MAP_SYNC_ENABLED = false`). No tracking, and the built
   (aosp) variant has no non-free dependencies.
 - Map bundle is fetched by F-Droid's sandbox from
   `srednabg.com/assets/map-bundle-<tag>.zip` and SHA-256-verified by

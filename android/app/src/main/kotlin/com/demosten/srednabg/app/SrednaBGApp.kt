@@ -17,7 +17,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.demosten.srednabg.app.data.MapSyncWorker
 import com.demosten.srednabg.app.data.SettingsRepository
-import com.demosten.srednabg.app.data.ZoneSyncWorker
+import com.demosten.srednabg.app.data.ZoneSyncScheduler
 import dagger.hilt.android.HiltAndroidApp
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -29,6 +29,7 @@ class SrednaBGApp : Application(), Configuration.Provider {
 
     @Inject lateinit var workerFactory: HiltWorkerFactory
     @Inject lateinit var settingsRepository: SettingsRepository
+    @Inject lateinit var zoneSyncScheduler: ZoneSyncScheduler
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
@@ -38,7 +39,7 @@ class SrednaBGApp : Application(), Configuration.Provider {
     override fun onCreate() {
         super.onCreate()
         applyPersistedLocale()
-        scheduleZoneSync()
+        applyZoneSync()
         if (FeatureFlags.IS_MAP_SYNC_ENABLED) {
             scheduleMapSync()
         }
@@ -50,18 +51,16 @@ class SrednaBGApp : Application(), Configuration.Provider {
         AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(tags))
     }
 
-    private fun scheduleZoneSync() {
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
-        val syncRequest = PeriodicWorkRequestBuilder<ZoneSyncWorker>(6, TimeUnit.HOURS)
-            .setConstraints(constraints)
-            .build()
-        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-            "zone_sync",
-            ExistingPeriodicWorkPolicy.KEEP,
-            syncRequest,
-        )
+    private fun applyZoneSync() {
+        // The periodic zone sync is a user opt-out ("Automatic zone updates"),
+        // default on. Re-apply the persisted choice every launch so a build
+        // that previously enqueued it respects a later opt-out. Mirrors the
+        // existing runBlocking startup read in applyPersistedLocale().
+        if (runBlocking { settingsRepository.zoneSyncEnabled.first() }) {
+            zoneSyncScheduler.enable()
+        } else {
+            zoneSyncScheduler.disable()
+        }
     }
 
     private fun scheduleMapSync() {

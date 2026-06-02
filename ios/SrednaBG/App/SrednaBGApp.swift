@@ -40,13 +40,27 @@ struct SrednaBGApp: App {
         // being treated as unhandled; we just never submit a new request.
         #if os(iOS)
         BackgroundSyncScheduler.register(
-            zoneSync: { _ = await container.runZoneSync() },
+            zoneSync: {
+                // Defensive: skip the periodic run when the user has opted out
+                // of automatic zone updates. The manual "Sync zones now" path
+                // (runZoneSync) is intentionally NOT gated. Mirrors the Android
+                // ZoneSyncWorker guard, which re-reads the setting at run time.
+                guard await container.automaticZoneSyncEnabled else { return }
+                _ = await container.runZoneSync()
+            },
             mapSync: {
                 guard FeatureFlags.isMapSyncEnabled else { return }
                 _ = await container.runMapSync()
             }
         )
-        BackgroundSyncScheduler.scheduleZoneSync()
+        // "Automatic zone updates" is a user opt-out (default on): arm the
+        // periodic refresh only when enabled, mirroring the Android onCreate
+        // gating. The Settings toggle re-arms / cancels via onZoneSyncToggle.
+        if container.settings.zoneSyncEnabled {
+            BackgroundSyncScheduler.scheduleZoneSync()
+        } else {
+            BackgroundSyncScheduler.cancelZoneSync()
+        }
         if FeatureFlags.isMapSyncEnabled {
             BackgroundSyncScheduler.scheduleMapSync()
         }
@@ -65,6 +79,18 @@ struct SrednaBGApp: App {
                 tracking: container.tracking,
                 settings: container.settings,
                 onSyncTap: { await container.runZoneSync() },
+                onZoneSyncToggle: { enabled in
+                    // Apply the "Automatic zone updates" toggle immediately:
+                    // arm or cancel the periodic background refresh. The
+                    // setting itself persists via SettingsStore's didSet.
+                    #if os(iOS)
+                    if enabled {
+                        BackgroundSyncScheduler.scheduleZoneSync()
+                    } else {
+                        BackgroundSyncScheduler.cancelZoneSync()
+                    }
+                    #endif
+                },
                 mapStyleURLProvider: { theme in await container.mapStyleURL(for: theme) }
             )
             .task { await container.bootstrap() }
@@ -210,6 +236,11 @@ final class AppContainer {
             Task { _ = await runMapSync() }
         }
     }
+
+    /// Whether the periodic background zone sync should run. The Settings
+    /// "Automatic zone updates" toggle (default on) flips this; the manual
+    /// "Sync zones now" path (`runZoneSync`) is intentionally not gated.
+    var automaticZoneSyncEnabled: Bool { settings.zoneSyncEnabled }
 
     func runZoneSync() async -> SyncResult {
         do {

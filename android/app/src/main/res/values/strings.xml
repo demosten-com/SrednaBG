@@ -69,6 +69,8 @@
     <string name="map_theme_auto">Автоматично</string>
     <string name="map_theme_light">Светла</string>
     <string name="map_theme_dark">Тъмна</string>
+    <string name="setting_zone_sync">Автоматично обновяване на зоните</string>
+    <string name="setting_zone_sync_desc">Когато е включено, SrednaBG проверява srednabg.com приблизително на всеки 6 часа за нови или променени зони със средна скорост и ги изтегля на заден план. Когато е изключено, зоните се обновяват само при натискане на \"Синхронизирай зоните\" по-долу. Не се изпраща лична информация.</string>
     <string name="setting_sync_now">Синхронизирай зоните</string>
     <string name="sync_updated">Зоните са обновени</string>
     <string name="sync_up_to_date">Зоните вече са актуални</string>

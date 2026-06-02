@@ -19,6 +19,7 @@ to split off `category` + `eventMessage` than parsing the human format.
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass
 from typing import Optional
 
@@ -39,6 +40,29 @@ class IosLogObserver(LogObserver):
             "--info", "--debug",
             "--predicate", f'subsystem == "{BUNDLE_ID}"',
         ]
+
+    def wait_until_streaming(self, *, timeout_s: float = 8.0, settle_s: float = 0.3) -> bool:
+        """`xcrun simctl spawn booted log stream` attaches asynchronously: it
+        prints a `Filtering the log data using …` banner once the stream is
+        live, then delivers events — but anything logged *before* attach is
+        lost (the unified log stream doesn't backfill, unlike `log show`).
+
+        Without this wait the first one-shot event a scenario triggers — e.g.
+        the `DebugSync` line in `sync.zones_happy`, the suite's first sync —
+        can be emitted into a not-yet-live stream and silently dropped, failing
+        only the first sync scenario while later ones pass. A longer timeout
+        can't fix that (a missed line stays missed); the stream has to be live
+        before the line is logged. Block until the subprocess emits its first
+        line (the banner) plus a short settle, so capture is up before the
+        first scenario runs. Best-effort: returns False on timeout and the
+        caller proceeds — the scenario then surfaces any real failure."""
+        deadline = time.monotonic() + timeout_s
+        while time.monotonic() < deadline:
+            if self.recent_lines:
+                time.sleep(settle_s)
+                return True
+            time.sleep(0.05)
+        return False
 
     def _parse(self, raw: str) -> Optional[Event]:
         if not raw.strip().startswith("{"):

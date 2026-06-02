@@ -147,6 +147,7 @@ class DebugControlReceiver : BroadcastReceiver() {
             "debug_auto_stop_seconds" -> settings.setDebugAutoStopSeconds(raw.toIntOrNull())
             "cached_zone_hash" -> settings.setCachedZoneHash(raw)
             "cached_map_hash" -> settings.setCachedMapHash(raw)
+            "zone_sync_enabled" -> settings.setZoneSyncEnabled(raw.toBooleanStrict())
             else -> throw IllegalArgumentException("unknown setting key: $key")
         }
     }

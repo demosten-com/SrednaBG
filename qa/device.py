@@ -162,10 +162,25 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class MapIntegrityResult:
-    style_present: bool
+    style_present: bool  # True only when ALL required style files are installed
     mbtiles_present: bool
     placeholders_remaining: list[str]
     mbtiles_size_bytes: int
+    # iOS keeps the on-disk styles as raw `{…_URI}` templates and rewrites them
+    # in memory at load time (StyleRewriter) — the sandbox container UUID
+    # changes across reinstall / OS restore, so absolute paths can't be baked
+    # in. Android rewrites the style in place on disk. When this is True,
+    # leftover placeholders are the expected, healthy state — not a failure.
+    placeholders_expected: bool = False
+
+
+# The offline map bundle ships a light + dark MapLibre style — Android's
+# `MapRepository.STYLE_FILES`, iOS's `OfflineMapInstaller.Layout.styleFileNames`.
+# Both must be present and fully placeholder-rewritten for the bundle to be
+# healthy. Kept here so the Android + iOS device backends check the same set
+# (there is no single `style.json` any more).
+MAP_STYLE_FILES: tuple[str, ...] = ("style-light.json", "style-dark.json")
+MAP_STYLE_PLACEHOLDERS: tuple[str, ...] = ("{MBTILES_URI}", "{GLYPHS_URI}", "{SPRITE_URI}")
 
 
 # ────────────────────────────── active device ──────────────────────────────

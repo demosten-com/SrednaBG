@@ -39,7 +39,12 @@ import urllib.request
 from pathlib import Path
 from typing import Optional
 
-from qa.device import Device, MapIntegrityResult
+from qa.device import (
+    Device,
+    MAP_STYLE_FILES,
+    MAP_STYLE_PLACEHOLDERS,
+    MapIntegrityResult,
+)
 
 BUNDLE_ID = "com.demosten.srednabg"
 DEBUG_SERVER_HOST = "127.0.0.1"
@@ -313,26 +318,41 @@ class IosDevice(Device):
         if p.returncode != 0:
             return MapIntegrityResult(False, False, [], 0)
         container = Path(p.stdout.strip())
-        map_dir = container / "Library" / "Application Support" / "map"
-        style = map_dir / "style.json"
+        # The app roots its managed data under an `SrednaBG/` subdir of
+        # Application Support — `OfflineMapInstaller(rootDir:)` is handed
+        # `ZoneStore.defaultURL().deletingLastPathComponent()`, i.e.
+        # `…/Application Support/SrednaBG`, and installs the bundle into
+        # `<root>/map`. Mirror that exact layout.
+        map_dir = container / "Library" / "Application Support" / "SrednaBG" / "map"
         mbtiles = map_dir / "bulgaria.mbtiles"
 
+        # The bundle ships a light + dark style; both must be installed.
+        # `style_present` is the AND across them. (Placeholders are rewritten
+        # in memory at load time, not on disk — see `placeholders_expected`.)
+        styles_present = True
         placeholders: list[str] = []
-        if style.exists():
+        for style_name in MAP_STYLE_FILES:
+            style = map_dir / style_name
+            if not style.exists():
+                styles_present = False
+                continue
             try:
                 content = style.read_text(errors="ignore")
-                for ph in ("{MBTILES_URI}", "{GLYPHS_URI}", "{SPRITE_URI}"):
-                    if ph in content:
+                for ph in MAP_STYLE_PLACEHOLDERS:
+                    if ph in content and ph not in placeholders:
                         placeholders.append(ph)
             except Exception:
                 pass
 
         size = mbtiles.stat().st_size if mbtiles.exists() else 0
         return MapIntegrityResult(
-            style_present=style.exists(),
+            style_present=styles_present,
             mbtiles_present=mbtiles.exists(),
             placeholders_remaining=placeholders,
             mbtiles_size_bytes=size,
+            # iOS rewrites the style placeholders in memory at load time, so
+            # the on-disk template legitimately keeps them — see OfflineMapInstaller.
+            placeholders_expected=True,
         )
 
     # ── iOS-specific helper: GPX route playback ────────────────────────────

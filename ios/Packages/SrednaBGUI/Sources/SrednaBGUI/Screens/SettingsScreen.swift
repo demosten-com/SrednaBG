@@ -14,12 +14,18 @@ public struct SettingsScreen: View {
 
     @Bindable public var settings: SettingsStore
     public let onSyncTap: () async -> SyncResult
+    public let onZoneSyncToggle: (Bool) -> Void
     @State private var snackbar: SnackbarMessage?
     @State private var isSyncing = false
 
-    public init(settings: SettingsStore, onSyncTap: @escaping () async -> SyncResult) {
+    public init(
+        settings: SettingsStore,
+        onSyncTap: @escaping () async -> SyncResult,
+        onZoneSyncToggle: @escaping (Bool) -> Void = { _ in }
+    ) {
         self.settings = settings
         self.onSyncTap = onSyncTap
+        self.onZoneSyncToggle = onZoneSyncToggle
     }
 
     public var body: some View {
@@ -141,6 +147,17 @@ public struct SettingsScreen: View {
 
     private var syncSection: some View {
         Section {
+            // Automatic zone updates — opt-out for the periodic background
+            // sync. The "Sync zones now" button below stays available
+            // regardless (it calls onSyncTap directly, not gated by this).
+            Toggle(L10n.settingZoneSync, isOn: $settings.zoneSyncEnabled)
+                .onChange(of: settings.zoneSyncEnabled) { _, newValue in
+                    onZoneSyncToggle(newValue)
+                }
+                .accessibilityIdentifier("settings-zone-sync")
+            Text(L10n.settingZoneSyncDesc)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
             Button {
                 Task { await runSync() }
             } label: {

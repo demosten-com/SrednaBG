@@ -46,6 +46,7 @@ class SettingsRepository @Inject constructor(
         // scenario can fire in ~10 s instead of 3 h. Mirrors the
         // `debug_max_speed_override` shape (DEBUG broadcast only).
         private val KEY_DEBUG_AUTO_STOP_SECONDS = intPreferencesKey("debug_auto_stop_seconds")
+        private val KEY_ZONE_SYNC_ENABLED = booleanPreferencesKey("zone_sync_enabled")
 
         const val DEFAULT_ALERT_THRESHOLD = 5
         const val DEFAULT_APP_LANGUAGE = "system"
@@ -53,6 +54,7 @@ class SettingsRepository @Inject constructor(
         const val DEFAULT_PERIODIC_VOICE_UPDATES = true
         const val DEFAULT_ANNOUNCE_ONLY_WHEN_OVER = true
         const val DEFAULT_AUTO_STOP_HOURS = 3
+        const val DEFAULT_ZONE_SYNC_ENABLED = true
         val DEFAULT_MAP_THEME_MODE: MapThemeMode = MapThemeMode.AUTO
 
         const val LANG_SYSTEM = "system"
@@ -117,6 +119,10 @@ class SettingsRepository @Inject constructor(
 
     val debugAutoStopSeconds: Flow<Int?> = dataStore.data.map { prefs ->
         prefs[KEY_DEBUG_AUTO_STOP_SECONDS]
+    }
+
+    val zoneSyncEnabled: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[KEY_ZONE_SYNC_ENABLED] ?: DEFAULT_ZONE_SYNC_ENABLED
     }
 
     suspend fun setAlertThreshold(value: Int) {
@@ -191,6 +197,10 @@ class SettingsRepository @Inject constructor(
                 p[KEY_DEBUG_AUTO_STOP_SECONDS] = value
             }
         }
+    }
+
+    suspend fun setZoneSyncEnabled(value: Boolean) {
+        dataStore.edit { it[KEY_ZONE_SYNC_ENABLED] = value }
     }
 }
 

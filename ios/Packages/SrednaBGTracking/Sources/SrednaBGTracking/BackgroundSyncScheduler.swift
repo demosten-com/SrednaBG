@@ -44,6 +44,13 @@ public enum BackgroundSyncScheduler {
         try? BGTaskScheduler.shared.submit(request)
     }
 
+    /// Cancels any pending zone-sync request — used when the user turns off the
+    /// "Automatic zone updates" setting. Mirrors the Android
+    /// `WorkManager.cancelUniqueWork("zone_sync")`.
+    public static func cancelZoneSync() {
+        BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: zoneSyncIdentifier)
+    }
+
     public static func scheduleMapSync() {
         let request = BGProcessingTaskRequest(identifier: mapSyncIdentifier)
         request.requiresNetworkConnectivity = true

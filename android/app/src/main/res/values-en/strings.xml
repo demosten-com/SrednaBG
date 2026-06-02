@@ -69,6 +69,8 @@
     <string name="map_theme_auto">Automatic</string>
     <string name="map_theme_light">Light</string>
     <string name="map_theme_dark">Dark</string>
+    <string name="setting_zone_sync">Automatic zone updates</string>
+    <string name="setting_zone_sync_desc">When on, SrednaBG checks srednabg.com about every 6 hours for new or changed average-speed zones and downloads them in the background. When off, zones update only when you tap \"Sync zones now\" below. No personal data is sent.</string>
     <string name="setting_sync_now">Sync zones now</string>
     <string name="sync_updated">Zones updated</string>
     <string name="sync_up_to_date">Zones already up to date</string>

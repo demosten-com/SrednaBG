@@ -81,6 +81,12 @@ class SuiteRunner:
     def __enter__(self) -> "SuiteRunner":
         device_mod.current().require_device()
         self.obs.start()
+        # Block until the log stream is actually capturing before the first
+        # scenario fires. iOS's `log stream` attaches asynchronously and drops
+        # events logged before attach — without this the suite's first sync
+        # (sync.zones_happy) can miss its one-shot DebugSync line. No-op on
+        # Android (logcat backfills). See LogObserver.wait_until_streaming.
+        self.obs.wait_until_streaming()
         return self
 
     def __exit__(self, *exc: Any) -> None:

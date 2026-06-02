@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import com.demosten.srednabg.app.data.SettingsRepository
 import com.demosten.srednabg.app.data.SyncResult
 import com.demosten.srednabg.app.data.ZoneRepository
+import com.demosten.srednabg.app.data.ZoneSyncScheduler
 import com.demosten.srednabg.core.MapThemeMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
@@ -26,6 +27,7 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val zoneRepository: ZoneRepository,
+    private val zoneSyncScheduler: ZoneSyncScheduler,
 ) : ViewModel() {
 
     val alertThreshold: StateFlow<Int> = settingsRepository.alertThreshold
@@ -59,6 +61,13 @@ class SettingsViewModel @Inject constructor(
 
     val autoStopHours: StateFlow<Int> = settingsRepository.autoStopHours
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SettingsRepository.DEFAULT_AUTO_STOP_HOURS)
+
+    val zoneSyncEnabled: StateFlow<Boolean> = settingsRepository.zoneSyncEnabled
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            SettingsRepository.DEFAULT_ZONE_SYNC_ENABLED,
+        )
 
     private val _isSyncing = MutableStateFlow(false)
     val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
@@ -96,6 +105,13 @@ class SettingsViewModel @Inject constructor(
 
     fun setAutoStopHours(value: Int) {
         viewModelScope.launch { settingsRepository.setAutoStopHours(value) }
+    }
+
+    fun setZoneSyncEnabled(value: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setZoneSyncEnabled(value)
+            if (value) zoneSyncScheduler.enable() else zoneSyncScheduler.disable()
+        }
     }
 
     fun syncNow() {

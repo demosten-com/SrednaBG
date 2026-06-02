@@ -38,6 +38,10 @@ public enum SettingsKey {
     /// gating — release builds can read the field but the `DebugActionRouter`
     /// setter is `#if DEBUG`-only.
     public static let debugAutoStopSeconds = "debug_auto_stop_seconds"
+    /// User opt-out (default on) for the periodic background zone sync. When
+    /// off, zones update only via the manual "Sync zones now" action. Mirrors
+    /// Android `KEY_ZONE_SYNC_ENABLED`.
+    public static let zoneSyncEnabled = "zone_sync_enabled"
 }
 
 public enum SettingsDefaults {
@@ -53,6 +57,7 @@ public enum SettingsDefaults {
     public static let mapThemeMode: MapThemeMode = .auto
     public static let mapZoomOverride: Double? = nil
     public static let autoStopHours = 3
+    public static let zoneSyncEnabled = true
 }
 
 public enum AppLanguage: String, Sendable, CaseIterable, Codable {

@@ -10,9 +10,11 @@ The harness uses three sync flows:
 1. Happy path: trigger SYNC_X, wait for `DebugSync` event, assert
    outcome was Updated/UpToDate.
 2. Failure path: kill connectivity, trigger SYNC_X, assert Failed.
-3. Map integrity: after a successful SYNC_MAP, verify on-disk style.json
-   has been rewritten (no `{MBTILES_URI}` placeholders) and the
-   bulgaria.mbtiles file is present + non-empty.
+3. Map integrity: after a successful SYNC_MAP, verify the on-disk styles
+   (style-light.json + style-dark.json) and bulgaria.mbtiles are present +
+   non-empty. On Android the styles must also be placeholder-rewritten on
+   disk; iOS rewrites them in memory at load time, so leftover `{…_URI}`
+   placeholders there are expected (see `MapIntegrityResult`).
 
 All operations route through the active Device so the Android + iOS
 backends share the same call sites.
@@ -75,11 +77,11 @@ def assert_map_integrity_ok(result: MapIntegrityResult) -> None:
     from .assertions import AssertionFailure
     problems: list[str] = []
     if not result.style_present:
-        problems.append("style.json missing")
+        problems.append("map style file missing (need style-light.json + style-dark.json)")
     if not result.mbtiles_present:
         problems.append("bulgaria.mbtiles missing")
-    if result.placeholders_remaining:
-        problems.append(f"unrewritten placeholders in style.json: {result.placeholders_remaining}")
+    if result.placeholders_remaining and not result.placeholders_expected:
+        problems.append(f"unrewritten placeholders in map styles: {result.placeholders_remaining}")
     if result.mbtiles_present and result.mbtiles_size_bytes < 1_000_000:
         problems.append(f"bulgaria.mbtiles suspiciously small: {result.mbtiles_size_bytes} bytes")
     if problems:

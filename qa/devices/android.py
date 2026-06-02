@@ -17,7 +17,12 @@ import time
 from pathlib import Path
 
 from qa import adb
-from qa.device import Device, MapIntegrityResult
+from qa.device import (
+    Device,
+    MAP_STYLE_FILES,
+    MAP_STYLE_PLACEHOLDERS,
+    MapIntegrityResult,
+)
 
 PACKAGE = adb.PACKAGE
 DEBUG_CONTROL_RECEIVER = f"{PACKAGE}/{PACKAGE}.app.debug.DebugControlReceiver"
@@ -175,15 +180,21 @@ class AndroidDevice(Device):
 
     def check_map_integrity(self) -> MapIntegrityResult:
         files_dir = f"/data/data/{PACKAGE}/files/map"
-        style_present = adb.file_exists_in_app(PACKAGE, f"{files_dir}/style.json")
         mbtiles_present = adb.file_exists_in_app(PACKAGE, f"{files_dir}/bulgaria.mbtiles")
 
+        # The bundle ships a light + dark style; both must be installed and
+        # placeholder-rewritten. `style_present` is the AND across them.
+        styles_present = True
         placeholders: list[str] = []
-        if style_present:
+        for style_name in MAP_STYLE_FILES:
+            style_path = f"{files_dir}/{style_name}"
+            if not adb.file_exists_in_app(PACKAGE, style_path):
+                styles_present = False
+                continue
             try:
-                content = adb.run_as_read(PACKAGE, f"{files_dir}/style.json")
-                for ph in ("{MBTILES_URI}", "{GLYPHS_URI}", "{SPRITE_URI}"):
-                    if ph in content:
+                content = adb.run_as_read(PACKAGE, style_path)
+                for ph in MAP_STYLE_PLACEHOLDERS:
+                    if ph in content and ph not in placeholders:
                         placeholders.append(ph)
             except Exception:
                 pass
@@ -199,7 +210,7 @@ class AndroidDevice(Device):
                 except ValueError:
                     size = 0
         return MapIntegrityResult(
-            style_present=style_present,
+            style_present=styles_present,
             mbtiles_present=mbtiles_present,
             placeholders_remaining=placeholders,
             mbtiles_size_bytes=size,

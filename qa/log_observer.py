@@ -78,6 +78,16 @@ class LogObserver:
         self.thread = threading.Thread(target=self._pump, daemon=True)
         self.thread.start()
 
+    def wait_until_streaming(self, *, timeout_s: float = 8.0) -> bool:
+        """Block until the log subprocess is confirmed to be delivering lines.
+
+        Default: no-op (`True`) for backends that attach synchronously or
+        backfill a historical buffer — Android's `adb logcat` dumps the ring
+        buffer on connect, so a one-shot line is never missed. Overridden by
+        backends whose stream attaches asynchronously and drops events emitted
+        before attach (iOS's `log stream`)."""
+        return True
+
     def _pump(self) -> None:
         assert self.proc and self.proc.stdout
         for raw in self.proc.stdout:

@@ -60,6 +60,8 @@
 "mapThemeAuto" = "Automatic";
 "mapThemeLight" = "Light";
 "mapThemeDark" = "Dark";
+"settingZoneSync" = "Automatic zone updates";
+"settingZoneSyncDesc" = "When on, SrednaBG checks about every 6 hours for new or changed average-speed zones and downloads them in the background. When off, zones update only when you tap \"Sync zones now\" below. No personal data is sent.";
 "settingSyncNow" = "Sync zones now";
 "syncUpdated" = "Zones updated";
 "syncUpToDate" = "Already up to date";

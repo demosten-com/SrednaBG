@@ -156,4 +156,20 @@ class SettingsRepositoryTest {
             assertEquals("abc123", awaitItem())
         }
     }
+
+    @Test
+    fun `default zoneSyncEnabled is true`() = runTest {
+        repository.zoneSyncEnabled.test {
+            assertEquals(SettingsRepository.DEFAULT_ZONE_SYNC_ENABLED, awaitItem())
+        }
+    }
+
+    @Test
+    fun `setZoneSyncEnabled persists and emits new value`() = runTest {
+        repository.zoneSyncEnabled.test {
+            assertEquals(true, awaitItem())
+            repository.setZoneSyncEnabled(false)
+            assertEquals(false, awaitItem())
+        }
+    }
 }

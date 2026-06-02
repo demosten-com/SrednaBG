@@ -69,6 +69,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val vehicleType by viewModel.vehicleType.collectAsStateWithLifecycle()
     val autoStopHours by viewModel.autoStopHours.collectAsStateWithLifecycle()
     val mapThemeMode by viewModel.mapThemeMode.collectAsStateWithLifecycle()
+    val zoneSyncEnabled by viewModel.zoneSyncEnabled.collectAsStateWithLifecycle()
     val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -398,6 +399,30 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         }
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+        // Automatic zone updates — opt-out for the periodic background sync.
+        // The "Sync zones now" button below stays available regardless.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.setting_zone_sync),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f),
+            )
+            Switch(
+                checked = zoneSyncEnabled,
+                onCheckedChange = { viewModel.setZoneSyncEnabled(it) },
+            )
+        }
+        Text(
+            text = stringResource(R.string.setting_zone_sync_desc),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         // Sync
         Button(
