@@ -29,6 +29,10 @@ public final class AVSpeechTTSEngine: NSObject, TTSEngine, AVSpeechSynthesizerDe
 
     private let synthesizer = AVSpeechSynthesizer()
     private var didConfigureCategory = false
+    /// Set by `stop()`, cleared by `speak()`. Guards the deferred enqueue in
+    /// `speak` so an utterance whose dispatch block was scheduled just before a
+    /// stop can't start speaking *after* tracking stopped.
+    private var stopped = false
 
     public override init() {
         super.init()
@@ -51,6 +55,8 @@ public final class AVSpeechTTSEngine: NSObject, TTSEngine, AVSpeechSynthesizerDe
         // (Why `audio` must stay in UIBackgroundModes: see ios/CLAUDE.md.)
         configureCategoryIfNeeded()
         activateSession()
+        // A genuine speak request re-arms the engine after any prior stop.
+        stopped = false
         let bcp47: String
         switch language {
         case .bg: bcp47 = "bg-BG"
@@ -70,7 +76,12 @@ public final class AVSpeechTTSEngine: NSObject, TTSEngine, AVSpeechSynthesizerDe
         // changing semantics — `speak` is a non-blocking enqueue either
         // way.
         let synth = synthesizer
-        DispatchQueue.main.async {
+        DispatchQueue.main.async { [weak self] in
+            // Bail if a stop landed between this block being enqueued and run —
+            // otherwise a late announcement would start speaking after the user
+            // already stopped tracking. (The block runs on the main queue, so
+            // reading the MainActor-isolated flag via `assumeIsolated` is safe.)
+            guard let self, !MainActor.assumeIsolated({ self.stopped }) else { return }
             // Clear ONLY a paused/interrupted utterance (e.g. left over after a
             // Siri or call interruption) so a fresh announcement isn't blocked
             // behind stale, non-progressing speech. Deliberately do NOT clear an
@@ -89,10 +100,13 @@ public final class AVSpeechTTSEngine: NSObject, TTSEngine, AVSpeechSynthesizerDe
     }
 
     public func stop() async {
-        let synth = synthesizer
-        DispatchQueue.main.async {
-            synth.stopSpeaking(at: .immediate)
-        }
+        stopped = true
+        // We're already on the MainActor, so cancel synchronously: the current
+        // utterance is cut off in this turn of the runloop rather than a tick
+        // later via DispatchQueue.main.async (which let a syllable leak out
+        // after the user tapped Stop). `.immediate` cuts mid-word and also
+        // clears any queued utterances.
+        synthesizer.stopSpeaking(at: .immediate)
         // Tracking stopped — relinquish so other audio returns to full volume.
         // (stopSpeaking fires didCancel, which we deliberately ignore.)
         Self.relinquishSession()

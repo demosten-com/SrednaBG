@@ -155,6 +155,32 @@ struct AudioAlertManagerTests {
         #expect(calls.last?.phrase == "Leaving zone. Average speed was 132.")
     }
 
+    @Test
+    func resetStopsEngineAndSuppressesUntilResume() async {
+        let engine = RecordingTTSEngine()
+        let mgr = AudioAlertManager(
+            engine: engine,
+            snapshot: snapshot(lang: .en),
+            now: { Date(timeIntervalSince1970: 1_000_000) },
+            deviceLanguage: { "en" }
+        )
+
+        // Stopping tracking resets the manager: the engine is told to stop and
+        // the announcement pipeline is suppressed.
+        await mgr.reset()
+        #expect(await engine.stops == 1)
+
+        // A late, in-flight `handle` arriving after the stop must NOT speak —
+        // this is the regression guard for "TTS announces after Stop".
+        await mgr.handle(previous: .outside, current: Self.inZone(over: false), currentSpeedKmh: 100)
+        #expect(await engine.calls.isEmpty, "no announcement may fire after reset()")
+
+        // Re-arming on the next tracking start lets announcements flow again.
+        await mgr.resume()
+        await mgr.handle(previous: .outside, current: Self.inZone(over: false), currentSpeedKmh: 100)
+        #expect(await engine.calls.count == 1, "announcements resume after resume()")
+    }
+
     /// Mutable date source for tests (Sendable via `OSAllocatedUnfairLock`).
     final class TestClock: @unchecked Sendable {
         private let lock = NSLock()

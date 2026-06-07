@@ -62,6 +62,7 @@ EDGE_SCENARIOS = [
     "cold_start_spike",
     "speed_decay_after_stop",
     "auto_stop",
+    "stop_silences_tts",
 ]
 SYNC_SCENARIOS = [
     "zones_happy",

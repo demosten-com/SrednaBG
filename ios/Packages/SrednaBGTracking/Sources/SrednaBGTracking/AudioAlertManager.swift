@@ -49,6 +49,13 @@ public actor AudioAlertManager {
     private var lastEntryAt: Date?
     private var lastAnnouncementAt: Date?
 
+    /// Set by `reset()` (tracking stopped), cleared by `resume()` (tracking
+    /// started). While set, `handle` short-circuits before emitting the
+    /// `speak:` log or calling the engine — so an in-flight detached `handle`
+    /// task (spawned by `ZoneTrackingService.process` just before the user hit
+    /// Stop) can't kick off a fresh announcement after tracking stopped.
+    private var suppressed = false
+
     public init(
         engine: any TTSEngine,
         snapshot: @escaping @Sendable () async -> SettingsSnapshot,
@@ -62,7 +69,12 @@ public actor AudioAlertManager {
     }
 
     public func handle(previous: ZoneState, current: ZoneState, currentSpeedKmh: Double?) async {
+        if suppressed { return }
         let s = await snapshot()
+        // Re-check: `reset()` can interleave on this actor while we were
+        // suspended awaiting the settings snapshot. If it did, drop the
+        // announcement (and skip mutating the announcement clocks below).
+        if suppressed { return }
         let inputs = AnnouncementInputs(
             previousState: previous,
             newState: current,
@@ -95,8 +107,16 @@ public actor AudioAlertManager {
     }
 
     public func reset() async {
+        suppressed = true
         lastEntryAt = nil
         lastAnnouncementAt = nil
         await engine.stop()
+    }
+
+    /// Re-arm announcements when tracking (re)starts. Counterpart to the
+    /// `suppressed` flag raised by `reset()`; without this a manager reused
+    /// across a stop → start cycle would stay permanently silent.
+    public func resume() {
+        suppressed = false
     }
 }

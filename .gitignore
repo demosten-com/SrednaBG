@@ -21,6 +21,7 @@ dist/
 .coverage
 .coverage.*
 htmlcov/
+.serena/
 
 # Android
 *.apk

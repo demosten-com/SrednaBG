@@ -151,6 +151,8 @@ public final class ZoneTrackingService {
 
         isTracking = true
         lastActivityDate = Date()
+        // Re-arm the announcement pipeline — a prior stop left it suppressed.
+        await alerts.resume()
 
         // Create the Live Activity *before* the consumer task starts so the
         // first GPS point lands on a live activity. Must happen here while
@@ -184,8 +186,10 @@ public final class ZoneTrackingService {
         consumerTask = nil
         autoStopTask?.cancel()
         autoStopTask = nil
-        await provider.stop()
+        // Silence TTS first so any in-flight announcement is cut off
+        // immediately on Stop, before we tear down the location pipeline.
         await alerts.reset()
+        await provider.stop()
         // End the Live Activity for this session. The sink no longer carries
         // the lifecycle signal — `onSessionStop` is the explicit hook.
         await onSessionStop()
