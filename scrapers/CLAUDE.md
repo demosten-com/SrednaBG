@@ -2,7 +2,7 @@
 
 Python data pipeline (BeautifulSoup, requests, overpy) that scrapes zone data from 3 sources and produces `zones.json`. Merges overlapping zones (prefer TollTracker coords, BG TOLL official status, OSM centerlines). Pydantic schema validation. 6 source files + 4 test files. `scripts/make_test_route.py` (stdlib-only) generates GPX drive-throughs from zone centerlines for emulator testing.
 
-**Geometry alignment** (`validator.align_centerline_to_endpoints`, run inside `merge_all`): the OSM centerline and the BG TOLL/TollTracker `start`/`end` endpoints come from different sources, so a raw centerline can stop tens of metres short of the markers and `distance_m` (official) can disagree with the arc length. The aligner snaps a near-coincident terminal onto its endpoint (≤5 m) or inserts the endpoint as a new terminal point (larger gaps, preserving the OSM shape), then sets `distance_m` to the resulting arc length — so the drawn line connects both markers, the progress bar reaches 0 at the end, and the app's "past the end" checks are correct. Gaps >150 m (the motorway road-width band) are still aligned but **warned** (likely bad upstream data); within 150 m the terminal is still inside the road the detector matches against, so it's expected source slack. Schema is unchanged (only coordinate/`distance_m` *values* move), so already-released clients keep parsing it. `--realign <file>` re-applies this to an existing `zones.json` deterministically without a re-scrape (used to retrofit the bundled snapshot). The three committed copies — `scrapers/data/`, `backend/data/`, `android/app/src/main/assets/` — must stay byte-identical.
+**Geometry alignment** (`validator.align_centerline_to_endpoints`, run inside `merge_all`): the OSM centerline and the BG TOLL/TollTracker `start`/`end` endpoints come from different sources, so a raw centerline can stop tens of metres short of the markers and `distance_m` (official) can disagree with the arc length. The aligner snaps a near-coincident terminal onto its endpoint (≤5 m) or inserts the endpoint as a new terminal point (larger gaps, preserving the OSM shape), then sets `distance_m` to the resulting arc length — so the drawn line connects both markers, the progress bar reaches 0 at the end, and the app's "past the end" checks are correct. Gaps >150 m (the motorway road-width band) are still aligned but **warned** (likely bad upstream data); within 150 m the terminal is still inside the road the detector matches against, so it's expected source slack. Schema is unchanged (only coordinate/`distance_m` *values* move), so already-released clients keep parsing it. `--realign <file>` re-applies this to an existing `zones.json` deterministically without a re-scrape (used to retrofit the bundled snapshot). `backend/data/zones.json` is the single source of truth both apps bundle at build time — iOS via its `Bundled Zones` Run Script phase and Android via the `prepareZonesAsset` Gradle task (the Android `src/main/assets/zones.json` is now generated + gitignored, NOT committed, so the two platforms can never ship different zone data for the same release). The two committed copies — `scrapers/data/` (scraper output) and `backend/data/` (build source) — must stay byte-identical; refresh both with `bash scrapers/scripts/refresh-zones.sh` (full scrape → `scrapers/data/zones.json`, then sync `backend/data/zones.json`).
 
 ## Data sources
 
@@ -19,14 +19,15 @@ Zone data and BG TOLL scraping are Bulgarian Cyrillic.
 ```bash
 python -m pytest                         # All tests
 python -m pytest tests/test_validator.py # One file
-python -m src.output                     # Regenerate zones.json (full scrape)
+bash scripts/refresh-zones.sh            # Refresh bundled data: full scrape -> scrapers/data/ + sync backend/data/ (use this before a release cut)
+python -m src.output                     # Regenerate zones.json only (full scrape, scrapers/data/)
 python -m src.output --realign data/zones.json   # Network-free: re-align geometry of an existing file in place
 python scripts/make_test_route.py --out /tmp/route.gpx  # Emulator drive GPX
 # make_test_route.py flags: --zone-id, --speed-kmh, --approach-km, --exit-km, --hz
 # Default: trakiya-01-east @ 130 km/h, 1 Hz
 ```
 
-CI: `.github/workflows/scraper.yml` is **PR validation only** (scrape + pytest on PRs touching `scrapers/**`, plus `workflow_dispatch`). The repo's `scrapers/data/zones.json` is a manually-refreshed bundled-fallback snapshot — refresh it locally with `python -m src.output` before a release cut.
+CI: `.github/workflows/scraper.yml` is **PR validation only** (scrape + pytest on PRs touching `scrapers/**`, plus `workflow_dispatch`). The repo's `scrapers/data/zones.json` is a manually-refreshed bundled-fallback snapshot — refresh it locally with `bash scrapers/scripts/refresh-zones.sh` before a release cut (both apps bundle `backend/data/zones.json` at build time). The build emits a warning when the bundled data is older than 10 days (Android `checkZoneDataFreshness` task / iOS `Bundled Zones` phase).
 
 ## Hosted deployment (Namecheap)
 

@@ -125,7 +125,7 @@ Exercises the full GPS pipeline without a real car. For manual exploration; for 
 - Tests: `app/src/test/kotlin/.../HomeViewModelTest.kt` covers the permission gate (notification + battery-opt are advisory, not blockers)
 - Debug (`src/debug/`): `DebugSyncReceiver.kt`, `DebugControlReceiver.kt` + manifest overlay
 - Config: `res/drawable/ic_add.xml` / `ic_remove.xml` (AA zoom icons). No `network_security_config.xml` — both debug and release use HTTPS, so the platform default (cleartext denied) applies.
-- Build: `app/build.gradle.kts` `prepareMapAssets` Copy task stages `backend/data/map-bundle/` → `assets/map/` before `preBuild`
+- Build: `app/build.gradle.kts` `prepareMapAssets` Copy task stages `backend/data/map-bundle/` → `assets/map/` before `preBuild`. `prepareZonesAsset` (also `preBuild`) stages `backend/data/zones.json` → `assets/zones.json` — the **single source of truth shared with iOS** (which bundles the same file via its `Bundled Zones` Run Script phase), so the two platforms can't ship different zone data per release. `assets/zones.json` is therefore **generated + gitignored, NOT committed** (like `assets/map/`); the build FAILS if `backend/data/zones.json` is missing. `checkZoneDataFreshness` (also `preBuild`) reads that source's `version` (scrape timestamp) and emits a build **warning** (never fails) with the refresh command when the data is older than 10 days (`zoneDataMaxAgeDays`).
 
 ## Dependencies (`gradle/libs.versions.toml`)
 

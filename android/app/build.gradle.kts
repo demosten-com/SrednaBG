@@ -1,3 +1,6 @@
+import java.time.Duration
+import java.time.Instant
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -229,6 +232,78 @@ val prepareMapAssets by tasks.registering(Copy::class) {
     }
 }
 
+// ──────────────────────────────────────────────────────────────────────────
+// Single source of truth for bundled zone data: backend/data/zones.json — the
+// SAME file iOS bundles via its `Bundled Zones` Run Script phase. The Android
+// asset (src/main/assets/zones.json) is GENERATED from it at build time and is
+// gitignored (NOT committed), so the two platforms can never ship different
+// zone data for the same release. The build FAILS if the source is missing —
+// offline-first means shipping without zones would break the app.
+val zonesSource = rootProject.file("../backend/data/zones.json")
+val zonesAssetDest = layout.projectDirectory.file("src/main/assets/zones.json")
+val zoneRefreshCmd = "bash scrapers/scripts/refresh-zones.sh"
+
+val prepareZonesAsset by tasks.registering {
+    group = "build"
+    description = "Stage backend/data/zones.json into assets/zones.json (single source of truth, shared with iOS)"
+    inputs.file(zonesSource)
+    outputs.file(zonesAssetDest)
+    doLast {
+        if (!zonesSource.exists()) {
+            throw GradleException(
+                "[prepareZonesAsset] bundled zones JSON not found at $zonesSource. " +
+                    "Regenerate it with `$zoneRefreshCmd`."
+            )
+        }
+        zonesSource.copyTo(zonesAssetDest.asFile, overwrite = true)
+    }
+}
+
+// Zone-data freshness check. zones.json is a point-in-time scrape (its top-level
+// `version` field is the scrape timestamp, ISO-8601 UTC). Zone data older than
+// this many days may ship outdated camera zones / speed limits, so warn at build
+// time and print the exact refresh command. This only WARNS — it never fails the
+// build — so a machine without Python / network can still build. Reads the
+// shared source directly (mirrors the iOS `Bundled Zones` Run Script phase).
+val zoneDataMaxAgeDays = 10L
+
+val checkZoneDataFreshness by tasks.registering {
+    group = "verification"
+    description = "Warn when backend/data/zones.json is older than $zoneDataMaxAgeDays days"
+    outputs.upToDateWhen { false }
+    doLast {
+        if (!zonesSource.exists()) return@doLast
+        // Read only the head — `version` is the first key and the file is ~1.4 MB.
+        val head = zonesSource.bufferedReader().use { reader ->
+            val buf = CharArray(8192)
+            val n = reader.read(buf)
+            if (n > 0) String(buf, 0, n) else ""
+        }
+        val version = Regex("\"version\"\\s*:\\s*\"([^\"]+)\"").find(head)?.groupValues?.get(1)
+        if (version == null) {
+            logger.warn("[checkZoneDataFreshness] could not find \"version\" in ${zonesSource.path}; skipping freshness check.")
+            return@doLast
+        }
+        val scraped = try {
+            Instant.parse(version)
+        } catch (e: Exception) {
+            logger.warn("[checkZoneDataFreshness] unparseable version \"$version\" in ${zonesSource.path}; skipping freshness check.")
+            return@doLast
+        }
+        val ageDays = Duration.between(scraped, Instant.now()).toDays()
+        if (ageDays > zoneDataMaxAgeDays) {
+            logger.warn(
+                "\nwarning: Bundled zone data is $ageDays days old (scraped $version; " +
+                    "threshold $zoneDataMaxAgeDays days). Camera zones / speed limits may be stale.\n" +
+                    "         Refresh it with:\n" +
+                    "             $zoneRefreshCmd\n"
+            )
+        }
+    }
+}
+
 tasks.named("preBuild") {
     dependsOn(prepareMapAssets)
+    dependsOn(prepareZonesAsset)
+    dependsOn(checkZoneDataFreshness)
 }
