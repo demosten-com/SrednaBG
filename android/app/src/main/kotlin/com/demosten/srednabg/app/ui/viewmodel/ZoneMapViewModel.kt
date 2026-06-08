@@ -133,6 +133,18 @@ class ZoneMapViewModel @Inject constructor(
         _cameraSnapshot.value = snapshot
     }
 
+    // Whether the map camera is locked to the user (follow mode, toggled by
+    // long-pressing the recenter FAB). Lives in the VM — like cameraSnapshot —
+    // so an enabled follow survives leaving the Map tab and app backgrounding
+    // instead of silently resetting when the disposed ZoneMapScreen drops its
+    // local Compose state. Process death legitimately resets it to false.
+    private val _isFollowing = MutableStateFlow(false)
+    val isFollowing: StateFlow<Boolean> = _isFollowing.asStateFlow()
+
+    fun setFollowing(following: Boolean) {
+        _isFollowing.value = following
+    }
+
     fun retrySync() {
         if (_isSyncing.value) return
         viewModelScope.launch {

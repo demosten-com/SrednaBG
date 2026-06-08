@@ -138,7 +138,10 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
     val debugMaxSpeedOverride by viewModel.debugMaxSpeedOverride.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    var isFollowing by remember { mutableStateOf(false) }
+    // Follow mode lives in the VM so it survives leaving the Map tab / app
+    // backgrounding (the screen's composition — and any local state — is
+    // disposed by the NavHost when another tab is selected).
+    val isFollowing by viewModel.isFollowing.collectAsStateWithLifecycle()
     // Last bearing seen while speed was above the noise threshold — held while stopped so
     // the map doesn't snap back to north at traffic lights.
     var effectiveBearing by remember { mutableStateOf(0.0) }
@@ -158,7 +161,7 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
         if (hasRestoredFollowOnEnter) return@LaunchedEffect
         if (!mapHeadingUp) return@LaunchedEffect
         if (displayPosition == null) return@LaunchedEffect
-        isFollowing = true
+        viewModel.setFollowing(true)
         hasRestoredFollowOnEnter = true
     }
 
@@ -232,7 +235,7 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
                     override fun onMoveBegin(detector: org.maplibre.android.gestures.MoveGestureDetector) {}
                     override fun onMove(detector: org.maplibre.android.gestures.MoveGestureDetector) {
                         // User-initiated pan disengages follow mode.
-                        if (isFollowing) isFollowing = false
+                        if (viewModel.isFollowing.value) viewModel.setFollowing(false)
                     }
                     override fun onMoveEnd(detector: org.maplibre.android.gestures.MoveGestureDetector) {}
                 })
@@ -471,7 +474,7 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
                 onTap = {
                     val turningOn = !mapHeadingUp
                     viewModel.toggleMapHeadingUp()
-                    if (turningOn) isFollowing = true
+                    if (turningOn) viewModel.setFollowing(true)
                 },
             )
             RecenterFollowFab(
@@ -509,7 +512,7 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
                         }
                     }
                 },
-                onLongPress = { isFollowing = !isFollowing },
+                onLongPress = { viewModel.setFollowing(!isFollowing) },
             )
         }
 

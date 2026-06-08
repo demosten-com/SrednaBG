@@ -67,6 +67,34 @@ class ZoneMapViewModelTest {
     }
 
     @Test
+    fun `follow mode is held in the view model so it survives tab switches`() {
+        // Regression: follow mode used to live in ZoneMapScreen's local Compose
+        // state, so leaving the Map tab (NavHost disposes the screen) silently
+        // reset it to off. Holding it in the VM — retained across the tab's
+        // back-stack entry — keeps an enabled follow alive on return.
+        zoneRepository = mockk()
+        every { zoneRepository.zones } returns flowOf(emptyList())
+
+        settingsRepository = mockk()
+        every { settingsRepository.mapHeadingUp } returns flowOf(false)
+        every { settingsRepository.mapThemeMode } returns flowOf(MapThemeMode.AUTO)
+        every { settingsRepository.mapZoomOverride } returns flowOf<Float?>(null)
+        every { settingsRepository.debugMaxSpeedOverride } returns flowOf<Int?>(null)
+
+        mapRepository = mockk()
+        every { mapRepository.localStyleUri(MapTheme.LIGHT) } returns "file:///dev/null/style-light.json"
+        every { mapRepository.localStyleUri(MapTheme.DARK) } returns "file:///dev/null/style-dark.json"
+
+        val viewModel = ZoneMapViewModel(zoneRepository, settingsRepository, mapRepository)
+
+        assertEquals(false, viewModel.isFollowing.value)
+        viewModel.setFollowing(true)
+        assertEquals(true, viewModel.isFollowing.value)
+        viewModel.setFollowing(false)
+        assertEquals(false, viewModel.isFollowing.value)
+    }
+
+    @Test
     fun `zones state reflects repository flow`() = runTest {
         val testZones = listOf(
             Zone(
