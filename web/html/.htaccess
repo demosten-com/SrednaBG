@@ -1,6 +1,6 @@
 # SrednaBG marketing site — pre-launch hardening.
-# Served from a Namecheap addon-domain docroot (public_html/srednabg_com/).
-# The landing page lives at /indexx.html; / intentionally returns 403.
+# Served from a Namecheap addon-domain docroot ($HOME/srednabg_com/).
+# The landing page lives at /index.html.
 
 # ---------------------------------------------------------------------------
 # 1. No directory listing, UTF-8 default, no server signature noise.

@@ -6,8 +6,11 @@ Scripts:
 - `build-map-bundle.sh` — self-contained: downloads the pinned Planetiler JAR + Geofabrik Bulgaria OSM, generates z5–z12 tiles, packs the bundle from the in-repo `map-assets/`, cleans all scratch. `--keep-tiles` also drops a standalone mbtiles in `tiles/`.
 - `compute-map-hash.py` — deterministic content hash for `map_hash` (see below).
 - `derive-dark-style.py` — derives `style-dark.json` from the light style.
-- `update-zones.sh` — stage `zones.json` + `version.json` into `data/` for local inspection.
+- `fetch-fdroid-map-bundle.sh` — F-Droid prebuild fetch+verify of `map-bundle-<tag>.zip` from the GitHub Release (SHA pinned, derived from `versionName`).
+- `update-zones.sh` — local-inspection helper that stages `scrapers/data/zones.json` → `data/` + writes a `version.json`. Not the release path: `bash scrapers/scripts/refresh-zones.sh` is the canonical refresh, syncing the scraper output into `backend/data/zones.json`.
 - `map-assets/` — vendored static style template + Noto Sans glyph PBFs (the build's inputs; see `map-assets/LICENSE-NOTES.md`).
+
+`backend/data/zones.json` is the **single source of truth** both apps bundle at build time (iOS `Bundled Zones` phase, Android `prepareZonesAsset` task); it is committed, byte-identical to `scrapers/data/zones.json`. The map bundle below is independent of zone data.
 
 ## Build commands
 

@@ -32,14 +32,17 @@ contributors (ODbL); see `map-assets/LICENSE-NOTES.md`.
 
 ### 2. (Optional) Stage zone data locally
 
-`scripts/update-zones.sh` copies a generated `zones.json` into `data/` and writes
-a matching `data/version.json` — handy for local inspection. The live API is
-produced by the scraper cron, not from here.
+`data/zones.json` is the **single source of truth** both apps bundle at build
+time (committed, byte-identical to `scrapers/data/zones.json`). Refresh it from a
+fresh scrape with the canonical helper:
 
 ```bash
-cd ../scrapers && python -m src.output    # regenerate zones.json
-cd ../backend  && ./scripts/update-zones.sh
+bash ../scrapers/scripts/refresh-zones.sh   # scrape -> scrapers/data/ + sync backend/data/
 ```
+
+`scripts/update-zones.sh` is a lighter local-inspection alternative — it copies a
+generated `zones.json` into `data/` and writes a matching `data/version.json`. The
+live `/api/*` metadata is produced by the scraper cron, not from here.
 
 ## Layout
 
@@ -48,5 +51,5 @@ cd ../backend  && ./scripts/update-zones.sh
 - `scripts/derive-dark-style.py` — derives `style-dark.json` from the light style.
 - `scripts/update-zones.sh` — stage `zones.json` + `version.json` into `data/`.
 - `map-assets/` — vendored static style template + Noto Sans glyphs (build inputs).
-- `data/` — build output (`map-bundle/`, `map-bundle.zip`) + staged zone data; gitignored bundle.
+- `data/` — committed `zones.json` (single source of truth) + staged `version.json`; gitignored map-bundle output (`map-bundle/`, `map-bundle.zip`).
 - `tiles/` — only used if you pass `--keep-tiles` (a standalone mbtiles copy); gitignored.

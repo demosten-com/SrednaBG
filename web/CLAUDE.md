@@ -1,8 +1,8 @@
 # web/
 
-Static marketing site for `srednabg.com`. Pure HTML/CSS/JS — Apache 2.4.66 on Namecheap shared hosting; `.htaccess` is the only deploy lever.
+Static marketing site for `srednabg.com`. Pure HTML/CSS/JS — LiteSpeed/Apache 2.4.66 on Namecheap shared hosting; `.htaccess` is the only deploy lever.
 
-Landing page lives at `/indexx.html`; root `/` intentionally returns 403.
+Landing page is `web/html/index.html` (BG default, EN toggle; i18n strings as inline JSON `<script>` blocks in the `<head>`). Sections: hero, features, how-it-works, screen gallery, privacy, download. The **download grid** has five cards: **App Store** (`apps.apple.com/app/srednabg/id6773132524`), **Google Play** (`com.demosten.srednabg`), **F-Droid** (`f-droid.org/packages/com.demosten.srednabg/`), **APK from GitHub Releases** (with sideload steps), and **Source on GitHub**. The hero "Download the app" CTA anchors to that grid.
 
 ## Hosting layout
 
@@ -10,7 +10,8 @@ Namecheap **addon domain**, served from `$HOME/srednabg_com/` on the cPanel host
 
 | Path on host | Source in repo | Notes |
 |---|---|---|
-| `$HOME/srednabg_com/indexx.html` | `web/html/indexx.html` | Manual upload (FTP/SSH); no CI. |
+| `$HOME/srednabg_com/index.html` | `web/html/index.html` | Manual upload (FTP/SSH); no CI. |
+| `$HOME/srednabg_com/privacy.html` | `web/html/privacy.html` | Served at clean `/privacy` (linked from both store listings). |
 | `$HOME/srednabg_com/assets/...` | `web/html/assets/...` | CSS, JS, i18n JSON, screenshots. |
 | `$HOME/srednabg_com/.htaccess` | `web/html/.htaccess` | Force HTTPS, dotfile blocks, HSTS, gzip, expires, /api/* rewrites. |
 | `$HOME/srednabg_com/api/zones.json` | (produced by cron) | Live zone data. Not committed. |
@@ -37,8 +38,8 @@ Source of truth for the SrednaBG F-Droid listing. The build recipe is **merged i
 - Dotfile + backup-file 404s (`.git`, `.env`, `.bak`, editor swap files)
 - Security headers via `mod_headers` (HSTS 180d, `X-Content-Type-Options`, `X-Frame-Options DENY`, Permissions-Policy disabling geo/cam/mic, `X-Robots-Tag noindex,nofollow` while pre-launch)
 - gzip via `mod_deflate` for HTML/CSS/JS/JSON/SVG
-- Cache headers via `mod_expires` (HTML 5min, CSS/JS/JSON 1h, snapshots 1 year)
-- `/api/zones` and `/api/version` extensionless rewrites to the underlying `.json` files
+- Cache headers via `mod_expires` + per-file `Cache-Control` (`version.json` 5min, `zones.json` 1h, timestamped snapshots 1yr immutable; CSS/JS 1h; HTML 5min)
+- Extensionless rewrites: `/api/zones` + `/api/version` → `.json`, `/privacy` → `privacy.html`
 
 When site goes live: drop `X-Robots-Tag noindex` and consider HSTS preload — both are .htaccess one-liners.
 

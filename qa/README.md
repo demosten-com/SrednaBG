@@ -41,7 +41,7 @@ python -m qa.fixtures._extract_tts > qa/fixtures/tts_phrases.yaml
 | `smoke` | ~5 min | 1 zone, 1 settings combo, 1 sync, parser self-test |
 | `representative` | ~30 min | 6 hand-picked zones × 4 settings combos + sync set |
 | `full-zones` | ~75 min @ 4× | All 72 zones × constant-speed pass × 4 minimal asserts |
-| `scenarios` | ~20 min | 10 edge cases (stop, dropout, off-ramp, U-turn, swap, auto-stop, etc.) |
+| `scenarios` | ~20 min | 12 edge cases (stop, dropout, off-ramp, U-turn, swap, auto-stop, dense-centerline, stop-silences-TTS, etc.) |
 | `sync` | ~5 min | Zones happy + offline; map happy + integrity |
 | `ui` | <1 min | Phone UI walk via mobile-mcp / adb input |
 | `nightly` | ~2 hr | representative + full-zones + scenarios + ui |
@@ -103,6 +103,31 @@ def build() -> Scenario:
 ```
 
 Then add the module name to `EDGE_SCENARIOS` in `qa/srednabg_qa.py`.
+
+User-reported bugs should land with a qa/ scenario that reproduces them
+(`stop_silences_tts.py`, `dense_centerline.py` are recent examples).
+
+## Standalone zone-feeding tools (Android, debug build)
+
+Separate from `srednabg_qa.py` — they drive `DebugControlReceiver` directly.
+See `qa/CLAUDE.md` for the offline/`time_ms` cadence details.
+
+| Tool | Purpose |
+|------|---------|
+| `qa/feed-zone.sh <idx\|id\|substring>` | Drive one zone (endpoint-oriented) for visual inspection; no arg lists zones. |
+| `qa/validate-zones.sh` | Drive **every** zone and assert the correct id is detected with no flapping. `--quick`, `--only`, `--keep-online`. |
+| `qa/colocated-zones.sh` | Drive a co-located zone pair (back-to-back camera) and assert the second zone's entry is announced. `--all`, `--pair`, `--keep-online`. |
+
+## Xcode "Simulate Location" GPX (iOS manual testing)
+
+For driving a zone by hand on an iOS device/Simulator (Xcode reads only
+`<wpt>` waypoints, not the harness's `<trkpt>` track form):
+
+- `qa/fixtures/make_xcode_zone_route.py <zone-id>` — generate a sparse,
+  smooth-heading over-the-limit route with a short lead-in (so the
+  Outside→In-zone entry announcement fires). Outputs to `fixtures/gpx-xcode/`.
+- `qa/fixtures/gpx_to_xcode.py <in.gpx>` — convert an existing harness
+  track-form GPX into Xcode `<wpt>` form.
 
 ## Updating after app changes
 

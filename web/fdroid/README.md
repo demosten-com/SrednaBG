@@ -13,10 +13,14 @@ per-tag updates. None of this is read directly by F-Droid — to push an update,
 - `{en-US,bg}/short_description.txt` — F-Droid short description (≤80 chars).
 - `{en-US,bg}/full_description.txt` — F-Droid full description (≤4000 chars).
 - `{en-US,bg}/changelogs/<versionCode>.txt` — per-release notes.
-- `map-bundle-checksums.txt` — `<sha256>  <tag>` lines consumed by the
-  release workflow and (in the metadata YAML) by F-Droid's build sandbox.
-- `scripts/publish-map-bundle.sh` — builds the map bundle, computes SHA-256,
-  prints the SCP/rsync command for manual upload to `srednabg.com/assets/`.
+- `map-bundle-checksums.txt` — a single `<sha256>  map-bundle.zip` line (the
+  current bundle's digest), kept in sync with `SHA256` in
+  `backend/scripts/fetch-fdroid-map-bundle.sh`. The Android release workflow
+  uses it to verify the mutable `srednabg.com/assets/map-bundle.zip` before
+  snapshotting it per-tag onto the GitHub Release.
+- `scripts/publish-map-bundle.sh` — run only when the map content changes:
+  rebuilds the bundle, re-pins the digest in both files above, prints the SCP
+  command to replace the hosted `map-bundle.zip`.
 - `scripts/stage-fdroiddata.sh` — copies **only** `metadata.yml` into a target
   fdroiddata clone (`metadata/com.demosten.srednabg.yml`), ready for `git add`.
   Listing copy/graphics are **not** staged — they live in the app repo's
@@ -77,4 +81,4 @@ don't, so it's moot — `gen-fastlane-metadata.sh` writes the Fastlane names.
   trailing-spaces lint — a single short `bash …` call satisfies both. URL +
   digest stay auditable in the script at the build tag.
 - Reproducible builds are deferred to a later release; F-Droid signs the
-  APK with its own key for v1.0.3.
+  APK with its own key (current recipe builds v1.0.4 / versionCode 10004).

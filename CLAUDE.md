@@ -1,6 +1,6 @@
 ## Project Overview
 
-SrednaBG (Средна БГ) is a free, open-source Android + iOS phone app that tracks real-time running average speed within Bulgaria's section control (секционен контрол) camera zones. It fills the gap where Waze shows zone alerts but doesn't calculate average speed or the max speed sustainable for the remainder of the zone. Android Auto and CarPlay surfaces exist in the codebase as WIP and are not part of the initial release.
+SrednaBG (Средна БГ) is a free, open-source Android + iOS phone app that tracks real-time running average speed within Bulgaria's section control (секционен контрол) camera zones. It fills the gap where Waze shows zone alerts but doesn't calculate average speed or the max speed sustainable for the remainder of the zone. On Android, an opt-in floating overlay surfaces the live status over Waze/Google Maps; both platforms support per-vehicle-type speed limits (car/truck/bus/motorcycle). Android Auto and CarPlay surfaces exist in the codebase as WIP and are not part of the initial release.
 
 Package ID: `com.demosten.srednabg` | Bulgaria-only scope | MIT license.
 
@@ -9,10 +9,10 @@ Package ID: `com.demosten.srednabg` | Bulgaria-only scope | MIT license.
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 1 | Monorepo scaffolding, Gradle, CI/CD | Done |
-| 2 | Zone data schema and Python scrapers | Done (`zones.json` ships with ~70 real zones; exact count tracked by the scraper) |
-| 3 | Core calculation engine (pure Kotlin) | Done + comprehensive tests |
+| 2 | Zone data schema and Python scrapers | Done (`zones.json` ships ~72 real zones; exact count tracked by the scraper). The single source of truth is `backend/data/zones.json` — both apps bundle that same file (Android generates its asset at build time; see "Three-Tier Data Flow") |
+| 3 | Core calculation engine (pure Kotlin) | Done + comprehensive tests. Self-orienting centerlines, polyline-projection remaining/exit, off-road exit hysteresis, vehicle-type-aware limits |
 | 4 | Offline map-bundle build pipeline | Done (self-contained Planetiler-JAR builder; the former Docker/tileserver-gl serving stack is retired) |
-| 5 | Android app foundation (phone UI) | Done (Compose UI, Room, Hilt, location service, audio alerts) |
+| 5 | Android app foundation (phone UI) | Done (Compose UI, Room, Hilt, location service, audio alerts, opt-in draw-over-other-apps overlay, vehicle-type setting) |
 | 6 | Android Auto integration | Done in code — WIP, not in initial release (kept for developer testing on DHU/AAOS) |
 | 7 | Polish, testing, release prep | Signing wired; signed-APK release workflow shipping `srednabg-<version>.apk` + `.sha256` to GitHub Releases; F-Droid: build recipe **merged into `fdroiddata`** — the app publishes once F-Droid's build server signs the first build; `web/fdroid/` remains the source of truth for ongoing per-tag updates (metadata, locale descriptions, SHA-pinned map-bundle pipeline). Play Store: listing + screenshots done; v1.0.2 **approved and live in open testing**, promotable to production at the user's discretion (not yet promoted). See `android/CLAUDE.md` |
 | 8a | iOS phone port (Swift 6 + SwiftUI) | Functionally complete (Xcode app shell, MapLibre map, Live Activity + Dynamic Island, permission gating). App Store submission is Phase 8c. |
@@ -28,11 +28,11 @@ Each subfolder owns its own `CLAUDE.md` with build commands, key files, and subf
 - `backend/` — Offline map-bundle builder (self-contained Planetiler JAR; no Docker) + local zone-data staging. See `backend/CLAUDE.md`.
 - `qa/` — End-to-end QA harness driving the emulator via adb. See `qa/CLAUDE.md`.
 - `ios/` — SwiftPM monorepo (Swift 6) + Xcode app shell. See `ios/CLAUDE.md`.
-- `web/` — Static marketing site for `srednabg.com`; same Namecheap host runs the scraper cron and serves `/api/*`. Also hosts the latest `/assets/map-bundle.zip` (the release workflow snapshots it per-tag onto the GitHub Release) and houses the F-Droid metadata source of truth in `web/fdroid/` (recipe now merged into `fdroiddata`). See `web/CLAUDE.md`.
+- `web/` — Static marketing site for `srednabg.com` (download cards link App Store, Play Store, and F-Droid); same Namecheap host runs the scraper cron and serves `/api/*`. Also hosts the latest `/assets/map-bundle.zip` (the release workflow snapshots it per-tag onto the GitHub Release) and houses the F-Droid metadata source of truth in `web/fdroid/` (recipe now merged into `fdroiddata`). See `web/CLAUDE.md`.
 
 ## Three-Tier Data Flow
 
-1. **Data ingestion** (Python → `scrapers/`) — scrapes BG TOLL HTML, TollTracker GeoJSON, OSM Overpass; merges into `zones.json` with version hash.
+1. **Data ingestion** (Python → `scrapers/`) — scrapes BG TOLL HTML, TollTracker GeoJSON, OSM Overpass; merges into `backend/data/zones.json` (the single source of truth, with a version hash) via `scrapers/scripts/refresh-zones.sh`. Both apps bundle that one file: iOS via a `Bundled Zones` Run Script phase, Android via the Gradle `prepareZonesAsset` task (copies it into `android/app/src/main/assets/zones.json` at build time — that asset is generated, gitignored, NOT committed, so the two platforms can't ship different zone data). The Gradle `checkZoneDataFreshness` task WARNS (never fails) when the source is older than 10 days.
 2. **Core engine** (Kotlin JVM → `android/core/`) — stateful zone detection, running-average + remainder-sustainable speed, Kalman-like GPS filtering. The iOS side has an independent Swift hand-port at `ios/Packages/SrednaBGCore/`.
 3. **Apps** — `android/` (LocationTrackingService → MapLibre on AA Surface + phone Compose UI) and `ios/` (CLLocationManager → SwiftUI + MapLibre Native).
 
@@ -46,6 +46,9 @@ Each subfolder owns its own `CLAUDE.md` with build commands, key files, and subf
 - **Adaptive GPS polling** — 1s inside zones, 5s when far from any zone (battery)
 - **Inactivity auto-stop** — tracking shuts itself down after a settable timeout (default 3h, also 6h / Never) of no zone state transitions, so a forgotten-in-background session doesn't drain the battery. Setting key `auto_stop_hours`; QA scenarios dial it down via the DEBUG-only `debug_auto_stop_seconds` override
 - **Map bundle in APK, not PAD** — mbtiles capped at z12 to fit the APK; avoids Play Asset Delivery so F-Droid / sideload stay open
+- **Draw-over-other-apps overlay (Android)** — opt-in (default off), floats a compact badge between zones and the full live-average status in-zone over Waze/Maps via a `TYPE_APPLICATION_OVERLAY` window. Pure AOSP (no GMS, F-Droid-safe); needs the `SYSTEM_ALERT_WINDOW` special permission, routed from the Settings toggle. See `android/CLAUDE.md`
+- **Vehicle types** — a `VehicleType` enum (car/truck/bus/motorcycle) in the core picks the per-vehicle speed limit per zone (motorcycle falls back to the car limit where a zone has none); exposed as a Settings choice with Kotlin + Swift parity. See `android/core/CLAUDE.md`
+- **Single zone-data source of truth** — `backend/data/zones.json` is the one file both apps bundle; Android generates its asset from it at build time (see "Three-Tier Data Flow")
 
 ## CI/CD
 
@@ -74,6 +77,6 @@ Use Sonnet 4 as default; escalate to Opus 4 for architecture decisions or when s
 ## Open Questions
 
 - BG TOLL tolerance rumored at +3 km/h (≤100) / +3% (>100) — factor into the over-limit check if confirmed
-- Motorcycle speed limits — separate limits needed?
+- Per-vehicle limits are now modeled (car/truck/bus/motorcycle); motorcycle falls back to the car limit where a zone has no explicit value — confirm whether any zones actually differ for motorcycles
 - Custom user-reported zones — support for zones not yet officially certified?
 - Cloudflare CDN for tiles — consider if user base grows

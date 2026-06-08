@@ -1,12 +1,13 @@
 # android/core/
 
-Pure Kotlin library (no Android deps) with zone detection, average speed calculation, GPS filtering, geo utilities, map-theme resolution, and zone-status colors. The iOS port at `ios/Packages/SrednaBGCore/` is an independent Swift hand-port of this engine and evolves separately. 8 source files + 10 test files (including real Trakiya zone fixtures).
+Pure Kotlin library (no Android deps) with zone detection, average speed calculation, GPS filtering, geo utilities, map-theme resolution, and zone-status colors. The iOS port at `ios/Packages/SrednaBGCore/` is an independent Swift hand-port of this engine and evolves separately. 9 source files + 11 test files (including real Trakiya zone fixtures).
 
-- `ZoneDetector` (stateful) — receives GPS points, detects zone entry/exit via point-to-polyline distance (<100m) + heading match (±45°)
+- `ZoneDetector` (stateful) — receives GPS points, self-orients each centerline `start → end` at construction, detects zone entry/exit via point-to-polyline distance + heading match (±45°)
 - `AverageSpeedCalc` — running average + `SpeedStatus` (max speed sustainable for the remainder, `isOverLimit`)
 - `GpsFilter` — Kalman-like noise smoothing
 - `RoadMatcher` — road/direction matching
 - `GeoUtils` — Haversine, bearing, polyline distance
+- `VehicleType` — `CAR`/`TRUCK`/`BUS`/`MOTORCYCLE` enum with per-vehicle `limit(speedLimits)` selection
 - `MapThemeResolver` — picks the light or dark MapLibre style URI for a given setting + system appearance
 - `ZoneStatusColor` — packed-`Int` mapping from `ZoneState` / over-limit flag to the green / amber / red traffic-light value used by both the SwiftUI and UIKit/Compose surfaces
 
@@ -19,7 +20,7 @@ Pure Kotlin library (no Android deps) with zone detection, average speed calcula
 
 ## Key files
 
-`Models.kt`, `ZoneDetector.kt`, `AverageSpeedCalc.kt`, `GeoUtils.kt`, `RoadMatcher.kt`, `GpsFilter.kt`, `MapThemeResolver.kt`, `ZoneStatusColor.kt`
+`Models.kt`, `ZoneDetector.kt`, `AverageSpeedCalc.kt`, `GeoUtils.kt`, `RoadMatcher.kt`, `GpsFilter.kt`, `VehicleType.kt`, `MapThemeResolver.kt`, `ZoneStatusColor.kt`
 
 ## Algorithm edge cases
 

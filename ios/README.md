@@ -71,6 +71,14 @@ offline-map-bundle pipeline, and the CarPlay re-link checklist.
   match Android exactly so the QA harness's `DebugControlReceiver`
   analogue can be reused.
 - ActivityKit for in-zone Lock Screen / Dynamic Island status.
-- iOS `ZoneDetector.update(_:vehicleType:)` honors the user's vehicle-type
-  setting; Android currently hardcodes `.car` (TODO to backport — tracked
-  in top-level `CLAUDE.md` Remaining Work).
+- `VehicleType` (car / truck / bus / motorcycle) with a per-vehicle speed
+  limit, exposed in Settings; `ZoneDetector.update(_:vehicleType:)` and the
+  Kotlin core are at parity (both honor the setting).
+- Zone data ships from the single source of truth `backend/data/zones.json`,
+  copied into the app at build time by the `Bundled Zones` Run Script phase
+  (the same file Android bundles).
+- TTS via `AVSpeechSynthesizer`: pure `AnnouncementPolicy.decide` owns the
+  announce/suppress matrix (entry / over-limit / recovered / exit / periodic,
+  co-located-camera entry); `AVSpeechTTSEngine` drives the `AVAudioSession`
+  (`.playback` + `.duckOthers`, `audio` background mode) so guidance keeps
+  speaking screen-off. See `ios/CLAUDE.md` for the background-audio rationale.

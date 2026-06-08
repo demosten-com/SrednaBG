@@ -1,9 +1,11 @@
 # SrednaBG (Средна БГ)
 
-Free, open-source Android + iOS phone app for tracking average speed in Bulgaria's section control camera zones. Android Auto and CarPlay surfaces exist in the codebase as WIP and are not part of the initial release.
+Free, open-source Android + iOS phone app for tracking average speed in Bulgaria's section control camera zones. Picks the speed limit for your vehicle type (car / truck / bus / motorcycle), and on Android an opt-in overlay floats the live status over Waze / Google Maps. Android Auto and CarPlay surfaces exist in the codebase as WIP and are not part of the initial release.
 
 ## Install
 
+- App Store: <https://apps.apple.com/app/srednabg/id6773132524>
+- Google Play: <https://play.google.com/store/apps/details?id=com.demosten.srednabg>
 - F-Droid: <https://f-droid.org/packages/com.demosten.srednabg/> — recipe merged into `fdroiddata`; the app appears once F-Droid's build server publishes the first signed build.
 - GitHub Releases: <https://github.com/demosten-com/SrednaBG/releases>
 
@@ -50,6 +52,8 @@ python qa/srednabg_qa.py --suite nightly         # ~2 hr — everything
 ```
 
 The Gradle build auto-stages `backend/data/map-bundle/` into `android/app/src/main/assets/map/` via the `prepareMapAssets` task, so a debug APK built after `build-map-bundle.sh` ships with a fully-offline map. If the bundle directory is absent the build still succeeds and the app falls back to the network style at runtime.
+
+Zone data is bundled the same way: `backend/data/zones.json` is the single source of truth (the **same file iOS bundles**), and the Gradle `prepareZonesAsset` task copies it into `android/app/src/main/assets/zones.json` at build time — that asset is generated and gitignored, never committed. The build fails if the source is missing; a separate `checkZoneDataFreshness` task only warns when it's older than 10 days. Regenerate it with `bash scrapers/scripts/refresh-zones.sh`.
 
 ## Testing in an Emulator
 
