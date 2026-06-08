@@ -253,6 +253,68 @@ class ZoneDetectorTest {
     }
 
     @Test
+    fun `transient off-road blip does not exit, but sustained off-road does`() {
+        // Regression for the qa/validate-zones flap on motorway zones
+        // (struma-02-north / trakiya-01-west / hemus-02-west on the coarser server
+        // centerlines): the Kalman-smoothed position lags off the road for a fix or
+        // two on a bend, which used to trigger an immediate Exiting -> InZone flap.
+        // A single off-road fix must now be absorbed; only a sustained departure
+        // exits.
+        val trace = generateGpsTrace(TRAKIYA_T10, speedKmh = 130.0)
+        val det = ZoneDetector(listOf(TRAKIYA_T10))
+
+        var lastInZone: GpsPoint? = null
+        for (point in trace) {
+            if (det.update(point) is ZoneState.InZone) lastInZone = point
+            if (lastInZone != null) break
+        }
+        assertTrue(lastInZone != null, "Should have entered the zone")
+
+        // ~220 m perpendicular off the centerline — past the 150 m motorway band
+        // but well within OFF_ROAD_HARD_M, i.e. a blip, not a departure.
+        val base = lastInZone!!
+        fun offRoad(seq: Int) = GpsPoint(
+            lat = base.lat + 0.003, lng = base.lng, speed = 130.0,
+            timestamp = base.timestamp + seq * 1000, bearing = base.bearing,
+        )
+
+        assertTrue(det.update(offRoad(1)) is ZoneState.InZone, "1st off-road fix must be absorbed")
+        assertTrue(det.update(offRoad(2)) is ZoneState.InZone, "2nd off-road fix must be absorbed")
+        assertTrue(
+            det.update(offRoad(3)) is ZoneState.Exiting,
+            "Sustained off-road (>= OFF_ROAD_EXIT_GRACE_FIXES) must exit",
+        )
+    }
+
+    @Test
+    fun `back on-road within the grace window keeps the same traversal`() {
+        // A blip that recovers before the grace elapses must not have exited at all
+        // — same uninterrupted traversal (entryTime unchanged).
+        val trace = generateGpsTrace(TRAKIYA_T10, speedKmh = 130.0)
+        val det = ZoneDetector(listOf(TRAKIYA_T10))
+
+        var entryTime: Long? = null
+        var idx = 0
+        while (idx < trace.size) {
+            val s = det.update(trace[idx]); idx++
+            if (s is ZoneState.InZone) { entryTime = s.entryTime; break }
+        }
+        assertTrue(entryTime != null, "Should have entered the zone")
+
+        // Two off-road fixes (under the grace), then back on the planned route.
+        val onResume = trace[idx]
+        det.update(onResume.copy(lat = onResume.lat + 0.003, timestamp = onResume.timestamp))
+        det.update(onResume.copy(lat = onResume.lat + 0.003, timestamp = onResume.timestamp + 1000))
+        val resumed = det.update(onResume.copy(timestamp = onResume.timestamp + 2000))
+
+        assertTrue(resumed is ZoneState.InZone, "Should still be in the zone after the blip")
+        assertEquals(
+            entryTime, (resumed as ZoneState.InZone).entryTime,
+            "Blip must not have restarted the traversal",
+        )
+    }
+
+    @Test
     fun `reset clears state`() {
         val trace = generateGpsTrace(TRAKIYA_T10, speedKmh = 130.0)
 
@@ -431,6 +493,139 @@ class ZoneDetectorTest {
         assertTrue(sawExiting, "Should exit zone at high speed")
         assertTrue(lastExitState!!.finalAvgSpeed!! > 150, "High speed should register")
         assertTrue(lastExitState.finalAvgSpeed!! > 140, "220 km/h should be over 140 limit")
+    }
+
+    @Test
+    fun `dense short-segment zone is a single clean traversal (no integrator drift exit)`() {
+        // Regression for the qa/feed-zone.sh bug: a zone with a densely-sampled
+        // centerline (segments far shorter than the per-second travel distance)
+        // driven with a constant reported speed made the speed×time integrator
+        // over-count distance. The old engine then (a) collapsed
+        // maxSpeedForRemainder to 0 mid-zone and (b) tripped the
+        // `distanceTraveled >= distanceM * 1.1` exit, immediately re-entering as a
+        // mid-zone cold-start and resetting the stats. The fix sources remaining
+        // distance + the exit decision from the polyline projection.
+        val zone = denseShortSegmentZone(distanceM = 2300, segmentM = 15.0, speedLimitCar = 140)
+        // 108 km/h reported vs ~54 km/h real geographic speed → 2× integrator over-count.
+        val trace = generateUnevenSpacingTrace(zone, reportedSpeedKmh = 108.0)
+        val det = ZoneDetector(listOf(zone))
+
+        val entryTimes = linkedSetOf<Long>()
+        var sawExiting = false
+        var collapsedEarly = false
+        for (point in trace) {
+            when (val state = det.update(point)) {
+                is ZoneState.InZone -> {
+                    entryTimes.add(state.entryTime)
+                    // While there is meaningful road left, the remainder speed must
+                    // not collapse to 0 (it would, the moment the drifted integrator
+                    // passed effectiveZoneDistance).
+                    if (state.distanceRemaining > ZoneDetector.EXIT_DISTANCE_M &&
+                        state.speedStatus.maxSpeedForRemainder <= 0.0
+                    ) {
+                        collapsedEarly = true
+                    }
+                }
+                is ZoneState.Exiting -> sawExiting = true
+                is ZoneState.Outside -> {}
+            }
+        }
+
+        assertFalse(collapsedEarly,
+            "maxSpeedForRemainder collapsed to 0 while road remained — integrator drift leaked in")
+        assertEquals(1, entryTimes.size,
+            "Expected a single uninterrupted traversal, but the zone was (re-)entered ${entryTimes.size} times")
+        assertTrue(sawExiting, "Should have cleanly exited at the zone end")
+    }
+
+    @Test
+    fun `reversed-centerline zone still enters the correct sibling (qa feed-zone 0 bug)`() {
+        // Regression for `qa/feed-zone.sh 0` (europa-01-north): the server serves
+        // the north zone's centerline stored END-FIRST. Its raw first→last bearing
+        // then points the way the SOUTH sibling travels, so a northbound drive used
+        // to match `europa-test-south` (the "red dot first" the user reported) and
+        // report an inverted "remaining". The engine now orients each centerline to
+        // its start/end endpoints, so it recovers regardless of stored point order.
+        val (north, south) = europaReversedSiblings()
+        // List south first so a buggy detector that ignores direction would have it
+        // available to (wrongly) win.
+        val det = ZoneDetector(listOf(south, north))
+        val trace = europaNorthboundTrace(speedKmh = 108.0)
+
+        val inZoneIds = mutableListOf<String>()
+        var firstInZoneId: String? = null
+        var exitedId: String? = null
+        for (point in trace) {
+            when (val state = det.update(point)) {
+                is ZoneState.InZone -> {
+                    if (firstInZoneId == null) firstInZoneId = state.zone.id
+                    inZoneIds.add(state.zone.id)
+                }
+                is ZoneState.Exiting -> exitedId = state.zone.id
+                is ZoneState.Outside -> {}
+            }
+        }
+
+        assertTrue(inZoneIds.isNotEmpty(), "Should have entered a zone")
+        assertEquals(
+            "europa-test-north", firstInZoneId,
+            "First in-zone fix matched the wrong sibling — the reversed centerline " +
+                "flipped the detected direction (the 'red dot first' bug)",
+        )
+        assertTrue(
+            inZoneIds.all { it == "europa-test-north" },
+            "Whole northbound traversal must stay europa-test-north, saw: ${inZoneIds.distinct()}",
+        )
+        assertEquals("europa-test-north", exitedId, "Should cleanly exit the north zone")
+    }
+
+    @Test
+    fun `reversed-centerline zone reports a decreasing, non-inverted remaining`() {
+        // The same end-first centerline also inverts the polyline "remaining"
+        // (full at the physical end, ~0 at the start) unless projection is done
+        // against the endpoint-oriented centerline.
+        val (north, _) = europaReversedSiblings()
+        val det = ZoneDetector(listOf(north))
+        val trace = europaNorthboundTrace(speedKmh = 108.0)
+
+        val remaining = mutableListOf<Double>()
+        for (point in trace) {
+            (det.update(point) as? ZoneState.InZone)?.let { remaining.add(it.distanceRemaining) }
+        }
+
+        assertTrue(remaining.size >= 3, "Need several in-zone samples")
+        // Starts near the full zone length, not near 0 (which an inverted reading
+        // would give right after entry).
+        assertTrue(
+            remaining.first() > north.distanceM * 0.5,
+            "Remaining at entry should be most of the zone, was ${remaining.first()}",
+        )
+        assertTrue(
+            remaining.last() < remaining.first(),
+            "Remaining should decrease toward the end, not invert",
+        )
+    }
+
+    @Test
+    fun `vehicle type changes effective limit`() {
+        // Vehicle-type-aware ZoneDetector (backported from iOS). A truck on a
+        // 140 km/h motorway is limited to 90 km/h, so 120 km/h must register as
+        // over-limit for a truck but not for a car.
+        val trace = generateGpsTrace(TRAKIYA_T10, speedKmh = 120.0)
+        val carDetector = ZoneDetector(listOf(TRAKIYA_T10))
+        val truckDetector = ZoneDetector(listOf(TRAKIYA_T10))
+
+        var carLast: ZoneState.InZone? = null
+        var truckLast: ZoneState.InZone? = null
+        for (point in trace) {
+            (carDetector.update(point, VehicleType.CAR) as? ZoneState.InZone)?.let { carLast = it }
+            (truckDetector.update(point, VehicleType.TRUCK) as? ZoneState.InZone)?.let { truckLast = it }
+        }
+
+        assertFalse(carLast == null, "Car should have been in zone")
+        assertFalse(truckLast == null, "Truck should have been in zone")
+        assertFalse(carLast!!.speedStatus.isOverLimit, "Car at 120 in 140 zone is fine")
+        assertTrue(truckLast!!.speedStatus.isOverLimit, "Truck at 120 in 90 (truck) zone is over limit")
     }
 
     @Test

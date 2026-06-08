@@ -82,6 +82,26 @@ public struct Zone: Sendable, Equatable, Hashable, Codable, Identifiable {
         self.source = source
         self.lastVerified = lastVerified
     }
+
+    /// Copy of this zone with a replaced centerline. Swift structs have no Kotlin
+    /// `copy`, so this is the explicit helper `ZoneDetector` uses to re-store the
+    /// endpoint-oriented centerline at construction.
+    public func with(centerline: [[Double]]) -> Zone {
+        Zone(
+            id: id,
+            road: road,
+            roadLatin: roadLatin,
+            direction: direction,
+            description: description,
+            start: start,
+            end: end,
+            distanceM: distanceM,
+            speedLimits: speedLimits,
+            centerline: centerline,
+            source: source,
+            lastVerified: lastVerified
+        )
+    }
 }
 
 public struct GpsPoint: Sendable, Equatable, Hashable {

@@ -32,7 +32,7 @@ Android depends on `android/`'s debug-only `DebugSyncReceiver` and `DebugControl
 ```bash
 python qa/srednabg_qa.py --suite smoke           # ~5 min — 1 zone + 1 sync + parser self-test
 python qa/srednabg_qa.py --suite representative  # ~30 min — 6 hand-picked zones × 4 settings combos + sync set
-python qa/srednabg_qa.py --suite scenarios       # ~20 min — 10 edge cases (stop, dropout, off-ramp, U-turn, swap, auto-stop, …)
+python qa/srednabg_qa.py --suite scenarios       # ~20 min — 12 edge cases (stop, dropout, off-ramp, U-turn, swap, auto-stop, dense-centerline, …)
 python qa/srednabg_qa.py --suite sync            # ~5 min — zones happy + offline; map happy + integrity
 python qa/srednabg_qa.py --suite ui              # <1 min — phone UI walk
 python qa/srednabg_qa.py --suite full-zones      # ~75 min @4× — all 72 zones, minimal asserts
@@ -57,6 +57,12 @@ scenario that's prepended to the **smoke** and **representative** suites:
 - `gms` — asserts `FusedLocationSource` (on a **Google-APIs** emulator image;
   a plain AOSP image legitimately falls back to System).
 - `auto` — only records which source was selected; doesn't pin the flavor.
+
+**iOS skips this scenario entirely** (`_location_source_prefix()` in
+`srednabg_qa.py` returns `[]` when the active device is iOS). iOS has a single
+`CLLocationManager` path with no flavor/`LocationSource` factory, so it emits no
+`SrednaBG.LocSrc` line and the tripwire could never pass there — the smoke /
+representative suites run their remaining scenarios only.
 
 ```bash
 # Install the aosp debug APK, then:
@@ -106,6 +112,99 @@ Reports land in `qa/reports/<suite>-<timestamp>/` (`junit.xml` + `summary.md` + 
 - YAML for "drive zone X at speed Y" variations.
 - Python under `qa/scenarios/edge/` for mid-trip changes (dropout, U-turn, etc.) — register the module in `EDGE_SCENARIOS` in `qa/srednabg_qa.py`.
 - Use `device.current().geo_fix(...)` and `qa.settings` / `qa.sync` (not `qa.adb` directly) so the scenario runs on both platforms.
+
+## Manual zone feeding + full-zone direction validation (Android, debug build)
+
+Two standalone adb tools (not part of `srednabg_qa.py`; they talk straight to
+`DebugControlReceiver`) for exercising the zone state machine on the emulator:
+
+- `qa/feed-zone.sh <idx|id|substring>` (helper: `feed_zone.py`) — drives a
+  single zone for manual/visual inspection. It orients the route by the zone's
+  **start/end endpoints** (`build_route` in `feed_zone.py`), i.e. the real
+  carriageway direction, regardless of how the centerline points happen to be
+  ordered. Run with no arg to list zones.
+- `qa/validate-zones.sh` (helper: `validate_zones.py`) — drives **every** zone
+  the same endpoint-oriented way and asserts, from the app's own
+  `SrednaBG.TTS onZoneStateChanged` log, that (a) the **dominant** sustained
+  traversal (≥75 % of in-zone fixes) is the **correct** zone id, (b) the intended
+  zone isn't re-entered after exiting (flap), and (c) it exits cleanly. Exit 0 =
+  all passed; `--quick` ≈ 2 km/zone; `--only 0,1,europa…` for a subset.
+
+  It judges by the *dominant* traversal (not "any zone ever seen") on purpose:
+  the feeder's 120 m lead-in can legitimately start inside the **adjacent**
+  preceding zone, and a centerline that jogs at its very first vertex briefly
+  reads as the opposite-direction **sibling** for a fix or two — both benign and
+  timing-flaky. The genuine reversed-centerline bug instead spends the **whole**
+  drive in the wrong zone (intended fraction ≈ 0), so it still fails hard
+  (verified: `europa-01-north` on the un-aligned server data → "main traversal
+  was europa-01-south, 0/343 in-zone fixes").
+
+- `qa/colocated-zones.sh` (helper: `colocated_zones.py`) — drives a **continuous**
+  route through a **co-located zone pair** (one camera ends zone A and begins
+  zone B, so the engine steps `InZone(A) → Exiting(A) → InZone(B)` with **no
+  Outside between the cameras**) and asserts, from the app's `SrednaBG.TTS` log,
+  that **entering the second zone is announced**. 24 such pairs exist in the data
+  (gap ≈ 0 m, mostly Trakiya; auto-detected by same road + direction +
+  `end(A) ≈ start(B)`). Default drives the first detected pair; `--all` drives
+  every pair; `--pair idA,idB` picks one; `--keep-online` uses the device's
+  current data. Exit 0 = all passed.
+
+  Regression for the `AudioAlertManager` `Exiting → InZone` fix: the TTS layer
+  originally handled only `Outside→InZone` / `InZone→InZone` / `InZone→Exiting`,
+  so at a back-to-back camera the entry into B (an `Exiting→InZone` step, no
+  `Outside`) was **silently dropped** — no "entering / new limit" cue. The fix
+  announces B's entry with `QUEUE_ADD` so it plays *after* A's still-speaking
+  exit-with-average instead of `QUEUE_FLUSH` cutting it off. `validate-zones.sh`
+  can't catch this — it STOPs tracking between zones, so it never produces the
+  cross-zone transition. The assertion **correlates by order**: it requires a
+  direct `prev=Exiting new=InZone zone=B` state line followed by an *entry* speak
+  before the next state line — counting "any entry after the boundary" would
+  false-pass on the benign sibling-jog blip (B's centerline often starts with a
+  backwards first segment that matches the opposite-carriageway sibling for one
+  fix, which itself fires a spurious `Outside→InZone` entry). Verified to fail
+  without the fix ("ENTERING `trakiya-03-east` was NOT announced … no entry speak
+  followed") and pass with it.
+
+Why this exists / what it catches: the `scenarios/bulk/` suite drives the
+**centerline point order** and only asserts "some zone was entered", so it is
+self-consistent with the data and **cannot** catch a zone whose centerline is
+stored end-first. Such a zone's `polylineBearing` then points the wrong way and
+the app matches the opposite-direction sibling and flaps (observed live: feeding
+`europa-01-north` matched `europa-01-south`). `validate-zones.sh` drives the true
+direction and checks the entered **id**, so that data class fails loudly. Root
+cause was unaligned centerlines in the server/old data; the scraper's
+`align_centerline_to_endpoints` (see `scrapers/CLAUDE.md`) aligns the bundle.
+
+**The engine no longer depends on that alignment** (defense in depth): `ZoneDetector`
+orients every zone's centerline to `start → end` at construction
+(`orientCenterlineToStart`), so a centerline synced end-first from a not-yet-redeployed
+`/api/zones` still detects the correct zone and direction. This was added after
+`qa/feed-zone.sh 0` still showed `europa-01-north` matching its south sibling ("red
+dot first") despite the bundle being aligned — because the **device runs the synced
+server data, not the bundle**, and the default `validate-zones` mode forces offline +
+`pm clear` so it tests the *bundle* (a false "all green"). Use `--keep-online` to test
+the data a real device actually runs; with the engine fix it now passes 72/72 even
+against the reversed synced data. The durable data fix (re-deploying the aligned
+`zones.json` to `/api/zones`) is still worth doing, but is no longer load-bearing for
+correctness. CI catch (no emulator): `ZoneDetectorTest` reversed-centerline +
+off-road-hysteresis cases.
+
+Two device-state subtleties the harness handles, worth knowing for any zone
+feeding:
+
+- **Data under test**: the app syncs zones from `srednabg.com` into Room and
+  that overrides the bundle. To validate the *bundled* (to-be-committed) data,
+  `validate-zones.sh` forces the device **offline** + `pm clear` so the bundle
+  loads; `--keep-online` tests the device's current data as-is.
+- **Feed cadence / `time_ms`**: `DebugControlReceiver`'s `FEED_POINT` accepts an
+  optional `time_ms` (epoch ms) extra. The GPS Kalman filter and speed inference
+  key off `location.time` deltas, so injecting fixes a few ms apart in real time
+  makes `dt→0`, the filter's process noise vanishes, and the smoothed dot lags
+  off the road on bends → spurious off-road exits. `validate_zones.py` feeds as
+  fast as adb allows but stamps each fix `--sim-dt-ms` (default 1000) apart, so
+  the pipeline sees a realistic ~1 s cadence while the whole 72-zone sweep still
+  finishes in minutes instead of hours. `feed-zone.sh` omits `time_ms` (real
+  wall-clock), which is fine at its 1 s default `INTERVAL`.
 
 ## Map sync — feature-gated off
 

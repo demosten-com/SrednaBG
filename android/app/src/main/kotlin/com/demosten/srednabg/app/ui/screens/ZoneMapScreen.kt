@@ -12,12 +12,10 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.view.Gravity
 import androidx.annotation.DrawableRes
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,7 +38,6 @@ import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
@@ -63,11 +60,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
@@ -77,17 +71,13 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.demosten.srednabg.R
-import com.demosten.srednabg.app.ui.util.orDash
+import com.demosten.srednabg.app.ui.components.ZoneStatusChip
 import com.demosten.srednabg.app.ui.viewmodel.MapCameraSnapshot
-import com.demosten.srednabg.app.ui.theme.SpeedAmberDeep
-import com.demosten.srednabg.app.ui.theme.SpeedGreen
-import com.demosten.srednabg.app.ui.theme.SpeedRed
 import com.demosten.srednabg.app.ui.viewmodel.ZoneMapViewModel
 import com.demosten.srednabg.core.GpsPoint
 import com.demosten.srednabg.core.MapTheme
 import com.demosten.srednabg.core.Zone
 import com.demosten.srednabg.core.ZoneState
-import com.demosten.srednabg.core.ZONE_COLOR_GREEN
 import com.demosten.srednabg.core.ZONE_COLOR_RED
 import com.demosten.srednabg.core.zoneStatusColor
 import org.json.JSONArray
@@ -845,180 +835,6 @@ private fun RecenterFollowFab(
     }
 }
 
-@Composable
-private fun ZoneStatusChip(
-    state: ZoneState,
-    currentSpeedKmh: Double?,
-    debugMaxSpeedOverride: Int?,
-    modifier: Modifier = Modifier,
-) {
-    when (state) {
-        is ZoneState.Outside -> Unit
-        is ZoneState.InZone -> InZoneChip(state, currentSpeedKmh, debugMaxSpeedOverride, modifier)
-        is ZoneState.Exiting -> ExitingChip(state, modifier)
-    }
-}
-
-@Composable
-private fun InZoneChip(
-    state: ZoneState.InZone,
-    currentSpeedKmh: Double?,
-    debugMaxSpeedOverride: Int?,
-    modifier: Modifier = Modifier,
-) {
-    val limit = state.zone.speedLimits.car
-    // The chip's surface is the system theme's surfaceContainerHigh — light
-    // in light theme, dark in dark theme — regardless of the map tile theme.
-    // The core's zoneStatusColor returns the light-on-dark variants; swap to
-    // the dark-on-light shades (SpeedRed/Amber/Green) when the chip is light.
-    val statusColor = chipStatusColor(state, currentSpeedKmh)
-    val statusLabel = stringResource(
-        if (state.speedStatus.isOverLimit) R.string.status_over_limit else R.string.status_within_limit,
-    )
-    val nowText = stringResource(R.string.status_now_speed).format(currentSpeedKmh.orDash())
-    val maxText = stringResource(R.string.max_for_remainder_format)
-        .format(debugMaxSpeedOverride ?: state.speedStatus.maxSpeedForRemainder.toInt())
-    val distanceKm = state.distanceRemaining / 1000.0
-    val totalDist = state.zone.distanceM.toDouble().coerceAtLeast(1.0)
-    val progress = ((totalDist - state.distanceRemaining) / totalDist).coerceIn(0.0, 1.0).toFloat()
-
-    Surface(
-        modifier = modifier,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f),
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        shape = MaterialTheme.shapes.large,
-        tonalElevation = 4.dp,
-        shadowElevation = 6.dp,
-        border = BorderStroke(1.5.dp, statusColor.copy(alpha = 0.65f)),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(statusColor.copy(alpha = 0.15f))
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // Average + Now
-            Column(
-                modifier = Modifier.weight(1.2f),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(
-                    text = state.avgSpeed.orDash(),
-                    color = statusColor,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 32.sp,
-                    textAlign = TextAlign.Center,
-                )
-                Text(
-                    text = stringResource(R.string.current_speed_label),
-                    style = MaterialTheme.typography.labelSmall,
-                )
-                Text(
-                    text = nowText,
-                    style = MaterialTheme.typography.labelSmall,
-                )
-            }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            // Speed limit badge
-            Surface(
-                modifier = Modifier.size(48.dp),
-                shape = CircleShape,
-                color = Color.White,
-                border = androidx.compose.foundation.BorderStroke(3.dp, Color(ZONE_COLOR_RED)),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = "$limit",
-                        color = Color.Black,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            // Distance + progress + status + max
-            Column(
-                modifier = Modifier.weight(1.5f),
-            ) {
-                Text(
-                    text = "%.1f km".format(distanceKm),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                LinearProgressIndicator(
-                    progress = { progress },
-                    color = statusColor,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(4.dp),
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = statusLabel,
-                    color = statusColor,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.labelMedium,
-                )
-                Text(
-                    text = maxText,
-                    style = MaterialTheme.typography.labelSmall,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ExitingChip(
-    state: ZoneState.Exiting,
-    modifier: Modifier = Modifier,
-) {
-    val finalAvg = state.finalAvgSpeed
-    val overLimit = finalAvg != null && finalAvg > state.zone.speedLimits.car
-    val isLightChip = !isSystemInDarkTheme()
-    val color = when {
-        overLimit && isLightChip -> SpeedRed
-        overLimit -> Color(ZONE_COLOR_RED)
-        isLightChip -> SpeedGreen
-        else -> Color(ZONE_COLOR_GREEN)
-    }
-    Surface(
-        modifier = modifier,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f),
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        shape = MaterialTheme.shapes.large,
-        tonalElevation = 4.dp,
-        shadowElevation = 6.dp,
-        border = BorderStroke(1.5.dp, color.copy(alpha = 0.65f)),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(color.copy(alpha = 0.15f))
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                text = stringResource(R.string.zone_complete),
-                style = MaterialTheme.typography.labelLarge,
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = stringResource(R.string.final_avg_speed).format(finalAvg.orDash()),
-                color = color,
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.titleMedium,
-            )
-        }
-    }
-}
-
 private tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
     is ContextWrapper -> baseContext.findActivity()
@@ -1034,18 +850,4 @@ private fun Context.bitmapFromVectorDrawable(@DrawableRes resId: Int): Bitmap? {
     drawable.setBounds(0, 0, canvas.width, canvas.height)
     drawable.draw(canvas)
     return bitmap
-}
-
-@Composable
-private fun chipStatusColor(state: ZoneState.InZone, currentSpeedKmh: Double?): Color {
-    val limit = state.zone.speedLimits.car
-    return if (isSystemInDarkTheme()) {
-        Color(zoneStatusColor(state, currentSpeedKmh))
-    } else {
-        when {
-            state.speedStatus.isOverLimit -> SpeedRed
-            currentSpeedKmh != null && currentSpeedKmh > limit -> SpeedAmberDeep
-            else -> SpeedGreen
-        }
-    }
 }

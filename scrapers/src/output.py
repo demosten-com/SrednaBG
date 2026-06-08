@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from src import bgtoll_scraper, kml_scraper, osm_overpass, tolltracker_fetcher
-from src.validator import merge_all, normalize_road
+from src.validator import align_centerline_to_endpoints, merge_all, normalize_road
 from src.zone_schema import ZoneDatabase
 
 logger = logging.getLogger(__name__)
@@ -124,6 +124,24 @@ def write_target_dir(db: ZoneDatabase, dir_: Path) -> str:
     return prev_hash
 
 
+def realign_existing(path: Path) -> ZoneDatabase:
+    """Re-apply geometry alignment to an existing zones.json in place.
+
+    Deterministic and network-free: loads the file, aligns each zone's
+    centerline to its endpoints (recomputing ``distance_m`` from the arc),
+    re-hashes, and writes it back — preserving the existing ``version``. Use
+    this to retrofit the bundled snapshot without a full re-scrape (which would
+    pull unrelated upstream changes). Schema is unchanged, so released clients
+    keep parsing the result.
+    """
+    db = ZoneDatabase.model_validate_json(path.read_text(encoding="utf-8"))
+    aligned = [align_centerline_to_endpoints(z) for z in db.zones]
+    out = ZoneDatabase(version=db.version, zones=aligned).with_hash()
+    atomic_write_text(path, out.model_dump_json(indent=2, exclude_none=True))
+    logger.info("Realigned %d zones in %s (hash=%s)", len(out.zones), path, out.hash)
+    return out
+
+
 def print_summary(db: ZoneDatabase) -> None:
     """Print a summary of the generated data."""
     roads: dict[str, int] = {}
@@ -155,6 +173,13 @@ def main() -> None:
         help="Production output dir; writes zones.json + version.json atomically "
              "and rotates timestamped snapshots of zones.json on change.",
     )
+    out_group.add_argument(
+        "--realign",
+        type=Path,
+        help="Network-free: re-apply geometry alignment to an existing "
+             "zones.json in place (centerline -> endpoints, distance_m -> arc) "
+             "and re-hash. Does not scrape.",
+    )
     parser.add_argument(
         "--verbose", "-v", action="store_true", help="Verbose logging"
     )
@@ -164,6 +189,11 @@ def main() -> None:
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(levelname)s %(name)s: %(message)s",
     )
+
+    if args.realign is not None:
+        db = realign_existing(args.realign)
+        print_summary(db)
+        return
 
     start = time.monotonic()
     db = run_pipeline()

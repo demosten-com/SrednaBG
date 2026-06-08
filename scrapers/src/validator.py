@@ -544,6 +544,90 @@ def assign_ids(zones: list[Zone]) -> list[Zone]:
     return result
 
 
+# Geometry alignment ---------------------------------------------------------
+#
+# The centerline (OSM) and the start/end endpoints (BG TOLL / TollTracker) come
+# from different sources and rarely coincide exactly, so the drawn line can stop
+# tens of metres short of the start/end markers and `distance_m` (official) can
+# disagree with the centerline arc length. The app draws the centerline but
+# pins the markers at start/end, and derives the progress bar from
+# `distance_m` — so the mismatch shows as a marker floating off the road and a
+# progress bar that never quite reaches 0. We silently reconcile the geometry
+# here: snap a near-coincident terminal onto its endpoint, or insert the
+# endpoint as a new terminal point when the gap is larger (preserving the OSM
+# shape), then set `distance_m` to the resulting arc length so everything is
+# internally consistent. Schema is unchanged — only coordinate/`distance_m`
+# values move — so already-released clients keep parsing it.
+
+# A terminal point within this distance of its endpoint is snapped onto it;
+# larger gaps get the endpoint inserted so the road shape is preserved.
+GEOMETRY_SNAP_EPS_M = 5.0
+# Gaps beyond this are still aligned, but warned about — they usually mean the
+# endpoint coordinate and the OSM trace genuinely disagree and the data needs
+# a human look. Set to the motorway road-width band (RoadMatcher's
+# MOTORWAY_MAX_DISTANCE_M): a terminal within ~150 m of its marker is still
+# inside the road the detector matches against, so it's expected slack rather
+# than a data error — only larger gaps are worth a human's attention.
+GEOMETRY_WARN_GAP_M = 150.0
+
+
+def _polyline_length_m(centerline: list[list[float]]) -> float:
+    """Total arc length (m) of a [[lat, lng], ...] polyline."""
+    return sum(
+        _haversine(centerline[i - 1][0], centerline[i - 1][1],
+                   centerline[i][0], centerline[i][1])
+        for i in range(1, len(centerline))
+    )
+
+
+def align_centerline_to_endpoints(zone: Zone) -> Zone:
+    """Make the centerline start at ``zone.start`` and end at ``zone.end``, and
+    set ``distance_m`` to the centerline arc length.
+
+    Idempotent: re-running on an already-aligned zone is a no-op. Returns the
+    zone unchanged when it has fewer than two centerline points.
+    """
+    if len(zone.centerline) < 2:
+        return zone
+
+    cl = [list(p) for p in zone.centerline]
+    start = [zone.start.lat, zone.start.lng]
+    end = [zone.end.lat, zone.end.lng]
+
+    # Canonicalize travel order start -> end (a no-op for well-formed data,
+    # where centerline[0] is already nearest the start).
+    if (_haversine(cl[0][0], cl[0][1], start[0], start[1])
+            > _haversine(cl[-1][0], cl[-1][1], start[0], start[1])):
+        cl.reverse()
+
+    def fit(target: list[float], at_front: bool, label: str) -> None:
+        term = cl[0] if at_front else cl[-1]
+        gap = _haversine(term[0], term[1], target[0], target[1])
+        if gap > GEOMETRY_WARN_GAP_M:
+            logger.warning(
+                "Zone %s: centerline %s is %.0f m from its endpoint — aligning "
+                "anyway, but the endpoint/centerline geometry may be wrong",
+                zone.id, label, gap,
+            )
+        if gap <= GEOMETRY_SNAP_EPS_M:
+            if at_front:
+                cl[0] = list(target)
+            else:
+                cl[-1] = list(target)
+        elif at_front:
+            cl.insert(0, list(target))
+        else:
+            cl.append(list(target))
+
+    fit(start, at_front=True, label="start")
+    fit(end, at_front=False, label="end")
+
+    return zone.model_copy(update={
+        "centerline": cl,
+        "distance_m": max(1, round(_polyline_length_m(cl))),
+    })
+
+
 def validate(zones: list[Zone]) -> tuple[list[Zone], list[str]]:
     """Final validation pass. Returns (valid_zones, warnings)."""
     warnings: list[str] = []
@@ -567,6 +651,32 @@ def validate(zones: list[Zone]) -> tuple[list[Zone], list[str]]:
         if z.distance_m <= 0:
             warnings.append(f"Zone {z.id} has invalid distance: {z.distance_m}")
             continue
+
+        # Centerline orientation guard (defense-in-depth post-condition of
+        # align_centerline_to_endpoints, which merge_all runs just above). The
+        # app derives a zone's travel direction from the centerline's own
+        # geometry (start -> end), so a centerline stored end-first makes the
+        # app match the *opposite-direction* sibling zone and flap on entry — the
+        # section-control reversal bug. Assert here that the first centerline
+        # point is nearer zone.start than the last point is, so a future refactor
+        # that drops the aligner, or an upstream source that ships a reversed
+        # centerline past it, is caught loudly instead of shipping silently.
+        #
+        # We compare endpoint *proximity*, NOT the coarse `direction` label:
+        # `direction` is a route-level designation tied to the km markers, and a
+        # correctly-ordered segment can legitimately run ~180° from `direction`'s
+        # compass bearing (e.g. an ascending-km "south" carriageway that locally
+        # heads north), so a direction-vs-bearing check would false-positive.
+        if len(z.centerline) >= 2:
+            first, last = z.centerline[0], z.centerline[-1]
+            first_to_start = _haversine(first[0], first[1], z.start.lat, z.start.lng)
+            last_to_start = _haversine(last[0], last[1], z.start.lat, z.start.lng)
+            if first_to_start > last_to_start:
+                warnings.append(
+                    f"Zone {z.id} centerline is reversed (first point is "
+                    f"{first_to_start:.0f} m from start but the last point is only "
+                    f"{last_to_start:.0f} m) — not aligned to endpoints"
+                )
 
         roads_seen.add(normalize_road(z.road))
         valid.append(z)
@@ -595,5 +705,6 @@ def merge_all(
     matches = match_zones(bgtoll, tolltracker, osm, kml)
     merged = [merge_match(m) for m in matches]
     with_ids = assign_ids(merged)
-    valid, warnings = validate(with_ids)
+    aligned = [align_centerline_to_endpoints(z) for z in with_ids]
+    valid, warnings = validate(aligned)
     return valid

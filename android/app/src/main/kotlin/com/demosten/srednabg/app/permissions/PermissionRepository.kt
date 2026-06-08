@@ -10,6 +10,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.PowerManager
+import android.provider.Settings
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,6 +31,7 @@ data class PermissionState(
     val backgroundLocationGranted: Boolean = false,
     val notificationGranted: Boolean = false,
     val ignoringBatteryOptimizations: Boolean = false,
+    val canDrawOverlays: Boolean = false,
 ) {
     /**
      * The two OS permissions a tracking session must have. `POST_NOTIFICATIONS`
@@ -83,6 +85,7 @@ class PermissionRepository @Inject constructor(
             true
         },
         ignoringBatteryOptimizations = isIgnoringBatteryOptimizations(),
+        canDrawOverlays = Settings.canDrawOverlays(context),
     )
 
     private fun isGranted(permission: String): Boolean =

@@ -10,6 +10,9 @@ import pytest
 from src.bgtoll_scraper import scrape as bgtoll_scrape
 from src.tolltracker_fetcher import scrape as tolltracker_scrape
 from src.validator import (
+    _haversine,
+    _polyline_length_m,
+    align_centerline_to_endpoints,
     assign_ids,
     match_zones,
     merge_all,
@@ -301,6 +304,29 @@ class TestValidate:
         _, warnings = validate(zones)
         assert any("АМ Хемус" in w for w in warnings)
 
+    def test_flags_reversed_centerline(self):
+        # Centerline stored end -> start (the section-control reversal bug):
+        # validate must catch it as a defense-in-depth tripwire even though
+        # align_centerline_to_endpoints would normally have fixed it upstream.
+        z = _make_zone(
+            start_lat=42.50, start_lng=23.80, end_lat=42.40, end_lng=23.90,
+        ).model_copy(update={
+            "id": "trakiya-01-east",
+            "centerline": [[42.40, 23.90], [42.45, 23.85], [42.50, 23.80]],
+        })
+        _, warnings = validate([z])
+        assert any("reversed" in w and "trakiya-01-east" in w for w in warnings)
+
+    def test_aligned_centerline_no_reversal_warning(self):
+        z = _make_zone(
+            start_lat=42.50, start_lng=23.80, end_lat=42.40, end_lng=23.90,
+        ).model_copy(update={
+            "id": "trakiya-01-east",
+            "centerline": [[42.50, 23.80], [42.45, 23.85], [42.40, 23.90]],
+        })
+        _, warnings = validate([z])
+        assert not any("reversed" in w for w in warnings)
+
 
 class TestMergeAll:
     def test_end_to_end_with_fixtures(self, bgtoll_html, tolltracker_html):
@@ -330,3 +356,70 @@ class TestMergeAll:
         matched = [z for z in merged if "tolltracker" in z.source]
         for z in matched:
             assert z.start.lat != 0.0, f"Zone {z.id} has no start coordinates"
+
+
+class TestAlignCenterlineToEndpoints:
+    """Reconcile OSM centerline geometry with the BG TOLL/TollTracker endpoints
+    so the drawn line starts/ends exactly at the markers and distance_m matches
+    the arc. Regression for struma-02-south: the centerline ended ~79 m short of
+    the end marker and distance_m disagreed with the arc length."""
+
+    def _zone(self, centerline, start, end):
+        return Zone(
+            id="test-01-north", road="АМ Струма", direction="north",
+            description="A – B",
+            start=ZoneEndpoint(lat=start[0], lng=start[1], settlement="A"),
+            end=ZoneEndpoint(lat=end[0], lng=end[1], settlement="B"),
+            distance_m=9999,
+            speed_limits=SpeedLimits(car=140, truck=90, bus=100),
+            centerline=[list(p) for p in centerline],
+            source="test", last_verified="2026-04-12",
+        )
+
+    def test_large_gap_inserts_endpoints(self):
+        # Centerline ~1113 m, endpoints ~111 m beyond each terminal.
+        z = self._zone(
+            centerline=[[42.000, 23.0], [42.010, 23.0]],
+            start=[41.999, 23.0], end=[42.011, 23.0],
+        )
+        out = align_centerline_to_endpoints(z)
+        assert len(out.centerline) == 4  # start + 2 original + end
+        assert _haversine(*out.centerline[0], out.start.lat, out.start.lng) < 0.5
+        assert _haversine(*out.centerline[-1], out.end.lat, out.end.lng) < 0.5
+        assert out.distance_m == round(_polyline_length_m(out.centerline))
+
+    def test_small_gap_snaps_in_place(self):
+        # Terminal ~2 m from the endpoint — snapped, not inserted.
+        z = self._zone(
+            centerline=[[42.00002, 23.0], [42.010, 23.0]],
+            start=[42.000, 23.0], end=[42.010, 23.0],
+        )
+        out = align_centerline_to_endpoints(z)
+        assert len(out.centerline) == 2
+        assert out.centerline[0] == [42.000, 23.0]
+        assert out.centerline[-1] == [42.010, 23.0]
+
+    def test_idempotent(self):
+        z = self._zone(
+            centerline=[[42.000, 23.0], [42.010, 23.0]],
+            start=[41.999, 23.0], end=[42.011, 23.0],
+        )
+        once = align_centerline_to_endpoints(z)
+        twice = align_centerline_to_endpoints(once)
+        assert twice.centerline == once.centerline
+        assert twice.distance_m == once.distance_m
+
+    def test_reversed_centerline_is_oriented(self):
+        # Centerline stored end->start: canonicalized so terminal[0] pairs start.
+        z = self._zone(
+            centerline=[[42.010, 23.0], [42.000, 23.0]],
+            start=[41.999, 23.0], end=[42.011, 23.0],
+        )
+        out = align_centerline_to_endpoints(z)
+        assert _haversine(*out.centerline[0], out.start.lat, out.start.lng) < 0.5
+        assert _haversine(*out.centerline[-1], out.end.lat, out.end.lng) < 0.5
+
+    def test_too_few_points_unchanged(self):
+        z = self._zone(centerline=[[42.0, 23.0]], start=[42.0, 23.0], end=[42.01, 23.0])
+        out = align_centerline_to_endpoints(z)
+        assert out.centerline == [[42.0, 23.0]]

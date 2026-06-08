@@ -3,6 +3,15 @@
 //
 // SrednaBG — ios / SrednaBGData
 
+// Compiled into Debug builds only. The call sites that start the server
+// (`SrednaBGApp.startDebugServer()` / the `debugServer` property) are already
+// `#if DEBUG`, so this is belt-and-suspenders: gating the implementation too
+// means the loopback HTTP listener — and its `/inject`, `/tracking`, `/setting`
+// endpoint strings — never land in the release binary, and any future attempt
+// to wire it into a non-debug path fails to compile instead of silently
+// shipping. Runtime QA flags (`QAFlags`/`FeatureFlags`), the `QALog` emitters,
+// and `DebugTabName` stay ungated because release code paths read them.
+#if DEBUG
 import Foundation
 import Network
 
@@ -201,3 +210,4 @@ private final class OneShot: @unchecked Sendable {
         return true
     }
 }
+#endif

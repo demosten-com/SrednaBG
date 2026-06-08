@@ -3,6 +3,9 @@
 //
 // SrednaBG — ios / SrednaBGData
 
+// Debug-only: emitted exclusively from `DebugActionRouter` (also `#if DEBUG`).
+// Kept out of release alongside the rest of the QA control surface.
+#if DEBUG
 import Foundation
 
 /// QA-only sync logger. Wraps a sync attempt and emits a `DebugSync` line
@@ -54,3 +57,4 @@ public enum DebugSyncHook {
         )
     }
 }
+#endif

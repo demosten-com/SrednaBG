@@ -7,6 +7,8 @@ import Foundation
 import Testing
 @testable import SrednaBGCore
 
+// Each engine behavior gets its own focused @Test; the suite naturally runs long.
+// swiftlint:disable type_body_length
 @Suite("ZoneDetector")
 struct ZoneDetectorTests {
 
@@ -459,4 +461,70 @@ struct ZoneDetectorTests {
         #expect(!car.speedStatus.isOverLimit, "Car at 120 in 140 zone is fine")
         #expect(truck.speedStatus.isOverLimit, "Truck at 120 in 90 (truck) zone is over limit")
     }
+
+    @Test
+    func reversedCenterlineStillEntersCorrectZone() throws {
+        // Regression for the end-first centerline server bug: the same zone with
+        // its centerline reversed (start/end/id unchanged) must still enter the
+        // correct sibling when driven forward. Without endpoint orientation the
+        // reversed centerline's first→last bearing points the opposite way, so the
+        // forward trace's direction never matches and the zone is never entered.
+        let reversed = TRAKIYA_T10.with(centerline: Array(TRAKIYA_T10.centerline.reversed()))
+        var detector = ZoneDetector(zones: [reversed])
+        let trace = generateGpsTrace(zone: TRAKIYA_T10, speedKmh: 130.0)
+
+        var firstInZoneId: String?
+        var inZoneIds: [String] = []
+        for point in trace {
+            if case .inZone(let inZone) = detector.update(point) {
+                if firstInZoneId == nil { firstInZoneId = inZone.zone.id }
+                inZoneIds.append(inZone.zone.id)
+            }
+        }
+
+        #expect(!inZoneIds.isEmpty, "Should have entered the zone despite the reversed centerline")
+        #expect(firstInZoneId == "trakiya-01-west",
+                "Forward drive should enter trakiya-01-west, got \(firstInZoneId ?? "nil")")
+    }
+
+    @Test
+    func transientOffRoadBlipStaysButSustainedExits() throws {
+        // A single off-road fix (Kalman lag on a bend / momentary glitch) must be
+        // absorbed; only a sustained departure exits. Mirrors the Android
+        // hysteresis regression.
+        var detector = ZoneDetector(zones: [TRAKIYA_T10])
+        let trace = generateGpsTrace(zone: TRAKIYA_T10, speedKmh: 130.0)
+
+        var base: GpsPoint?
+        for point in trace {
+            if case .inZone = detector.update(point) {
+                base = point
+                break
+            }
+        }
+        let inZonePoint = try #require(base, "Should have entered the zone")
+
+        // ~330 m perpendicular off the centerline — past the 150 m motorway band
+        // but well within offRoadHardM, i.e. a blip, not a departure.
+        func offRoad(_ seq: Int64) -> GpsPoint {
+            GpsPoint(
+                lat: inZonePoint.lat + 0.003,
+                lng: inZonePoint.lng,
+                speed: 130.0,
+                timestamp: inZonePoint.timestamp + seq * 1000,
+                bearing: inZonePoint.bearing
+            )
+        }
+
+        if case .inZone = detector.update(offRoad(1)) {} else {
+            Issue.record("1st off-road fix must be absorbed")
+        }
+        if case .inZone = detector.update(offRoad(2)) {} else {
+            Issue.record("2nd off-road fix must be absorbed")
+        }
+        if case .exiting = detector.update(offRoad(3)) {} else {
+            Issue.record("Sustained off-road (>= offRoadExitGraceFixes) must exit")
+        }
+    }
 }
+// swiftlint:enable type_body_length

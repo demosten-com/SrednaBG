@@ -48,6 +48,42 @@ struct AnnouncementPolicyTests {
         .exiting(.init(zone: Self.zone, finalAvgSpeed: finalAvg))
     }
 
+    private static let zoneB = Zone(
+        id: "trakiya-02-west",
+        road: "АМ Тракия (Б)",
+        roadLatin: "Trakiya B",
+        direction: "west",
+        description: "Test B",
+        start: ZoneEndpoint(lat: 42.550, lng: 23.703),
+        end: ZoneEndpoint(lat: 42.650, lng: 23.600),
+        distanceM: 15000,
+        speedLimits: SpeedLimits(car: 120, truck: 80, bus: 100, motorcycle: 120),
+        centerline: [[42.550, 23.703], [42.650, 23.600]],
+        source: "test",
+        lastVerified: "2026-04-12"
+    )
+
+    private func exitingZone(_ zone: Zone) -> ZoneState {
+        .exiting(.init(zone: zone, finalAvgSpeed: 130))
+    }
+
+    private func inZone(_ zone: Zone) -> ZoneState {
+        .inZone(.init(
+            zone: zone,
+            entryTime: 0,
+            distanceTraveled: 0,
+            avgSpeed: 130,
+            speedStatus: SpeedStatus(
+                avgSpeed: 130,
+                maxSpeedForRemainder: 140,
+                distanceRemaining: 0,
+                timeRemaining: 0,
+                isOverLimit: false
+            ),
+            distanceRemaining: 0
+        ))
+    }
+
     private func inputs(
         prev: ZoneState,
         new: ZoneState,
@@ -221,5 +257,27 @@ struct AnnouncementPolicyTests {
             lastEntry: now.addingTimeInterval(-300)
         ))
         #expect(d.event == nil)
+    }
+
+    @Test
+    func coLocatedEntryAnnounced() {
+        // Co-located cameras: A ends and B begins on consecutive fixes
+        // (Exiting(A) → InZone(B), no Outside between). Entering B must announce.
+        let d = AnnouncementPolicy.decide(inputs(
+            prev: exitingZone(Self.zone), new: inZone(Self.zoneB)
+        ))
+        #expect(d.event == .entry(road: "АМ Тракия (Б)", limit: 120))
+        #expect(d.clockUpdate == .markEntryAndAnnouncement)
+    }
+
+    @Test
+    func coLocatedSameZoneReadmitSilent() {
+        // Same-zone re-admission (off-road blip / hooked-tail flap recovered) is
+        // NOT a new zone — stay silent.
+        let d = AnnouncementPolicy.decide(inputs(
+            prev: exitingZone(Self.zone), new: inZone(Self.zone)
+        ))
+        #expect(d.event == nil)
+        #expect(d.clockUpdate == .none)
     }
 }

@@ -3,9 +3,9 @@
 //
 // SrednaBG — ios / SrednaBGCore
 
-// iOS bug-fix vs Android: ZoneDetector.update(_:vehicleType:) honors the
-// driver's selected vehicle type when looking up the speed limit. Android
-// currently hardcodes .car everywhere — TODO to backport.
+// Driver-selected vehicle type. `ZoneDetector.update(_:vehicleType:)` uses it to
+// pick the applicable speed limit. The Kotlin core matches this (see
+// `android/core/.../VehicleType.kt`).
 
 public enum VehicleType: String, Sendable, CaseIterable, Codable {
     case car

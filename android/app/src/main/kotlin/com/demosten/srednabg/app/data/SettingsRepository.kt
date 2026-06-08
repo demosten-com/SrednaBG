@@ -47,6 +47,13 @@ class SettingsRepository @Inject constructor(
         // `debug_max_speed_override` shape (DEBUG broadcast only).
         private val KEY_DEBUG_AUTO_STOP_SECONDS = intPreferencesKey("debug_auto_stop_seconds")
         private val KEY_ZONE_SYNC_ENABLED = booleanPreferencesKey("zone_sync_enabled")
+        // Floating system overlay (draw-on-top of Waze/Maps). Opt-in, default
+        // off; the live position is persisted so the user's drag survives
+        // restarts. -1 sentinel = "not yet positioned" (controller picks a
+        // sensible default the first time it shows).
+        private val KEY_OVERLAY_ENABLED = booleanPreferencesKey("overlay_enabled")
+        private val KEY_OVERLAY_POS_X = intPreferencesKey("overlay_pos_x")
+        private val KEY_OVERLAY_POS_Y = intPreferencesKey("overlay_pos_y")
 
         const val DEFAULT_ALERT_THRESHOLD = 5
         const val DEFAULT_APP_LANGUAGE = "system"
@@ -55,6 +62,8 @@ class SettingsRepository @Inject constructor(
         const val DEFAULT_ANNOUNCE_ONLY_WHEN_OVER = true
         const val DEFAULT_AUTO_STOP_HOURS = 3
         const val DEFAULT_ZONE_SYNC_ENABLED = true
+        const val DEFAULT_OVERLAY_ENABLED = false
+        const val OVERLAY_POS_UNSET = -1
         val DEFAULT_MAP_THEME_MODE: MapThemeMode = MapThemeMode.AUTO
 
         const val LANG_SYSTEM = "system"
@@ -123,6 +132,18 @@ class SettingsRepository @Inject constructor(
 
     val zoneSyncEnabled: Flow<Boolean> = dataStore.data.map { prefs ->
         prefs[KEY_ZONE_SYNC_ENABLED] ?: DEFAULT_ZONE_SYNC_ENABLED
+    }
+
+    val overlayEnabled: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[KEY_OVERLAY_ENABLED] ?: DEFAULT_OVERLAY_ENABLED
+    }
+
+    val overlayPosX: Flow<Int> = dataStore.data.map { prefs ->
+        prefs[KEY_OVERLAY_POS_X] ?: OVERLAY_POS_UNSET
+    }
+
+    val overlayPosY: Flow<Int> = dataStore.data.map { prefs ->
+        prefs[KEY_OVERLAY_POS_Y] ?: OVERLAY_POS_UNSET
     }
 
     suspend fun setAlertThreshold(value: Int) {
@@ -201,6 +222,17 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setZoneSyncEnabled(value: Boolean) {
         dataStore.edit { it[KEY_ZONE_SYNC_ENABLED] = value }
+    }
+
+    suspend fun setOverlayEnabled(value: Boolean) {
+        dataStore.edit { it[KEY_OVERLAY_ENABLED] = value }
+    }
+
+    suspend fun setOverlayPosition(x: Int, y: Int) {
+        dataStore.edit {
+            it[KEY_OVERLAY_POS_X] = x
+            it[KEY_OVERLAY_POS_Y] = y
+        }
     }
 }
 

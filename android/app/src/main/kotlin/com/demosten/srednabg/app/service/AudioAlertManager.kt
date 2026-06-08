@@ -42,6 +42,11 @@ class AudioAlertManager @Inject constructor(
     private var lastAnnouncementTime = 0L
     private var lastEntryTime = 0L
     private var languageJob: Job? = null
+    // Outstanding TTS utterances. A chained pair (exit-with-average then
+    // next-zone entry at co-located cameras) shares one audio-focus session;
+    // focus is only abandoned when the queue drains, so QUEUE_ADD speech isn't
+    // cut off by an early onDone from the first utterance.
+    private var pendingUtterances = 0
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     private val audioManager by lazy { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
@@ -61,6 +66,12 @@ class AudioAlertManager @Inject constructor(
         tts = TextToSpeech(context) { status ->
             if (status == TextToSpeech.SUCCESS) {
                 isInitialized = true
+                tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                    override fun onStart(utteranceId: String?) {}
+                    override fun onDone(utteranceId: String?) = onUtteranceFinished()
+                    @Deprecated("Deprecated in Java")
+                    override fun onError(utteranceId: String?) = onUtteranceFinished()
+                })
                 languageJob?.cancel()
                 languageJob = scope.launch {
                     settingsRepository.voiceLanguage.collect { lang ->
@@ -155,6 +166,25 @@ class AudioAlertManager @Inject constructor(
                     speak(getExitMessage(avgSpeed))
                     lastAnnouncementTime = 0
                 }
+                previousState is ZoneState.Exiting && newState is ZoneState.InZone -> {
+                    // Co-located cameras: one camera ends zone A and begins zone B, so the
+                    // state machine steps InZone(A) → Exiting(A) → InZone(B) on consecutive
+                    // fixes (24 such pairs in the data, mostly Trakiya). The exit-with-average
+                    // for A already announced on the prior InZone→Exiting transition; here we
+                    // must announce ENTERING B. Without this branch entry into the next zone
+                    // is silent. QUEUE_ADD so this plays AFTER A's still-speaking exit line
+                    // instead of QUEUE_FLUSH cutting it off ~1 s in.
+                    if (previousState.zone.id == newState.zone.id) {
+                        // Same zone re-admitted (off-road blip / hooked-tail flap recovered),
+                        // not a new zone — no entry announcement.
+                        return@launch
+                    }
+                    val limit = getSpeedLimit(newState)
+                    val now = System.currentTimeMillis()
+                    lastEntryTime = now
+                    lastAnnouncementTime = now
+                    speak(getEntryMessage(newState.zone.road, limit), TextToSpeech.QUEUE_ADD)
+                }
             }
         }
     }
@@ -207,23 +237,24 @@ class AudioAlertManager @Inject constructor(
         }
     }
 
-    private fun speak(text: String) {
+    private fun speak(text: String, queueMode: Int = TextToSpeech.QUEUE_FLUSH) {
         if (!isInitialized) {
             Log.d(TAG, "speak: TTS not initialized, dropping: \"$text\"")
             return
         }
         Log.d(TAG, "speak: \"$text\"")
         audioManager.requestAudioFocus(audioFocusRequest)
-        tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-            override fun onStart(utteranceId: String?) {}
-            override fun onDone(utteranceId: String?) {
-                audioManager.abandonAudioFocusRequest(audioFocusRequest)
-            }
-            @Deprecated("Deprecated in Java")
-            override fun onError(utteranceId: String?) {
-                audioManager.abandonAudioFocusRequest(audioFocusRequest)
-            }
-        })
-        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "srednabg_alert")
+        // QUEUE_FLUSH wipes anything still queued, so reset the outstanding count;
+        // QUEUE_ADD appends, so add to it. The shared utterance id is fine — the
+        // listener counts onDone/onError callbacks, not ids.
+        pendingUtterances = if (queueMode == TextToSpeech.QUEUE_FLUSH) 1 else pendingUtterances + 1
+        tts?.speak(text, queueMode, null, "srednabg_alert")
+    }
+
+    private fun onUtteranceFinished() {
+        pendingUtterances = (pendingUtterances - 1).coerceAtLeast(0)
+        if (pendingUtterances == 0) {
+            audioManager.abandonAudioFocusRequest(audioFocusRequest)
+        }
     }
 }

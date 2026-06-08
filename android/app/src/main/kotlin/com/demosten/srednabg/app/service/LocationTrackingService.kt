@@ -12,19 +12,25 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.provider.Settings
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleService
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.demosten.srednabg.R
 import com.demosten.srednabg.app.auto.SrednaBGSession
 import com.demosten.srednabg.app.data.ZoneRepository
 import com.demosten.srednabg.app.data.SettingsRepository
+import com.demosten.srednabg.app.overlay.OverlayController
+import com.demosten.srednabg.app.overlay.shouldShowOverlay
 import com.demosten.srednabg.app.ui.MainActivity
 import com.demosten.srednabg.core.GpsFilter
 import com.demosten.srednabg.core.GpsPoint
 import com.demosten.srednabg.core.RoadMatcher
+import com.demosten.srednabg.core.VehicleType
 import com.demosten.srednabg.core.Zone
 import com.demosten.srednabg.core.ZoneDetector
 import com.demosten.srednabg.core.ZoneState
@@ -34,8 +40,11 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -95,6 +104,7 @@ class LocationTrackingService : LifecycleService() {
     @Inject lateinit var audioAlertManager: AudioAlertManager
 
     private var zoneDetector: ZoneDetector? = null
+    private lateinit var overlayController: OverlayController
     private val gpsFilter = GpsFilter()
     private var currentZones: List<Zone> = emptyList()
     private var currentIntervalMs = INTERVAL_FAR_MS
@@ -118,6 +128,13 @@ class LocationTrackingService : LifecycleService() {
     // the battery indefinitely.
     @Volatile
     private var lastActivityMs: Long = 0L
+
+    // Driver-selected vehicle type, mirrored from SettingsRepository.vehicleType
+    // (the same Flow AudioAlertManager reads) and threaded into the detector so
+    // the average-speed limit reflects truck/bus/motorcycle, not just car.
+    // Defaults to CAR until the first emission, so there's no null/race window.
+    @Volatile
+    private var currentVehicleType: VehicleType = VehicleType.CAR
 
     private val locationListener = LocationUpdateListener { location ->
         val fromDebug = location.provider == DEBUG_PROVIDER
@@ -213,7 +230,7 @@ class LocationTrackingService : LifecycleService() {
             return@LocationUpdateListener
         }
         val previousState = detector.state
-        val newState = detector.update(point)
+        val newState = detector.update(point, currentVehicleType)
         _zoneState.value = newState
         if (previousState::class != newState::class) {
             lastActivityMs = android.os.SystemClock.elapsedRealtime()
@@ -227,6 +244,40 @@ class LocationTrackingService : LifecycleService() {
         createNotificationChannel()
         locationSource = createLocationSource(this, locationListener)
         debugInjector = { loc -> locationListener.onLocation(loc) }
+        overlayController = OverlayController(this, lifecycleScope, settingsRepository)
+        startOverlayVisibilityWatcher()
+        lifecycleScope.launch {
+            settingsRepository.vehicleType.collect { v ->
+                currentVehicleType = VehicleType.fromSetting(v)
+            }
+        }
+    }
+
+    /**
+     * Show the floating overlay only while it's enabled, the special permission
+     * is granted, a tracking session is live, and our own UI is backgrounded
+     * (chat-head convention). Runs once per service instance; `lifecycleScope`
+     * is Main, so the WindowManager calls happen on the main thread.
+     */
+    private fun startOverlayVisibilityWatcher() {
+        val foreground = ProcessLifecycleOwner.get().lifecycle.currentStateFlow
+            .map { it.isAtLeast(Lifecycle.State.STARTED) }
+        lifecycleScope.launch {
+            combine(
+                settingsRepository.overlayEnabled,
+                isTracking,
+                foreground,
+            ) { enabled, tracking, appForeground ->
+                shouldShowOverlay(
+                    enabled = enabled,
+                    canDrawOverlays = Settings.canDrawOverlays(this@LocationTrackingService),
+                    tracking = tracking,
+                    appInBackground = !appForeground,
+                )
+            }.distinctUntilChanged().collect { visible ->
+                if (visible) overlayController.show() else overlayController.hide()
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -304,6 +355,7 @@ class LocationTrackingService : LifecycleService() {
 
     override fun onDestroy() {
         debugInjector = null
+        overlayController.hide()
         locationSource.stop()
         _isTracking.value = false
         _zoneState.value = ZoneState.Outside

@@ -69,6 +69,8 @@
     <string name="map_theme_auto">Automatic</string>
     <string name="map_theme_light">Light</string>
     <string name="map_theme_dark">Dark</string>
+    <string name="setting_overlay">Show overlay on other apps</string>
+    <string name="setting_overlay_desc">Float the live average-speed status over Waze, Google Maps and other apps while tracking. A small badge shows your speed between zones and expands to the full status inside a zone. Requires the system \"Display over other apps\" permission.</string>
     <string name="setting_zone_sync">Automatic zone updates</string>
     <string name="setting_zone_sync_desc">When on, SrednaBG checks srednabg.com about every 6 hours for new or changed average-speed zones and downloads them in the background. When off, zones update only when you tap \"Sync zones now\" below. No personal data is sent.</string>
     <string name="setting_sync_now">Sync zones now</string>

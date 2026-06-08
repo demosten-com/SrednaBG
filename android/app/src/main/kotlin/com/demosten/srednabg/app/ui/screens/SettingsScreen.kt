@@ -5,6 +5,10 @@
 
 package com.demosten.srednabg.app.ui.screens
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -70,6 +74,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val autoStopHours by viewModel.autoStopHours.collectAsStateWithLifecycle()
     val mapThemeMode by viewModel.mapThemeMode.collectAsStateWithLifecycle()
     val zoneSyncEnabled by viewModel.zoneSyncEnabled.collectAsStateWithLifecycle()
+    val overlayEnabled by viewModel.overlayEnabled.collectAsStateWithLifecycle()
     val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -400,6 +405,37 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
+        // Floating overlay over other apps (Waze/Maps). Special permission —
+        // toggling on without it sends the user to the system grant screen; the
+        // service's visibility gate picks up the grant on return.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.setting_overlay),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    text = stringResource(R.string.setting_overlay_desc),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Switch(
+                checked = overlayEnabled,
+                onCheckedChange = { enabled ->
+                    viewModel.setOverlayEnabled(enabled)
+                    if (enabled && !Settings.canDrawOverlays(context)) {
+                        requestOverlayPermission(context)
+                    }
+                },
+            )
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
         // Automatic zone updates — opt-out for the periodic background sync.
         // The "Sync zones now" button below stays available regardless.
         Row(
@@ -484,4 +520,16 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         )
         }
     }
+}
+
+// SYSTEM_ALERT_WINDOW is a special permission: it can't be requested with a
+// runtime dialog, only granted from the per-app "Display over other apps"
+// system Settings screen. We keep the toggle on and let the service's
+// visibility gate activate the overlay once the user returns with it granted.
+private fun requestOverlayPermission(context: Context) {
+    val intent = Intent(
+        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+        Uri.fromParts("package", context.packageName, null),
+    ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    context.startActivity(intent)
 }

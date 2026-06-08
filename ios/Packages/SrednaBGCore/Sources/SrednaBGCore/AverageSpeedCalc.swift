@@ -21,7 +21,16 @@ public enum AverageSpeedCalc {
         stopDurationMs: Int64,
         distanceTraveled: Double,
         zoneDistance: Double,
-        speedLimitKmh: Int
+        speedLimitKmh: Int,
+        // Accurate live distance to the zone end, sourced from the polyline
+        // projection. When supplied it drives `distanceRemaining` and the
+        // max-speed-for-remainder math instead of the speed×time integrator — the
+        // integrator can drift (sluggish Kalman, noisy GPS speed, simulated traces
+        // with uneven fix spacing) and a drifted value used to fall to 0 here,
+        // collapsing the remainder to 0 km/h mid-zone. Falls back to
+        // `zoneDistance - distanceTraveled` when nil (avg-speed unit tests).
+        // Mirrors Android's `distanceRemainingOverride`.
+        distanceRemainingOverride: Double? = nil
     ) -> SpeedStatus {
         let elapsedMs = currentTime - entryTime
         let elapsedSec = Double(elapsedMs) / 1000.0
@@ -32,7 +41,7 @@ public enum AverageSpeedCalc {
             ? (distanceTraveled / activeSec) * 3.6
             : nil
 
-        let distanceRemaining = max(zoneDistance - distanceTraveled, 0.0)
+        let distanceRemaining = max(distanceRemainingOverride ?? (zoneDistance - distanceTraveled), 0.0)
 
         let speedLimitMs = Double(speedLimitKmh) / 3.6
         let requiredTotalSec = speedLimitMs > 0 ? zoneDistance / speedLimitMs : 0.0

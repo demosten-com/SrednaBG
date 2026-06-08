@@ -135,6 +135,19 @@ fun projectPointOntoPolyline(
     return PolylineProjection(bestLat, bestLng, bearing, bestDist)
 }
 
+/** Total arc length (metres) of a [[lat, lng], ...] polyline. */
+fun polylineLengthMeters(polyline: List<List<Double>>): Double {
+    if (polyline.size < 2) return 0.0
+    var total = 0.0
+    for (i in 0 until polyline.size - 1) {
+        total += haversineDistance(
+            polyline[i][0], polyline[i][1],
+            polyline[i + 1][0], polyline[i + 1][1],
+        )
+    }
+    return total
+}
+
 fun projectOntoPolyline(lat: Double, lng: Double, polyline: List<List<Double>>): Double {
     if (polyline.size < 2) return 0.0
 
@@ -206,4 +219,31 @@ fun polylineBearing(polyline: List<List<Double>>): Double {
     val first = polyline.first()
     val last = polyline.last()
     return bearingBetween(first[0], first[1], last[0], last[1])
+}
+
+/**
+ * Return [centerline] guaranteed to run from [start] toward the far endpoint,
+ * reversing it when it was stored end-first.
+ *
+ * Direction matching ([polylineBearing]), polyline projection, and the remaining
+ * distance all key off the centerline's point order. A centerline stored
+ * end-first — a real server-data bug (see qa/feed-zone.sh / qa/validate-zones.sh;
+ * the scraper's `align_centerline_to_endpoints` fixes the bundle, but the live
+ * `/api/zones` may still serve it and the device syncs that into Room) — flips a
+ * zone's apparent first→last bearing 180°, so the app matches the
+ * opposite-carriageway sibling and reports an inverted "remaining". Each zone's
+ * start/end endpoints are authoritative, so orienting against [start] here makes
+ * the whole engine immune to the bad point order regardless of where the data
+ * came from.
+ */
+fun orientCenterlineToStart(
+    centerline: List<List<Double>>,
+    start: ZoneEndpoint,
+): List<List<Double>> {
+    if (centerline.size < 2) return centerline
+    val first = centerline.first()
+    val last = centerline.last()
+    val firstToStart = haversineDistance(first[0], first[1], start.lat, start.lng)
+    val lastToStart = haversineDistance(last[0], last[1], start.lat, start.lng)
+    return if (firstToStart <= lastToStart) centerline else centerline.reversed()
 }

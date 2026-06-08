@@ -138,6 +138,40 @@ public func projectPointOntoPolyline(
     return PolylineProjection(lat: bestLat, lng: bestLng, bearing: bearing, distanceFromLineM: bestDist)
 }
 
+/// Total arc length (metres) of a `[[lat, lng], ...]` polyline.
+public func polylineLengthMeters(_ polyline: [[Double]]) -> Double {
+    if polyline.count < 2 { return 0.0 }
+    var total = 0.0
+    for i in 0..<(polyline.count - 1) {
+        total += haversineDistance(
+            polyline[i][0], polyline[i][1],
+            polyline[i + 1][0], polyline[i + 1][1]
+        )
+    }
+    return total
+}
+
+/// Return `centerline` guaranteed to run from `start` toward the far endpoint,
+/// reversing it when it was stored end-first.
+///
+/// Direction matching (`polylineBearing`), polyline projection, and the remaining
+/// distance all key off the centerline's point order. A centerline stored
+/// end-first — a real server-data bug (the scraper aligns the bundle, but the
+/// live `/api/zones` may still serve it and the device syncs that into the store)
+/// — flips a zone's apparent first→last bearing 180°, so the app matches the
+/// opposite-carriageway sibling and reports an inverted "remaining". Each zone's
+/// `start`/`end` endpoints are authoritative, so orienting against `start` makes
+/// the whole engine immune to the bad point order regardless of where the data
+/// came from. Mirrors Kotlin `orientCenterlineToStart`.
+public func orientCenterlineToStart(_ centerline: [[Double]], _ start: ZoneEndpoint) -> [[Double]] {
+    if centerline.count < 2 { return centerline }
+    let first = centerline[0]
+    let last = centerline[centerline.count - 1]
+    let firstToStart = haversineDistance(first[0], first[1], start.lat, start.lng)
+    let lastToStart = haversineDistance(last[0], last[1], start.lat, start.lng)
+    return firstToStart <= lastToStart ? centerline : centerline.reversed()
+}
+
 public func projectOntoPolyline(_ lat: Double, _ lng: Double, _ polyline: [[Double]]) -> Double {
     if polyline.count < 2 { return 0.0 }
 

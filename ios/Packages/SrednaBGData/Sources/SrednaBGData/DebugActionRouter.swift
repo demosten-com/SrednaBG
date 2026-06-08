@@ -3,6 +3,9 @@
 //
 // SrednaBG — ios / SrednaBGData
 
+// Debug-only: this dispatcher is reachable solely through `DebugControlServer`
+// (also `#if DEBUG`). Gating it keeps the QA endpoint surface out of release.
+#if DEBUG
 import Foundation
 
 /// Dispatches debug actions to the right place inside the app. Used by
@@ -155,3 +158,4 @@ public final class DebugActionRouter {
         }
     }
 }
+#endif

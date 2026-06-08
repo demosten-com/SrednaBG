@@ -123,6 +123,25 @@ public enum AnnouncementPolicy {
             guard let avg = exiting.finalAvgSpeed.map({ Int($0) }) else { return .silent }
             return .init(event: .exit(avgSpeedKmh: avg), clockUpdate: .clearAnnouncement)
 
+        // Co-located cameras: one camera ends zone A and begins zone B, so the
+        // state machine steps InZone(A) → Exiting(A) → InZone(B) on consecutive
+        // fixes with no Outside between them. The exit-with-average for A already
+        // announced on the prior InZone → Exiting transition; here we must
+        // announce ENTERING B — without this branch the next-zone entry is silent.
+        // Mirrors `AudioAlertManager.kt`'s `Exiting → InZone` branch. (No queueing
+        // needed as on Android: `AVSpeechSynthesizer` enqueues utterances and only
+        // releases the audio session when the queue drains, so B's entry plays
+        // after A's still-speaking exit line on its own.)
+        case (.exiting(let prev), .inZone(let new)):
+            // Same zone re-admitted (off-road blip / hooked-tail flap recovered),
+            // not a new zone — no entry announcement.
+            if prev.zone.id == new.zone.id { return .silent }
+            let limit = input.vehicleType.limit(new.zone.speedLimits)
+            return .init(
+                event: .entry(road: new.zone.road, limit: limit),
+                clockUpdate: .markEntryAndAnnouncement
+            )
+
         default:
             return .silent
         }

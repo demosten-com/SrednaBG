@@ -155,6 +155,53 @@ struct AudioAlertManagerTests {
         #expect(calls.last?.phrase == "Leaving zone. Average speed was 132.")
     }
 
+    private static let zoneB = Zone(
+        id: "trakiya-02-west",
+        road: "АМ Тракия (Б)",
+        roadLatin: "Trakiya B",
+        direction: "west",
+        description: "Test B",
+        start: ZoneEndpoint(lat: 42.550, lng: 23.703),
+        end: ZoneEndpoint(lat: 42.650, lng: 23.600),
+        distanceM: 15000,
+        speedLimits: SpeedLimits(car: 120, truck: 80, bus: 100, motorcycle: 120),
+        centerline: [[42.550, 23.703], [42.650, 23.600]],
+        source: "test",
+        lastVerified: "2026-04-12"
+    )
+
+    private static func inZoneB() -> ZoneState {
+        .inZone(.init(
+            zone: zoneB,
+            entryTime: 0,
+            distanceTraveled: 0,
+            avgSpeed: 130,
+            speedStatus: SpeedStatus(avgSpeed: 130, maxSpeedForRemainder: 120, distanceRemaining: 0, timeRemaining: 0, isOverLimit: false),
+            distanceRemaining: 0
+        ))
+    }
+
+    @Test
+    func coLocatedEntryFiresEndToEnd() async {
+        // Co-located cameras: A's exit-with-average has already announced; the
+        // Exiting(A) → InZone(B) step must announce entering B, not stay silent.
+        let engine = RecordingTTSEngine()
+        let mgr = AudioAlertManager(
+            engine: engine,
+            snapshot: snapshot(lang: .en),
+            now: { Date(timeIntervalSince1970: 1_000_000) },
+            deviceLanguage: { "en" }
+        )
+        await mgr.handle(
+            previous: .exiting(.init(zone: Self.zone, finalAvgSpeed: 130)),
+            current: Self.inZoneB(),
+            currentSpeedKmh: 100
+        )
+        let calls = await engine.calls
+        #expect(calls.count == 1)
+        #expect(calls.first?.phrase == "Entering average speed zone. Speed limit 120.")
+    }
+
     @Test
     func resetStopsEngineAndSuppressesUntilResume() async {
         let engine = RecordingTTSEngine()

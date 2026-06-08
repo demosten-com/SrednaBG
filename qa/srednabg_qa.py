@@ -63,6 +63,7 @@ EDGE_SCENARIOS = [
     "speed_decay_after_stop",
     "auto_stop",
     "stop_silences_tts",
+    "dense_centerline",
 ]
 SYNC_SCENARIOS = [
     "zones_happy",
@@ -93,6 +94,17 @@ def _location_source_scenario() -> Scenario:
     return mod.build(EXPECTED_LOCATION_SOURCE)
 
 
+def _location_source_prefix() -> list[Scenario]:
+    """Android-only prefix for smoke/representative. The flavor tripwire asserts
+    on the `SrednaBG.LocSrc` line emitted by the flavor-specific `LocationSource`
+    factory (`aosp`/`gms`); iOS has a single `CLLocationManager` path and emits
+    no such log, so the scenario can never pass there. Skip it on iOS rather than
+    fail."""
+    if device_mod.current().platform == "ios":
+        return []
+    return [_location_source_scenario()]
+
+
 def _smoke_suite() -> list[Scenario]:
     """1 zone, 1 settings combo, basic UI walk, single zone sync, parser self-test.
 
@@ -114,12 +126,12 @@ def _smoke_suite() -> list[Scenario]:
 
     sync_one = importlib.import_module("qa.scenarios.sync.zones_happy").build()
 
-    return [_location_source_scenario(), bulk_one, sync_one]
+    return _location_source_prefix() + [bulk_one, sync_one]
 
 
 def _representative_suite() -> list[Scenario]:
     return (
-        [_location_source_scenario()]
+        _location_source_prefix()
         + load_representative()
         + _load_module_scenarios("sync", SYNC_SCENARIOS)
     )

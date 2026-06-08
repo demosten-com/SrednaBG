@@ -87,13 +87,22 @@ class DebugControlReceiver : BroadcastReceiver() {
         }
         val speedMs = intent.getStringExtra("speed_ms")?.toFloatOrNull() ?: 0f
         val bearing = intent.getStringExtra("bearing")?.toFloatOrNull()
+        // Optional simulated fix time (epoch ms). Lets a QA harness feed a route
+        // far faster than wall-clock while still presenting realistic ~1 s fix
+        // spacing to the GPS pipeline: the Kalman filter and speed inference use
+        // location.time deltas, so injecting hundreds of fixes a few ms apart in
+        // real time but stamped 1 s apart keeps the filter tracking (a tiny dt
+        // makes its process noise vanish → the smoothed dot lags off the road on
+        // bends → spurious off-road exits). elapsedRealtimeNanos stays "now" so
+        // the service's fix-freshness check still passes.
+        val timeMs = intent.getStringExtra("time_ms")?.toLongOrNull() ?: System.currentTimeMillis()
         val location = Location("debug-gpx").apply {
             latitude = lat
             longitude = lng
             speed = speedMs
             if (bearing != null) this.bearing = bearing
             accuracy = 5f
-            time = System.currentTimeMillis()
+            time = timeMs
             elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) isMock = true
         }
@@ -148,6 +157,7 @@ class DebugControlReceiver : BroadcastReceiver() {
             "cached_zone_hash" -> settings.setCachedZoneHash(raw)
             "cached_map_hash" -> settings.setCachedMapHash(raw)
             "zone_sync_enabled" -> settings.setZoneSyncEnabled(raw.toBooleanStrict())
+            "overlay_enabled" -> settings.setOverlayEnabled(raw.toBooleanStrict())
             else -> throw IllegalArgumentException("unknown setting key: $key")
         }
     }

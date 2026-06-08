@@ -69,6 +69,13 @@ class SettingsViewModel @Inject constructor(
             SettingsRepository.DEFAULT_ZONE_SYNC_ENABLED,
         )
 
+    val overlayEnabled: StateFlow<Boolean> = settingsRepository.overlayEnabled
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            SettingsRepository.DEFAULT_OVERLAY_ENABLED,
+        )
+
     private val _isSyncing = MutableStateFlow(false)
     val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
 
@@ -112,6 +119,10 @@ class SettingsViewModel @Inject constructor(
             settingsRepository.setZoneSyncEnabled(value)
             if (value) zoneSyncScheduler.enable() else zoneSyncScheduler.disable()
         }
+    }
+
+    fun setOverlayEnabled(value: Boolean) {
+        viewModelScope.launch { settingsRepository.setOverlayEnabled(value) }
     }
 
     fun syncNow() {

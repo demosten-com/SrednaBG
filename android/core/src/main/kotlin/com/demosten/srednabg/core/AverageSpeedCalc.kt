@@ -25,6 +25,14 @@ object AverageSpeedCalc {
         distanceTraveled: Double,
         zoneDistance: Double,
         speedLimitKmh: Int,
+        // Accurate live distance to the zone end, sourced from the polyline
+        // projection. When supplied it drives `distanceRemaining` and the
+        // max-speed-for-remainder math instead of the speed×time integrator —
+        // the integrator can drift (sluggish Kalman, noisy GPS speed, simulated
+        // traces with uneven fix spacing) and a drifted value used to fall to 0
+        // here, collapsing the remainder to 0 km/h mid-zone. Falls back to
+        // `zoneDistance - distanceTraveled` when null (avg-speed unit tests).
+        distanceRemainingOverride: Double? = null,
     ): SpeedStatus {
         val elapsedMs = currentTime - entryTime
         val elapsedSec = elapsedMs / 1000.0
@@ -35,7 +43,8 @@ object AverageSpeedCalc {
             (distanceTraveled / activeSec) * 3.6
         } else null
 
-        val distanceRemaining = max(zoneDistance - distanceTraveled, 0.0)
+        val distanceRemaining =
+            max(distanceRemainingOverride ?: (zoneDistance - distanceTraveled), 0.0)
 
         val speedLimitMs = speedLimitKmh / 3.6
         val requiredTotalSec = if (speedLimitMs > 0) zoneDistance / speedLimitMs else 0.0

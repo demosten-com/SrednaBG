@@ -1,7 +1,7 @@
 {
-  "version": "2026-04-14T07:32:17Z",
-  "hash": "sha256:081ee1713dbc025ef400f20ee26f77760d67d3c53358397f3c75701652ef4893",
+  "version": "2026-04-13T16:37:12Z",
+  "hash": "sha256:5b2ff31ce420dd536c34bbe7bdbb9b2f06c785a263c3d10d1e68eddf309f6c28",
   "min_app_version": "1.0.0",
   "zone_count": 72,
-  "map_hash": "sha256:3f14076005f0f8964ce31ecc479034e5d66a82903e47ffb9b97ab94c85079419"
+  "map_hash": null
 }
