@@ -77,6 +77,8 @@
     <string name="sync_updated">Зоните са обновени</string>
     <string name="sync_up_to_date">Зоните вече са актуални</string>
     <string name="sync_failed">Неуспешна синхронизация — проверете връзката</string>
+    <string name="setting_zone_data_date">дата на зоните: %s</string>
+    <string name="setting_zone_data_hash">хеш: %s</string>
     <string name="about_title">За приложението</string>
     <string name="about_version">Версия %s</string>
     <string name="about_license">Отворен код — MIT лиценз</string>

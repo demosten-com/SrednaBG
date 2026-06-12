@@ -155,6 +155,7 @@ class DebugControlReceiver : BroadcastReceiver() {
             "auto_stop_hours" -> settings.setAutoStopHours(raw.toInt())
             "debug_auto_stop_seconds" -> settings.setDebugAutoStopSeconds(raw.toIntOrNull())
             "cached_zone_hash" -> settings.setCachedZoneHash(raw)
+            "cached_zone_version" -> settings.setCachedZoneVersion(raw)
             "cached_map_hash" -> settings.setCachedMapHash(raw)
             "zone_sync_enabled" -> settings.setZoneSyncEnabled(raw.toBooleanStrict())
             "overlay_enabled" -> settings.setOverlayEnabled(raw.toBooleanStrict())

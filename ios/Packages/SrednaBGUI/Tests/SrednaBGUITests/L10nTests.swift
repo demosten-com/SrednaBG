@@ -31,6 +31,7 @@ struct L10nTests {
         "settingVehicleType", "vehicleCar", "vehicleTruck", "vehicleBus",
         "settingMapHeadingUp", "settingMapHeadingUpDesc",
         "settingSyncNow", "syncUpdated", "syncUpToDate", "syncFailed",
+        "settingZones", "settingZoneDataDate", "settingZoneDataHash",
         "aboutTitle", "aboutVersion", "aboutLicense", "aboutAttribution", "aboutZoneData",
         "mapZoomIn", "mapZoomOut", "mapHeadingUp", "mapNorthUp", "mapFollow", "mapNoZones"
     ]

@@ -59,6 +59,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.demosten.srednabg.BuildConfig
 import com.demosten.srednabg.R
 import com.demosten.srednabg.app.data.SyncResult
+import com.demosten.srednabg.app.ui.util.formatZoneVersion
+import com.demosten.srednabg.app.ui.util.shortZoneHash
 import com.demosten.srednabg.app.ui.viewmodel.SettingsViewModel
 import com.demosten.srednabg.core.MapThemeMode
 
@@ -76,6 +78,8 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val zoneSyncEnabled by viewModel.zoneSyncEnabled.collectAsStateWithLifecycle()
     val overlayEnabled by viewModel.overlayEnabled.collectAsStateWithLifecycle()
     val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
+    val zoneDataVersion by viewModel.zoneDataVersion.collectAsStateWithLifecycle()
+    val zoneDataHash by viewModel.zoneDataHash.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
@@ -477,7 +481,20 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
             Text(stringResource(R.string.setting_sync_now))
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = stringResource(R.string.setting_zone_data_date, formatZoneVersion(zoneDataVersion)),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = stringResource(R.string.setting_zone_data_hash, shortZoneHash(zoneDataHash)),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
         // About
         Text(

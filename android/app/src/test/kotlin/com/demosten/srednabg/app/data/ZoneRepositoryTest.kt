@@ -87,6 +87,7 @@ class ZoneRepositoryTest {
 
         coVerify { zoneDao.replaceAll(any()) }
         coVerify { settingsRepository.setCachedZoneHash("hash123") }
+        coVerify { settingsRepository.setCachedZoneVersion("v1") }
     }
 
     @Test
@@ -98,6 +99,8 @@ class ZoneRepositoryTest {
 
         assertEquals(SyncResult.UpToDate, result)
         coVerify(exactly = 0) { zoneApi.fetchZones() }
+        // Backfills the version for installs that cached only the hash.
+        coVerify { settingsRepository.setCachedZoneVersion("v1") }
     }
 
     @Test
@@ -111,6 +114,7 @@ class ZoneRepositoryTest {
         assertEquals(SyncResult.Updated, result)
         coVerify { zoneDao.replaceAll(any()) }
         coVerify { settingsRepository.setCachedZoneHash("newhash") }
+        coVerify { settingsRepository.setCachedZoneVersion("v1") }
     }
 
     @Test

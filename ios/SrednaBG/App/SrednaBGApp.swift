@@ -228,6 +228,7 @@ final class AppContainer {
                 try? await zoneStore.replaceAll(with: response.zones)
                 tracking.updateZones(response.zones)
                 settings.cachedZoneHash = response.hash
+                settings.cachedZoneVersion = response.version
             }
         } else {
             tracking.updateZones(cached)
@@ -258,12 +259,16 @@ final class AppContainer {
         do {
             let version = try await syncClient.fetchVersion()
             if !settings.cachedZoneHash.isEmpty, version.hash == settings.cachedZoneHash {
+                // Backfill for installs that cached the hash before the
+                // version timestamp existed — same data, so same version.
+                settings.cachedZoneVersion = version.version
                 return .upToDate
             }
             let response = try await syncClient.fetchZones()
             try await zoneStore.replaceAll(with: response.zones)
             tracking.updateZones(response.zones)
             settings.cachedZoneHash = response.hash
+            settings.cachedZoneVersion = response.version
             return .updated
         } catch {
             return .failed(SyncFailure(underlying: error))

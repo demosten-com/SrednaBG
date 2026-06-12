@@ -48,12 +48,18 @@ class ZoneRepository @Inject constructor(
         return try {
             val version = zoneApi.fetchVersion()
             val cachedHash = settingsRepository.cachedZoneHash.first()
-            if (version.hash == cachedHash && cachedHash.isNotEmpty()) return SyncResult.UpToDate
+            if (version.hash == cachedHash && cachedHash.isNotEmpty()) {
+                // Backfill for installs that cached the hash before the
+                // version timestamp existed — same data, so same version.
+                settingsRepository.setCachedZoneVersion(version.version)
+                return SyncResult.UpToDate
+            }
 
             val response = zoneApi.fetchZones()
             val entities = response.zones.map { it.toEntity(gson) }
             zoneDao.replaceAll(entities)
             settingsRepository.setCachedZoneHash(response.hash)
+            settingsRepository.setCachedZoneVersion(response.version)
             SyncResult.Updated
         } catch (e: Exception) {
             SyncResult.Failed(e)
@@ -68,6 +74,7 @@ class ZoneRepository @Inject constructor(
                 val entities = response.zones.map { it.toEntity(gson) }
                 zoneDao.replaceAll(entities)
                 settingsRepository.setCachedZoneHash(response.hash)
+                settingsRepository.setCachedZoneVersion(response.version)
             }
         } catch (_: Exception) {
             // Asset file may be empty or malformed — that's OK, sync will fetch later

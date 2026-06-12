@@ -132,6 +132,8 @@ private func applyDebugSetting(_ settings: SettingsStore, key: String, value: St
         // QA poisons this to force the next manual sync into a full re-fetch
         // (mismatch → fetchZones) — mirrors Android's DebugControlReceiver.
         settings.cachedZoneHash = value
+    case "cached_zone_version":
+        settings.cachedZoneVersion = value
     case "cached_map_hash":
         settings.cachedMapHash = value
     case "debug_auto_stop_seconds":

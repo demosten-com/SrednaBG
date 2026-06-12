@@ -31,6 +31,7 @@ class SettingsRepository @Inject constructor(
         private val KEY_APP_LANGUAGE = stringPreferencesKey("app_language")
         private val KEY_VEHICLE_TYPE = stringPreferencesKey("vehicle_type")
         private val KEY_ZONE_HASH = stringPreferencesKey("cached_zone_hash")
+        private val KEY_ZONE_VERSION = stringPreferencesKey("cached_zone_version")
         private val KEY_MAP_HASH = stringPreferencesKey("cached_map_hash")
         private val KEY_MAP_HEADING_UP = booleanPreferencesKey("map_heading_up")
         private val KEY_MAP_THEME_MODE = stringPreferencesKey("map_theme_mode")
@@ -99,6 +100,10 @@ class SettingsRepository @Inject constructor(
 
     val cachedZoneHash: Flow<String> = dataStore.data.map { prefs ->
         prefs[KEY_ZONE_HASH] ?: ""
+    }
+
+    val cachedZoneVersion: Flow<String> = dataStore.data.map { prefs ->
+        prefs[KEY_ZONE_VERSION] ?: ""
     }
 
     val cachedMapHash: Flow<String> = dataStore.data.map { prefs ->
@@ -172,6 +177,10 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setCachedZoneHash(value: String) {
         dataStore.edit { it[KEY_ZONE_HASH] = value }
+    }
+
+    suspend fun setCachedZoneVersion(value: String) {
+        dataStore.edit { it[KEY_ZONE_VERSION] = value }
     }
 
     suspend fun setCachedMapHash(value: String) {

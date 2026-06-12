@@ -76,6 +76,12 @@ class SettingsViewModel @Inject constructor(
             SettingsRepository.DEFAULT_OVERLAY_ENABLED,
         )
 
+    val zoneDataVersion: StateFlow<String> = settingsRepository.cachedZoneVersion
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
+
+    val zoneDataHash: StateFlow<String> = settingsRepository.cachedZoneHash
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
+
     private val _isSyncing = MutableStateFlow(false)
     val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
 

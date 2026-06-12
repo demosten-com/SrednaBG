@@ -18,6 +18,9 @@ public enum SettingsKey {
     public static let appLanguage = "app_language"
     public static let vehicleType = "vehicle_type"
     public static let cachedZoneHash = "cached_zone_hash"
+    /// ISO-8601 `version` timestamp of the currently-active zone data, written
+    /// alongside `cachedZoneHash`. Mirrors Android `KEY_ZONE_VERSION`.
+    public static let cachedZoneVersion = "cached_zone_version"
     public static let cachedMapHash = "cached_map_hash"
     public static let mapHeadingUp = "map_heading_up"
     public static let mapThemeMode = "map_theme_mode"
@@ -52,6 +55,7 @@ public enum SettingsDefaults {
     public static let appLanguage: AppLanguage = .system
     public static let vehicleType: VehicleType = .car
     public static let cachedZoneHash = ""
+    public static let cachedZoneVersion = ""
     public static let cachedMapHash = ""
     public static let mapHeadingUp = false
     public static let mapThemeMode: MapThemeMode = .auto

@@ -31,6 +31,7 @@ struct SettingsStoreTests {
         #expect(store.appLanguage == .system)
         #expect(store.vehicleType == .car)
         #expect(store.cachedZoneHash == "")
+        #expect(store.cachedZoneVersion == "")
         #expect(store.cachedMapHash == "")
         #expect(store.mapHeadingUp == false)
     }
@@ -44,6 +45,7 @@ struct SettingsStoreTests {
         store.appLanguage = .bg
         store.vehicleType = .truck
         store.cachedZoneHash = "sha256:foo"
+        store.cachedZoneVersion = "2026-06-11T05:32:40Z"
         store.mapHeadingUp = true
 
         // Hydrate a second instance from the same defaults — should see the writes.
@@ -53,6 +55,7 @@ struct SettingsStoreTests {
         #expect(reloaded.appLanguage == .bg)
         #expect(reloaded.vehicleType == .truck)
         #expect(reloaded.cachedZoneHash == "sha256:foo")
+        #expect(reloaded.cachedZoneVersion == "2026-06-11T05:32:40Z")
         #expect(reloaded.mapHeadingUp == true)
     }
 
@@ -67,6 +70,7 @@ struct SettingsStoreTests {
         #expect(SettingsKey.appLanguage == "app_language")
         #expect(SettingsKey.vehicleType == "vehicle_type")
         #expect(SettingsKey.cachedZoneHash == "cached_zone_hash")
+        #expect(SettingsKey.cachedZoneVersion == "cached_zone_version")
         #expect(SettingsKey.cachedMapHash == "cached_map_hash")
         #expect(SettingsKey.mapHeadingUp == "map_heading_up")
     }

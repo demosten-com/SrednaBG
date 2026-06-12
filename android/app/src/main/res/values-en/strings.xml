@@ -77,6 +77,8 @@
     <string name="sync_updated">Zones updated</string>
     <string name="sync_up_to_date">Zones already up to date</string>
     <string name="sync_failed">Sync failed — check your connection</string>
+    <string name="setting_zone_data_date">zone date: %s</string>
+    <string name="setting_zone_data_hash">hash: %s</string>
     <string name="about_title">About</string>
     <string name="about_version">Version %s</string>
     <string name="about_license">Open source — MIT License</string>

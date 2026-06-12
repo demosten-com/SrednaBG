@@ -88,7 +88,7 @@ public struct SettingsScreen: View {
     }
 
     private var languageSection: some View {
-        Section(L10n.settingLanguage) {
+        Section {
             Picker(L10n.settingLanguage, selection: $settings.appLanguage) {
                 Text(L10n.languageSystem).tag(AppLanguage.system)
                 Text(L10n.languageBg).tag(AppLanguage.bg)
@@ -102,7 +102,7 @@ public struct SettingsScreen: View {
     }
 
     private var vehicleSection: some View {
-        Section(L10n.settingVehicleType) {
+        Section {
             Picker(L10n.settingVehicleType, selection: $settings.vehicleType) {
                 Text(L10n.vehicleCar).tag(VehicleType.car)
                 Text(L10n.vehicleTruck).tag(VehicleType.truck)
@@ -113,7 +113,7 @@ public struct SettingsScreen: View {
     }
 
     private var autoStopSection: some View {
-        Section(L10n.settingAutoStop) {
+        Section {
             Picker(L10n.settingAutoStop, selection: $settings.autoStopHours) {
                 Text(L10n.autoStop3h).tag(3)
                 Text(L10n.autoStop6h).tag(6)
@@ -146,7 +146,7 @@ public struct SettingsScreen: View {
     }
 
     private var syncSection: some View {
-        Section {
+        Section(L10n.settingZones) {
             // Automatic zone updates — opt-out for the periodic background
             // sync. The "Sync zones now" button below stays available
             // regardless (it calls onSyncTap directly, not gated by this).
@@ -168,6 +168,20 @@ public struct SettingsScreen: View {
             }
             .disabled(isSyncing)
             .accessibilityIdentifier("settings-sync-now")
+            Text(String(
+                format: L10n.settingZoneDataDate,
+                ZoneDataFormat.formatVersion(
+                    settings.cachedZoneVersion,
+                    locale: L10n.locale(for: settings.appLanguage) ?? .current
+                )
+            ))
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .accessibilityIdentifier("settings-zone-data-date")
+            Text(String(format: L10n.settingZoneDataHash, ZoneDataFormat.shortHash(settings.cachedZoneHash)))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("settings-zone-data-hash")
         }
     }
 

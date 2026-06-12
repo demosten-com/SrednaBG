@@ -49,6 +49,10 @@ public final class SettingsStore {
         didSet { defaults.set(cachedZoneHash, forKey: SettingsKey.cachedZoneHash) }
     }
 
+    public var cachedZoneVersion: String {
+        didSet { defaults.set(cachedZoneVersion, forKey: SettingsKey.cachedZoneVersion) }
+    }
+
     public var cachedMapHash: String {
         didSet { defaults.set(cachedMapHash, forKey: SettingsKey.cachedMapHash) }
     }
@@ -118,6 +122,8 @@ public final class SettingsStore {
             ?? SettingsDefaults.vehicleType
         self.cachedZoneHash = defaults.string(forKey: SettingsKey.cachedZoneHash)
             ?? SettingsDefaults.cachedZoneHash
+        self.cachedZoneVersion = defaults.string(forKey: SettingsKey.cachedZoneVersion)
+            ?? SettingsDefaults.cachedZoneVersion
         self.cachedMapHash = defaults.string(forKey: SettingsKey.cachedMapHash)
             ?? SettingsDefaults.cachedMapHash
         self.mapHeadingUp = (defaults.object(forKey: SettingsKey.mapHeadingUp) as? Bool)
