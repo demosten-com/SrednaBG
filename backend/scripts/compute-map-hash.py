@@ -12,7 +12,8 @@ re-downloads, so it MUST be stable across rebuilds whenever the actual map
 build timestamps into the mbtiles ``metadata`` table, and SQLite page layout /
 gzip mtime vary run-to-run. So we hash canonical content instead:
 
-  - the static style + glyph files, by bytes, sorted by relative path;
+  - the static style + glyph (+ sprite, if vendored) files, by bytes, sorted
+    by relative path;
   - the mbtiles tile rows, by DECOMPRESSED tile payload, ordered by z/x/y.
     The ``metadata`` table is excluded entirely (it carries the volatile
     timestamps / planetiler version).
@@ -48,13 +49,16 @@ def _decompressed(blob: bytes) -> bytes:
 def compute(bundle_dir: Path) -> str:
     h = hashlib.sha256()
 
-    # 1) Static files: the two style JSONs + every glyph PBF, sorted by
-    #    relative path so ordering is stable across filesystems.
+    # 1) Static files: the two style JSONs + every glyph PBF (+ sprite files,
+    #    if the bundle ever carries them — build-map-bundle.sh stages an
+    #    optional sprite/ dir), sorted by relative path so ordering is stable
+    #    across filesystems.
     static = [bundle_dir / name for name in STATIC_TOP]
     static = [p for p in static if p.is_file()]
-    fonts_dir = bundle_dir / "fonts"
-    if fonts_dir.is_dir():
-        static.extend(p for p in fonts_dir.rglob("*") if p.is_file())
+    for sub in ("fonts", "sprite"):
+        sub_dir = bundle_dir / sub
+        if sub_dir.is_dir():
+            static.extend(p for p in sub_dir.rglob("*") if p.is_file())
     for p in sorted(static, key=lambda x: x.relative_to(bundle_dir).as_posix()):
         rel = p.relative_to(bundle_dir).as_posix()
         h.update(rel.encode("utf-8"))

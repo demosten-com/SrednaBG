@@ -165,7 +165,12 @@ class IosDevice(Device):
               f"{lat:.7f},{lng:.7f}"], timeout=5.0)
 
     def feed_point(self, lat: float, lng: float, speed_ms: float,
-                   bearing: float | None = None) -> None:
+                   bearing: float | None = None,
+                   time_ms: int | None = None) -> None:
+        # `time_ms` (epoch ms) is forwarded to /inject, which stamps the
+        # injected CLLocation with it — same semantics as Android's
+        # FEED_POINT `time_ms` extra, so compressed drives present the
+        # encoded cadence to the speed pipeline on both platforms.
         params = {
             "lat": f"{lat:.7f}",
             "lng": f"{lng:.7f}",
@@ -173,6 +178,8 @@ class IosDevice(Device):
         }
         if bearing is not None:
             params["bearing"] = f"{bearing:.2f}"
+        if time_ms is not None:
+            params["time_ms"] = str(time_ms)
         self._debug_get("/inject", params)
 
     # ── debug surface (loopback HTTP) ──────────────────────────────────────

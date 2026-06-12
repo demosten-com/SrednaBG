@@ -16,59 +16,23 @@ We produce TWO Zone objects per segment: forward and reverse direction.
 
 import json
 import logging
-import math
 import re
 from datetime import UTC, datetime
 
-import requests
 from bs4 import BeautifulSoup
 
+from src.fetch import fetch_text
+from src.roads import infer_direction_from_coords, opposite_direction
 from src.zone_schema import SpeedLimits, Zone, ZoneEndpoint
 
 logger = logging.getLogger(__name__)
 
 TOLLTRACKER_URL = "https://tolltracker.eu/map"
 
-# Direction inference from coordinates for each motorway
-# Maps canonical road name -> (primary_axis, positive_direction)
-# primary_axis: "lng" means east-west road, "lat" means north-south road
-ROAD_AXIS = {
-    # Motorways
-    "АМ Тракия": ("lng", "east", "west"),      # Sofia->Burgas, lng increases east
-    "АМ Хемус": ("lng", "east", "west"),        # Sofia->Varna
-    "АМ Марица": ("lng", "east", "west"),       # west->east
-    "АМ Европа": ("lat", "north", "south"),     # south->north (Sofia->Botevgrad)
-    "АМ Струма": ("lat", "north", "south"),     # lat increasing = north, decreasing = south
-    # National roads
-    "Път I-1": ("lat", "south", "north"),       # Sofia -> Kulata (N->S)
-    "Път I-2": ("lng", "east", "west"),         # Sofia -> Plovdiv (W->E)
-    "Път I-3": ("lat", "south", "north"),       # Byala -> Plovdiv (N->S)
-    "Път I-4": ("lng", "east", "west"),         # Sofia -> V. Tarnovo (W->E)
-    "Път I-5": ("lat", "south", "north"),       # Ruse -> Kardzhali (N->S)
-    "Път I-6": ("lng", "east", "west"),         # Sofia -> Burgas (W->E)
-    "Път II-55": ("lat", "south", "north"),     # V. Tarnovo -> Stara Zagora (N->S)
-}
-
 
 def fetch_page(url: str = TOLLTRACKER_URL, timeout: int = 30) -> str:
     """Fetch the TollTracker map page HTML."""
-    for attempt in range(3):
-        try:
-            resp = requests.get(
-                url,
-                timeout=timeout,
-                headers={"User-Agent": "SrednaBG/1.0 (zone-scraper)"},
-            )
-            resp.raise_for_status()
-            resp.encoding = "utf-8"
-            return resp.text
-        except requests.RequestException as e:
-            logger.warning(
-                "TollTracker fetch attempt %d failed: %s", attempt + 1, e
-            )
-            if attempt == 2:
-                raise
-    return ""  # unreachable
+    return fetch_text(url, timeout=timeout, label="TollTracker")
 
 
 def extract_segments(html: str) -> list[dict]:
@@ -136,19 +100,6 @@ def _swap_coords(geojson_coords: list[list[float]]) -> list[list[float]]:
     return [[coord[1], coord[0]] for coord in geojson_coords]
 
 
-def _bearing(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
-    """Compute bearing in degrees from point 1 to point 2."""
-    lat1_r = math.radians(lat1)
-    lat2_r = math.radians(lat2)
-    dlng = math.radians(lng2 - lng1)
-    x = math.sin(dlng) * math.cos(lat2_r)
-    y = math.cos(lat1_r) * math.sin(lat2_r) - math.sin(lat1_r) * math.cos(
-        lat2_r
-    ) * math.cos(dlng)
-    bearing = math.degrees(math.atan2(x, y))
-    return (bearing + 360) % 360
-
-
 def infer_direction(
     start_lat: float,
     start_lng: float,
@@ -156,34 +107,10 @@ def infer_direction(
     end_lng: float,
     road_name: str,
 ) -> str:
-    """Infer compass direction from start to end coordinates.
-
-    Uses road-specific axis knowledge when available, falls back to
-    bearing-based heuristic for unknown roads.
-    """
-    if road_name in ROAD_AXIS:
-        axis, pos_dir, neg_dir = ROAD_AXIS[road_name]
-        if axis == "lng":
-            return pos_dir if end_lng > start_lng else neg_dir
-        else:
-            return pos_dir if end_lat > start_lat else neg_dir
-
-    # Fallback: use bearing
-    b = _bearing(start_lat, start_lng, end_lat, end_lng)
-    if 45 <= b < 135:
-        return "east"
-    elif 135 <= b < 225:
-        return "south"
-    elif 225 <= b < 315:
-        return "west"
-    else:
-        return "north"
-
-
-def _opposite_direction(direction: str) -> str:
-    """Return the opposite compass direction."""
-    opposites = {"east": "west", "west": "east", "north": "south", "south": "north"}
-    return opposites[direction]
+    """Infer compass direction from start to end coordinates."""
+    return infer_direction_from_coords(
+        start_lat, start_lng, end_lat, end_lng, road_name
+    )
 
 
 def parse_segment(feature: dict) -> tuple[Zone, Zone]:
@@ -229,7 +156,7 @@ def parse_segment(feature: dict) -> tuple[Zone, Zone]:
     fwd_direction = infer_direction(
         start.lat, start.lng, end.lat, end.lng, road
     )
-    rev_direction = _opposite_direction(fwd_direction)
+    rev_direction = opposite_direction(fwd_direction)
 
     fwd_description = f"{start.settlement} – {end.settlement}"
     rev_description = f"{end.settlement} – {start.settlement}"

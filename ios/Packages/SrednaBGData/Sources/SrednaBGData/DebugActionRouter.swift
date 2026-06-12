@@ -24,7 +24,9 @@ public final class DebugActionRouter {
         public let runMapSync: @MainActor () async -> DebugSyncOutcome
         public let startTracking: @MainActor () async -> Void
         public let stopTracking: @MainActor () async -> Void
-        public let feedLocation: @MainActor (Double, Double, Double, Double?) -> Void
+        /// (lat, lng, speedMps, bearing, timestampMs). `timestampMs` is the
+        /// harness's simulated-timeline stamp (epoch ms) — see `/inject`.
+        public let feedLocation: @MainActor (Double, Double, Double, Double?, Int64?) -> Void
 
         public init(
             applySetting: @escaping @MainActor (String, String) -> Bool,
@@ -32,7 +34,7 @@ public final class DebugActionRouter {
             runMapSync: @escaping @MainActor () async -> DebugSyncOutcome,
             startTracking: @escaping @MainActor () async -> Void,
             stopTracking: @escaping @MainActor () async -> Void,
-            feedLocation: @escaping @MainActor (Double, Double, Double, Double?) -> Void = { _, _, _, _ in }
+            feedLocation: @escaping @MainActor (Double, Double, Double, Double?, Int64?) -> Void = { _, _, _, _, _ in }
         ) {
             self.applySetting = applySetting
             self.runZoneSync = runZoneSync
@@ -134,7 +136,12 @@ public final class DebugActionRouter {
                 return Result(status: 400, body: "inject requires lat, lng, speed")
             }
             let bearing = params["bearing"].flatMap(Double.init)
-            handlers.feedLocation(lat, lng, speed, bearing)
+            // Optional simulated-timeline stamp (epoch ms) — same name and
+            // semantics as Android's FEED_POINT `time_ms` extra. Compressed
+            // harness drives need it so the speed pipeline sees the encoded
+            // cadence rather than the (faster) wall-clock injection rate.
+            let timeMs = params["time_ms"].flatMap(Int64.init)
+            handlers.feedLocation(lat, lng, speed, bearing, timeMs)
             return Result(status: 200, body: "ok")
 
         case "/tab":

@@ -105,8 +105,10 @@ class TestInferDirection:
     def test_struma_north(self):
         assert infer_direction("АМ Струма", 8.226, 0.672) == "north"
 
-    def test_europa_north(self):
-        assert infer_direction("АМ Европа", 50.427, 60.705) == "north"
+    def test_europa_east(self):
+        # The enforced АМ Европа section is the E-W Severna Tangenta:
+        # km 50+427 = п.в. Илиянци (west), 60+705 = Чепинци (east).
+        assert infer_direction("АМ Европа", 50.427, 60.705) == "east"
 
 
 class TestParseHtml:

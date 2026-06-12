@@ -23,7 +23,9 @@ from ...runner import RunContext
 from ..bulk_loader import _ensure_gpx, BulkScenarioSpec
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-ZONES_JSON = REPO_ROOT / "scrapers" / "data" / "zones.json"
+# Canonical zone data (root CLAUDE.md "single source of truth") — keep in
+# step with bulk_loader.ZONES_JSON.
+ZONES_JSON = REPO_ROOT / "backend" / "data" / "zones.json"
 
 
 def load_zone(zone_id: str) -> dict[str, Any]:

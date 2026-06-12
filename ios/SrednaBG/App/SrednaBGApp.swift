@@ -183,8 +183,8 @@ final class AppContainer {
         // session stop. Per-zone updates flow through the regular sink while
         // the activity is alive.
         let liveActivity = LiveActivityManager()
-        let zoneStateSink: @Sendable (ZoneState, Double?) async -> Void = { state, speed in
-            await liveActivity.update(state: state, currentSpeedKmh: speed)
+        let zoneStateSink: @Sendable (ZoneState, Double?, Int?) async -> Void = { state, speed, limit in
+            await liveActivity.update(state: state, currentSpeedKmh: speed, limitKmh: limit)
         }
         let onSessionStart: @Sendable () async -> Void = {
             await liveActivity.sessionStart()
@@ -197,7 +197,7 @@ final class AppContainer {
         }
         #else
         let provider: any LocationProviding = SilentLocationProvider()
-        let zoneStateSink: @Sendable (ZoneState, Double?) async -> Void = { _, _ in }
+        let zoneStateSink: @Sendable (ZoneState, Double?, Int?) async -> Void = { _, _, _ in }
         let onSessionStart: @Sendable () async -> Void = {}
         let onSessionStop: @Sendable () async -> Void = {}
         let onLaunchReconcile: @Sendable () async -> Void = {}

@@ -18,14 +18,14 @@ Each KML segment is bidirectional — we produce TWO Zone objects per segment
 
 import io
 import logging
-import math
 import re
 import zipfile
 import xml.etree.ElementTree as ET
 from datetime import UTC, datetime
-from pathlib import Path
 
-import requests
+from src.fetch import fetch_bytes
+from src.geo import haversine_m
+from src.roads import infer_direction_from_coords, opposite_direction
 
 from src.zone_schema import SpeedLimits, Zone, ZoneEndpoint
 
@@ -47,46 +47,16 @@ ROAD_ID_TO_NAME: dict[str, str] = {
     "A-6": "АМ Европа",
 }
 
-# Direction inference from coordinates for each road
-# Maps canonical road name -> (primary_axis, positive_direction, negative_direction)
-ROAD_AXIS: dict[str, tuple[str, str, str]] = {
-    "АМ Тракия": ("lng", "east", "west"),
-    "АМ Хемус": ("lng", "east", "west"),
-    "АМ Марица": ("lng", "east", "west"),
-    "АМ Европа": ("lat", "north", "south"),
-    "АМ Струма": ("lat", "south", "north"),  # Sofia->Kulata = lat decreasing = south
-    "Път I-1": ("lat", "south", "north"),
-    "Път I-2": ("lng", "east", "west"),
-    "Път I-3": ("lat", "south", "north"),
-    "Път I-4": ("lng", "east", "west"),
-    "Път I-5": ("lat", "south", "north"),
-    "Път I-6": ("lng", "east", "west"),
-    "Път II-55": ("lat", "south", "north"),
-}
-
 
 def fetch_kmz(url: str = KML_URL, timeout: int = 30) -> str:
     """Fetch and extract KML from the KMZ archive."""
-    for attempt in range(3):
-        try:
-            resp = requests.get(
-                url,
-                timeout=timeout,
-                headers={"User-Agent": "SrednaBG/1.0 (zone-scraper)"},
-            )
-            resp.raise_for_status()
-
-            # KMZ is a zip archive containing doc.kml
-            with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:
-                kml_names = [n for n in zf.namelist() if n.endswith(".kml")]
-                if not kml_names:
-                    raise ValueError("No KML file found in KMZ archive")
-                return zf.read(kml_names[0]).decode("utf-8")
-        except requests.RequestException as e:
-            logger.warning("KML fetch attempt %d failed: %s", attempt + 1, e)
-            if attempt == 2:
-                raise
-    return ""  # unreachable
+    raw = fetch_bytes(url, timeout=timeout, label="KML")
+    # KMZ is a zip archive containing doc.kml
+    with zipfile.ZipFile(io.BytesIO(raw)) as zf:
+        kml_names = [n for n in zf.namelist() if n.endswith(".kml")]
+        if not kml_names:
+            raise ValueError("No KML file found in KMZ archive")
+        return zf.read(kml_names[0]).decode("utf-8")
 
 
 def _parse_road_name(road_id: str) -> str:
@@ -172,19 +142,6 @@ def _parse_point_coords(text: str) -> tuple[float, float]:
     return float(parts[1]), float(parts[0])
 
 
-def _bearing(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
-    """Compute bearing in degrees from point 1 to point 2."""
-    lat1_r = math.radians(lat1)
-    lat2_r = math.radians(lat2)
-    dlng = math.radians(lng2 - lng1)
-    x = math.sin(dlng) * math.cos(lat2_r)
-    y = math.cos(lat1_r) * math.sin(lat2_r) - math.sin(lat1_r) * math.cos(
-        lat2_r
-    ) * math.cos(dlng)
-    bearing = math.degrees(math.atan2(x, y))
-    return (bearing + 360) % 360
-
-
 def infer_direction(
     start_lat: float,
     start_lng: float,
@@ -193,29 +150,9 @@ def infer_direction(
     road_name: str,
 ) -> str:
     """Infer compass direction from start to end coordinates."""
-    if road_name in ROAD_AXIS:
-        axis, pos_dir, neg_dir = ROAD_AXIS[road_name]
-        if axis == "lng":
-            return pos_dir if end_lng > start_lng else neg_dir
-        else:
-            return pos_dir if end_lat < start_lat else neg_dir
-
-    # Fallback: use bearing
-    b = _bearing(start_lat, start_lng, end_lat, end_lng)
-    if 45 <= b < 135:
-        return "east"
-    elif 135 <= b < 225:
-        return "south"
-    elif 225 <= b < 315:
-        return "west"
-    else:
-        return "north"
-
-
-def _opposite_direction(direction: str) -> str:
-    return {"east": "west", "west": "east", "north": "south", "south": "north"}[
-        direction
-    ]
+    return infer_direction_from_coords(
+        start_lat, start_lng, end_lat, end_lng, road_name
+    )
 
 
 def parse_kml(kml_text: str) -> tuple[list[dict], list[dict]]:
@@ -322,22 +259,22 @@ def _assign_settlements_to_endpoints(
 
     if cam_a and cam_b:
         # Both found — assign based on distance to polyline start
-        dist_a_to_start = _haversine(cam_a[0], cam_a[1], start_lat, start_lng)
-        dist_b_to_start = _haversine(cam_b[0], cam_b[1], start_lat, start_lng)
+        dist_a_to_start = haversine_m(cam_a[0], cam_a[1], start_lat, start_lng)
+        dist_b_to_start = haversine_m(cam_b[0], cam_b[1], start_lat, start_lng)
         if dist_a_to_start <= dist_b_to_start:
             return name_a, name_b
         else:
             return name_b, name_a
     elif cam_a:
-        dist_a_to_start = _haversine(cam_a[0], cam_a[1], start_lat, start_lng)
-        dist_a_to_end = _haversine(cam_a[0], cam_a[1], end_lat, end_lng)
+        dist_a_to_start = haversine_m(cam_a[0], cam_a[1], start_lat, start_lng)
+        dist_a_to_end = haversine_m(cam_a[0], cam_a[1], end_lat, end_lng)
         if dist_a_to_start <= dist_a_to_end:
             return name_a, name_b
         else:
             return name_b, name_a
     elif cam_b:
-        dist_b_to_start = _haversine(cam_b[0], cam_b[1], start_lat, start_lng)
-        dist_b_to_end = _haversine(cam_b[0], cam_b[1], end_lat, end_lng)
+        dist_b_to_start = haversine_m(cam_b[0], cam_b[1], start_lat, start_lng)
+        dist_b_to_end = haversine_m(cam_b[0], cam_b[1], end_lat, end_lng)
         if dist_b_to_start <= dist_b_to_end:
             return name_b, name_a
         else:
@@ -418,7 +355,7 @@ def segments_to_zones(
             fwd_direction = infer_direction(
                 start_lat, start_lng, end_lat, end_lng, road
             )
-            rev_direction = _opposite_direction(fwd_direction)
+            rev_direction = opposite_direction(fwd_direction)
 
             road_type = "motorway" if is_motorway else "road"
 
@@ -490,19 +427,6 @@ def segments_to_zones(
     return zones
 
 
-def _haversine(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
-    """Haversine distance in meters."""
-    R = 6371000
-    lat1_r, lat2_r = math.radians(lat1), math.radians(lat2)
-    dlat = math.radians(lat2 - lat1)
-    dlng = math.radians(lng2 - lng1)
-    a = (
-        math.sin(dlat / 2) ** 2
-        + math.cos(lat1_r) * math.cos(lat2_r) * math.sin(dlng / 2) ** 2
-    )
-    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-
-
 def _find_camera_km(
     lat: float,
     lng: float,
@@ -515,7 +439,7 @@ def _find_camera_km(
     for cam_lat, cam_lng, km_marker, _ in cameras:
         if km_marker is None:
             continue
-        d = _haversine(lat, lng, cam_lat, cam_lng)
+        d = haversine_m(lat, lng, cam_lat, cam_lng)
         if d < best_dist:
             best_dist = d
             best_km = km_marker

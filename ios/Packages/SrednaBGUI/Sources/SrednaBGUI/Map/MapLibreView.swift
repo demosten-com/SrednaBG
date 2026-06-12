@@ -213,7 +213,6 @@ struct MapLibreView: UIViewRepresentable {
         }
         coordinator.didFollowOnce = true
         let bearing: CLLocationDirection = headingUp ? effectiveBearing : 0
-        coordinator.programmaticCameraChange = true
         // `setCenter(_:zoomLevel:direction:animated:)` writes the target zoom
         // directly. `MLNMapCamera(altitude:)` would be vulnerable to mid-animation
         // altitude reads — exactly the race that caused the override to bleed
@@ -222,7 +221,6 @@ struct MapLibreView: UIViewRepresentable {
     }
 
     private func apply(command: MapCommand, to uiView: MLNMapView, coordinator: Coordinator) {
-        coordinator.programmaticCameraChange = true
         switch command {
         case .zoomIn:
             uiView.setZoomLevel(uiView.zoomLevel + 1, animated: true)
@@ -260,10 +258,6 @@ struct MapLibreView: UIViewRepresentable {
         @MainActor var lastZoneIds: [String] = []
         @MainActor var lastActiveZoneId: String?
         @MainActor var damper = BearingDamper()
-        /// Set to `true` right before any programmatic camera change. The
-        /// `regionWillChange` delegate callback consults this to avoid
-        /// misclassifying our own camera pushes as user gestures.
-        @MainActor var programmaticCameraChange: Bool = false
         /// Flipped on in `makeUIView` whenever a saved snapshot was applied,
         /// so the first `didFinishLoading` / `updateUIView` pass doesn't
         /// auto-fit the active zone over the restored camera.
@@ -366,8 +360,12 @@ struct MapLibreView: UIViewRepresentable {
             animated: Bool
         ) {
             MainActor.assumeIsolated {
-                defer { self.programmaticCameraChange = false }
-                if self.programmaticCameraChange { return }
+                // Classify purely by `reason`: our own camera pushes report
+                // `.programmatic`, which is disjoint from the gesture mask. A
+                // one-shot "programmatic" flag was tried here and misclassified
+                // a user pan that landed between a 1 Hz follow `setCenter` and
+                // its delegate callback — the pan consumed the flag, follow
+                // never broke, and the camera yanked back mid-gesture.
                 let gestures: MLNCameraChangeReason = [
                     .gesturePan, .gesturePinch, .gestureRotate,
                     .gestureZoomIn, .gestureZoomOut,

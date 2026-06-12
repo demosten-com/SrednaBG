@@ -209,8 +209,8 @@ class GeoUtilsTest {
     }
 
     @Test
-    fun `direction to bearing unknown throws`() {
-        assertThrows<IllegalArgumentException> { directionToBearing("northeast") }
+    fun `direction to bearing unknown returns null`() {
+        assertNull(directionToBearing("northeast"))
     }
 
     @Test

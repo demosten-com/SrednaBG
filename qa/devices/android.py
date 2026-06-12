@@ -80,7 +80,8 @@ class AndroidDevice(Device):
         adb.geo_fix(lng, lat)
 
     def feed_point(self, lat: float, lng: float, speed_ms: float,
-                   bearing: float | None = None) -> None:
+                   bearing: float | None = None,
+                   time_ms: int | None = None) -> None:
         extras = {
             "lat": f"{lat:.7f}",
             "lng": f"{lng:.7f}",
@@ -88,6 +89,8 @@ class AndroidDevice(Device):
         }
         if bearing is not None:
             extras["bearing"] = f"{bearing:.2f}"
+        if time_ms is not None:
+            extras["time_ms"] = str(time_ms)
         adb.broadcast(ACTION_FEED_POINT, DEBUG_CONTROL_RECEIVER, extras=extras)
 
     # ── debug surface ───────────────────────────────────────────────────────

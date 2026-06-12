@@ -35,8 +35,6 @@ fun pointToSegmentDistance(
     val metersPerDegLat = 111_320.0
     val metersPerDegLng = 111_320.0 * cosLat
 
-    val ax = (aLng - aLng) * metersPerDegLng // 0
-    val ay = (aLat - aLat) * metersPerDegLat // 0
     val bx = (bLng - aLng) * metersPerDegLng
     val by = (bLat - aLat) * metersPerDegLat
     val px = (pLng - aLng) * metersPerDegLng
@@ -206,12 +204,14 @@ fun bearingDifference(b1: Double, b2: Double): Double {
     return if (diff > 180) 360 - diff else diff
 }
 
-fun directionToBearing(direction: String): Double = when (direction) {
+// Null on an unknown direction string so bad server data degrades to
+// "no match" instead of crashing — mirrors the Swift port.
+fun directionToBearing(direction: String): Double? = when (direction) {
     "north" -> 0.0
     "east" -> 90.0
     "south" -> 180.0
     "west" -> 270.0
-    else -> throw IllegalArgumentException("Unknown direction: $direction")
+    else -> null
 }
 
 fun polylineBearing(polyline: List<List<Double>>): Double {

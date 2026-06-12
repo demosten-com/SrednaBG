@@ -136,6 +136,7 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
     val mapHeadingUp by viewModel.mapHeadingUp.collectAsStateWithLifecycle()
     val mapZoomOverride by viewModel.mapZoomOverride.collectAsStateWithLifecycle()
     val debugMaxSpeedOverride by viewModel.debugMaxSpeedOverride.collectAsStateWithLifecycle()
+    val vehicleType by viewModel.vehicleType.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     // Follow mode lives in the VM so it survives leaving the Map tab / app
@@ -520,6 +521,7 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
             ZoneStatusChip(
                 state = zoneState,
                 currentSpeedKmh = currentPosition?.speed,
+                vehicleType = vehicleType,
                 debugMaxSpeedOverride = debugMaxSpeedOverride,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -685,7 +687,6 @@ private fun zonesFeatureCollection(zones: List<Zone>): String {
                 put(ZONE_ID_PROP, zone.id)
                 put("road", zone.road)
                 put("direction", zone.direction)
-                put("speedLimit", zone.speedLimits.car)
             })
         }
         features.put(feature)

@@ -19,7 +19,7 @@ object RoadMatcher {
         val zoneBearing = if (zone.centerline.size >= 2) {
             polylineBearing(zone.centerline)
         } else {
-            directionToBearing(zone.direction)
+            directionToBearing(zone.direction) ?: return false
         }
         return bearingDifference(bearing, zoneBearing) <= tolerance
     }

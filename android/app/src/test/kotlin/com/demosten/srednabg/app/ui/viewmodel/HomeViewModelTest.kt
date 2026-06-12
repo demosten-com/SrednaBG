@@ -9,8 +9,10 @@ import android.content.Context
 import com.demosten.srednabg.app.data.MapRepository
 import com.demosten.srednabg.app.data.SettingsRepository
 import com.demosten.srednabg.app.data.ZoneRepository
+import app.cash.turbine.test
 import com.demosten.srednabg.app.permissions.PermissionRepository
 import com.demosten.srednabg.app.permissions.PermissionState
+import com.demosten.srednabg.core.VehicleType
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -20,6 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -168,5 +171,26 @@ class HomeViewModelTest {
         val state = PermissionState(fineLocationGranted = true)
         val vm = viewModelWith(state)
         assertEquals(state, vm.permissionState.value)
+    }
+
+    @Test
+    fun `vehicleType maps the truck setting to its enum`() = runTest {
+        every { settingsRepository.vehicleType } returns flowOf("truck")
+        val vm = viewModelWith(PermissionState())
+        vm.vehicleType.test {
+            // stateIn may surface the CAR initial value before the mapped one.
+            var item = awaitItem()
+            if (item == VehicleType.CAR) item = awaitItem()
+            assertEquals(VehicleType.TRUCK, item)
+        }
+    }
+
+    @Test
+    fun `vehicleType falls back to car on an unknown setting`() = runTest {
+        every { settingsRepository.vehicleType } returns flowOf("spaceship")
+        val vm = viewModelWith(PermissionState())
+        vm.vehicleType.test {
+            assertEquals(VehicleType.CAR, awaitItem())
+        }
     }
 }

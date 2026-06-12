@@ -7,7 +7,7 @@ zones:
     speed_kmh: 130
   - id: hemus-01-east         # AM Hemus — newer mountainous section
     speed_kmh: 120
-  - id: europa-01-north       # AM Europa — short urban-edge zone
+  - id: europa-01-east        # AM Europa — short urban-edge zone
     speed_kmh: 120
   - id: maritsa-01-east       # AM Maritsa — flat plain section
     speed_kmh: 130

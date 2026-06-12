@@ -22,7 +22,10 @@ from ._helpers import base_plan, load_zone, scenario_setup, scenario_teardown
 
 def build() -> Scenario:
     zone = load_zone("trakiya-01-east")
-    plan = base_plan("trakiya-01-east", speed_kmh=120).compressed(2.0)
+    # Splice on the UNCOMPRESSED plan and compress LAST — rebuilding
+    # TrackPoints from a compressed plan drops `sim_offset_ms` and breaks
+    # the sim timeline at the splice seam (see wrong_direction.py).
+    plan = base_plan("trakiya-01-east", speed_kmh=120)
     # Replace points after the temporal midpoint with off-ramp points
     # ~300m perpendicular to the centerline at the divert moment.
     half = plan.duration_ms // 2
@@ -35,7 +38,8 @@ def build() -> Scenario:
         TrackPoint(last.lat + 0.001 * i, last.lng, last.t_offset_ms + i * 1000)
         for i in range(1, 6)
     ]
-    spliced = DrivePlan(name=f"{plan.name}-offramp", points=survivors + detour_pts)
+    spliced = DrivePlan(name=f"{plan.name}-offramp",
+                        points=survivors + detour_pts).compressed(2.0)
 
     def setup(ctx: RunContext) -> None:
         scenario_setup(ctx, settings_id="S1")

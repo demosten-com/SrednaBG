@@ -101,7 +101,8 @@ class SpeedOverlay {
         when (zoneState) {
             is ZoneState.Outside -> drawOutside(canvas, stableArea, currentSpeedKmh, labels)
             is ZoneState.InZone -> drawInZone(canvas, stableArea, zoneState, speedLimit, currentSpeedKmh, labels)
-            is ZoneState.Exiting -> drawExiting(canvas, stableArea, zoneState, currentSpeedKmh, labels)
+            is ZoneState.Exiting ->
+                drawExiting(canvas, stableArea, zoneState, speedLimit, currentSpeedKmh, labels)
         }
     }
 
@@ -306,11 +307,14 @@ class SpeedOverlay {
         canvas: Canvas,
         area: Rect,
         state: ZoneState.Exiting,
+        speedLimit: Int,
         currentSpeedKmh: Double?,
         labels: OverlayLabels,
     ) {
+        // Same vehicle-resolved limit the engine judged against in-zone — the
+        // exit verdict must not flip back to the car limit.
         val finalAvg = state.finalAvgSpeed
-        val color = if (finalAvg != null && finalAvg > state.zone.speedLimits.car) 0xFFEF5350.toInt() else 0xFF66BB6A.toInt()
+        val color = if (finalAvg != null && finalAvg > speedLimit) 0xFFEF5350.toInt() else 0xFF66BB6A.toInt()
 
         // Metrics-based stacking so the header, hero, and "Now" line can't
         // overlap on small projection surfaces.

@@ -21,6 +21,7 @@ to the next scenario rather than aborting the whole suite.
 
 from __future__ import annotations
 
+import threading
 import time
 import traceback
 from contextlib import contextmanager
@@ -29,8 +30,9 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator, Optional
 
 from . import device as device_mod
+from . import drive as drive_mod
 from .assertions import AssertionFailure, expect_crash_free
-from .drive import DrivePlan, pump
+from .drive import DrivePlan, DriveAborted, pump
 from .log_observer import LogObserver, for_current_device
 
 Step = Callable[["RunContext"], None]
@@ -114,33 +116,69 @@ class SuiteRunner:
         device_mod.current().clear_crash_buffer()
         ctx = RunContext(obs=self.obs, report_dir=self.report_dir, tts_phrases=self.tts_phrases)
         t0 = time.monotonic()
-        failure_msg = ""
-        failure_step = -1
-        try:
-            if scenario.setup:
-                scenario.setup(ctx)
-            for i, step in enumerate(scenario.steps):
-                step(ctx)
-        except AssertionFailure as af:
-            failure_msg = str(af)
-            failure_step = i if "i" in dir() else -1  # type: ignore[name-defined]
-        except Exception as e:
-            failure_msg = f"unexpected {type(e).__name__}: {e}\n{traceback.format_exc()}"
-            failure_step = i if "i" in dir() else -1  # type: ignore[name-defined]
-        finally:
+
+        # Setup + steps run on a worker thread so `Scenario.timeout_s` is a
+        # hard wall — a wedged adb broadcast / debug-server GET inside pump()
+        # would otherwise hang the whole suite. On expiry the drive abort flag
+        # unblocks an in-flight pump(); a step stuck inside a blocking
+        # subprocess call can outlive the grace join (Python threads aren't
+        # killable), in which case we record the timeout and move on — the
+        # per-call subprocess timeouts in qa.adb / qa.devices bound how long
+        # the orphan can linger.
+        outcome: dict[str, Any] = {"step": -1, "failure": ""}
+
+        def _work() -> None:
             try:
-                if scenario.teardown:
-                    scenario.teardown(ctx)
+                if scenario.setup:
+                    scenario.setup(ctx)
+                for i, step in enumerate(scenario.steps):
+                    outcome["step"] = i
+                    step(ctx)
+            except AssertionFailure as af:
+                outcome["failure"] = str(af)
+            except DriveAborted:
+                pass  # runner-initiated; the timeout message is recorded below
             except Exception as e:
-                if not failure_msg:
-                    failure_msg = f"teardown failed: {e}"
+                outcome["failure"] = f"unexpected {type(e).__name__}: {e}\n{traceback.format_exc()}"
+
+        drive_mod.clear_abort()
+        worker = threading.Thread(target=_work, daemon=True,
+                                  name=f"scenario:{scenario.name}")
+        worker.start()
+        worker.join(scenario.timeout_s)
+        timed_out = worker.is_alive()
+        if timed_out:
+            drive_mod.request_abort()
+            # Short grace join: an aborted pump() unblocks within one fix
+            # interval; anything still alive after this is stuck in a blocking
+            # call we can't interrupt, and waiting longer wouldn't change that.
+            worker.join(2.0)
+
+        failure_msg = str(outcome["failure"])
+        if timed_out:
+            step_idx = outcome["step"]
+            step_name = ""
+            if 0 <= step_idx < len(scenario.steps):
+                step_name = f" ({getattr(scenario.steps[step_idx], '__name__', '?')})"
+            stuck = " — step is still blocked, likely a wedged adb/simctl call" \
+                if worker.is_alive() else ""
+            failure_msg = (f"scenario timed out after {scenario.timeout_s:.0f}s "
+                           f"at step {step_idx}{step_name}{stuck}")
+
+        try:
+            if scenario.teardown:
+                scenario.teardown(ctx)
+        except Exception as e:
+            if not failure_msg:
+                failure_msg = f"teardown failed: {e}"
+
         passed = not failure_msg
         result = ScenarioResult(
             name=scenario.name,
             passed=passed,
             duration_s=time.monotonic() - t0,
             failure_message=failure_msg,
-            failure_step=failure_step,
+            failure_step=int(outcome["step"]) if failure_msg else -1,
             recent_logs=list(self.obs.recent_lines[-200:]),
         )
         self.results.append(result)
@@ -151,7 +189,8 @@ class SuiteRunner:
 
 
 def step_drive(plan: DrivePlan, *, compression: float = 1.0) -> Step:
-    """Pump a DrivePlan via `adb emu geo fix`. Blocks until plan ends."""
+    """Pump a DrivePlan via the app's debug feed (`Device.feed_point`).
+    Blocks until the plan ends."""
     actual = plan.compressed(compression)
 
     def _do(ctx: RunContext) -> None:

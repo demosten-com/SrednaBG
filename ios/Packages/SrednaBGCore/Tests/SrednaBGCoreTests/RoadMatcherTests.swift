@@ -108,4 +108,33 @@ struct RoadMatcherTests {
         )
         #expect(RoadMatcher.distanceToZoneEnd(point, TRAKIYA_T10) < 10)
     }
+
+    @Test
+    func matchDirectionFallsBackToCardinalWhenCenterlineTooShort() {
+        // A degenerate single-point centerline can't yield a polyline bearing;
+        // the matcher falls back to the zone's cardinal `direction` ("west" → 270°).
+        let degenerate = TRAKIYA_T10.with(centerline: [[42.480, 23.800]])
+        #expect(RoadMatcher.matchDirection(270.0, degenerate))
+        #expect(!RoadMatcher.matchDirection(90.0, degenerate))
+    }
+
+    @Test
+    func matchDirectionFailsGracefullyOnUnknownDirectionString() {
+        // Unknown direction string + unusable centerline: no match, no trap —
+        // bad server data must degrade, not crash (the Kotlin core throws here).
+        let degenerate = Zone(
+            id: "bad-direction",
+            road: "Път I-1",
+            direction: "northwest",
+            description: "",
+            start: ZoneEndpoint(lat: 42.0, lng: 23.0),
+            end: ZoneEndpoint(lat: 42.1, lng: 23.1),
+            distanceM: 1000,
+            speedLimits: SpeedLimits(car: 90, truck: 80, bus: 80),
+            centerline: [],
+            source: "test",
+            lastVerified: "2026-04-12"
+        )
+        #expect(!RoadMatcher.matchDirection(0.0, degenerate))
+    }
 }

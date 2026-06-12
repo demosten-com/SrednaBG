@@ -57,6 +57,7 @@ EDGE_SCENARIOS = [
     "wrong_direction",
     "u_turn",
     "vehicle_swap",
+    "vehicle_type_limit_badge",
     "over_limit_recovery",
     "off_ramp",
     "cold_start_spike",
@@ -106,7 +107,8 @@ def _location_source_prefix() -> list[Scenario]:
 
 
 def _smoke_suite() -> list[Scenario]:
-    """1 zone, 1 settings combo, basic UI walk, single zone sync, parser self-test.
+    """1 zone, 1 settings combo, single zone sync, parser self-test (last —
+    it judges the event-type coverage of the whole suite run).
 
     Picks `trakiya-01-east` because we have real-fixture coverage in
     core unit tests for that zone — same data path proven good.
@@ -125,8 +127,9 @@ def _smoke_suite() -> list[Scenario]:
     bulk_one = build_bulk(spec)
 
     sync_one = importlib.import_module("qa.scenarios.sync.zones_happy").build()
+    self_test = importlib.import_module("qa.scenarios.parser_self_test").build()
 
-    return _location_source_prefix() + [bulk_one, sync_one]
+    return _location_source_prefix() + [bulk_one, sync_one, self_test]
 
 
 def _representative_suite() -> list[Scenario]:
@@ -143,7 +146,7 @@ def load_representative() -> list[Scenario]:
         # First-run fallback: synthesize from a hand-picked list.
         from qa.scenarios.bulk_loader import BulkScenarioSpec, build_scenario as build_bulk
         ids = [
-            "trakiya-01-east", "hemus-01-east", "europa-01-north",
+            "trakiya-01-east", "hemus-01-east", "europa-01-east",
         ]
         return [build_bulk(BulkScenarioSpec(name=f"rep.{i}", zone_id=i, settings="S1"))
                 for i in ids]

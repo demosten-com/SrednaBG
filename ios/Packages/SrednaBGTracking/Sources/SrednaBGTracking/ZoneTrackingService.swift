@@ -57,8 +57,13 @@ public final class ZoneTrackingService {
     @ObservationIgnored
     private let settings: SettingsStore
 
+    /// Receives every `ZoneState` transition together with the current speed
+    /// and the vehicle-type-resolved speed limit for the active zone (nil
+    /// outside zones). The limit is resolved here — the only place that has
+    /// both the zone and the user's vehicle setting — so downstream surfaces
+    /// (Live Activity) can't fall back to the car limit by accident.
     @ObservationIgnored
-    private let zoneStateSink: @Sendable (ZoneState, Double?) async -> Void
+    private let zoneStateSink: @Sendable (ZoneState, Double?, Int?) async -> Void
 
     /// Fired once when tracking starts. Wired in `SrednaBGApp` to
     /// `LiveActivityManager.sessionStart()` — Apple's API requires
@@ -74,6 +79,13 @@ public final class ZoneTrackingService {
 
     @ObservationIgnored
     private var consumerTask: Task<Void, Never>?
+
+    /// Reentrancy guard for `start()`: the method suspends several times
+    /// before `isTracking` flips, and `@MainActor` reentrancy means a second
+    /// Start tap could otherwise run the whole flow again — leaking the first
+    /// consumer task and double-starting the Live Activity.
+    @ObservationIgnored
+    private var isStarting = false
 
     /// Periodic fallback timer: fires the auto-stop check even when no GPS
     /// fixes are arriving (e.g. iOS defers location updates while the device
@@ -97,7 +109,7 @@ public final class ZoneTrackingService {
         provider: any LocationProviding,
         alerts: AudioAlertManager,
         settings: SettingsStore,
-        zoneStateSink: @escaping @Sendable (ZoneState, Double?) async -> Void = { _, _ in },
+        zoneStateSink: @escaping @Sendable (ZoneState, Double?, Int?) async -> Void = { _, _, _ in },
         onSessionStart: @escaping @Sendable () async -> Void = {},
         onSessionStop: @escaping @Sendable () async -> Void = {}
     ) {
@@ -114,9 +126,13 @@ public final class ZoneTrackingService {
     /// Replace the active zone catalog (e.g. after a successful sync). Resets
     /// the detector state — a partial traversal across an old/new zone diff
     /// is meaningless, so we pretend the user just opened the app.
+    ///
+    /// Full-content comparison, not just IDs: the sync path is hash-gated
+    /// upstream, so by the time this is called the content *did* change —
+    /// a zone whose limit or centerline moved under a stable ID must still
+    /// reach the running detector and map.
     public func updateZones(_ newZones: [Zone]) {
-        let same = newZones.map(\.id) == zones.map(\.id)
-        guard !same else { return }
+        guard newZones != zones else { return }
         zones = newZones
         detector = ZoneDetector(zones: newZones)
         zoneState = .outside
@@ -137,7 +153,9 @@ public final class ZoneTrackingService {
     /// HomeScreen surfaces the resulting `permission` and offers Settings as
     /// the recovery path.
     public func start() async {
-        guard !isTracking else { return }
+        guard !isTracking, !isStarting else { return }
+        isStarting = true
+        defer { isStarting = false }
 
         let resolved = await ensureAlwaysAuthorization()
         permission = resolved
@@ -228,8 +246,9 @@ public final class ZoneTrackingService {
 
         // Fire-and-forget the Live Activity update — the sink throttles
         // internally so calling on every point is safe.
+        let limitKmh = Self.resolvedLimit(for: next, vehicleType: vehicleType)
         Task.detached { [zoneStateSink] in
-            await zoneStateSink(next, point.speed)
+            await zoneStateSink(next, point.speed, limitKmh)
         }
 
         // Adjust GPS cadence as we move toward / into / out of zones.
@@ -295,6 +314,14 @@ public final class ZoneTrackingService {
         }
     }
 
+    private static func resolvedLimit(for state: ZoneState, vehicleType: VehicleType) -> Int? {
+        switch state {
+        case .outside: return nil
+        case .inZone(let inZone): return vehicleType.limit(inZone.zone.speedLimits)
+        case .exiting(let exiting): return vehicleType.limit(exiting.zone.speedLimits)
+        }
+    }
+
     private static func stateName(_ s: ZoneState) -> String {
         switch s {
         case .outside: return "Outside"
@@ -314,8 +341,10 @@ public final class ZoneTrackingService {
     #if DEBUG
     /// QA-only entry point for injecting a synthetic GPS fix that flows
     /// through the production `LocationProviding` pipeline.
-    public func debugFeed(lat: Double, lng: Double, speedMps: Double, bearing: Double?) async {
-        await provider.injectDebugFix(lat: lat, lng: lng, speedMps: speedMps, bearing: bearing)
+    public func debugFeed(lat: Double, lng: Double, speedMps: Double, bearing: Double?,
+                          timestampMs: Int64? = nil) async {
+        await provider.injectDebugFix(lat: lat, lng: lng, speedMps: speedMps, bearing: bearing,
+                                      timestampMs: timestampMs)
     }
     #endif
 }

@@ -10,14 +10,14 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
 
       - name: Parse version from tag
         id: ver
@@ -42,9 +42,11 @@ jobs:
             EXPECTED_SHA=""
             echo "::notice::Using MAP_BUNDLE_URL override (no checksum check)"
           else
-            # The web host keeps only the mutable latest bundle; this workflow
-            # snapshots it into an immutable per-tag release asset further down.
-            URL="https://srednabg.com/assets/map-bundle.zip"
+            # The rolling map-bundle-latest release keeps only the mutable
+            # latest bundle (uploaded by web/fdroid/scripts/publish-map-bundle.sh);
+            # this workflow snapshots it into an immutable per-tag release
+            # asset further down.
+            URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/map-bundle-latest/map-bundle.zip"
             EXPECTED_SHA="$(awk '$0 !~ /^#/ && $2 == "map-bundle.zip" {print $1; exit}' "$CHECKSUMS" || true)"
             if [ -z "$EXPECTED_SHA" ]; then
               echo "::error::No SHA-256 for map-bundle.zip in $CHECKSUMS. Update it to the current map bundle's digest."
@@ -63,7 +65,7 @@ jobs:
           # Keep in sync with `requiredMapFiles` in android/app/build.gradle.kts.
           for f in style-light.json style-dark.json bulgaria.mbtiles; do
             if [ ! -f "backend/data/map-bundle/$f" ]; then
-              echo "::error::map-bundle.zip is missing $f. Regenerate with 'bash backend/scripts/build-map-bundle.sh' and re-upload."
+              echo "::error::map-bundle.zip is missing $f. Regenerate + republish with 'bash web/fdroid/scripts/publish-map-bundle.sh'."
               exit 1
             fi
           done

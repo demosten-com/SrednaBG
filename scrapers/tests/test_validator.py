@@ -10,7 +10,11 @@ import pytest
 from src.bgtoll_scraper import scrape as bgtoll_scrape
 from src.tolltracker_fetcher import scrape as tolltracker_scrape
 from src.validator import (
+    ZoneMatch,
+    _coords_close,
     _haversine,
+    _km_ranges_overlap,
+    _orient_to,
     _polyline_length_m,
     align_centerline_to_endpoints,
     assign_ids,
@@ -423,3 +427,281 @@ class TestAlignCenterlineToEndpoints:
         z = self._zone(centerline=[[42.0, 23.0]], start=[42.0, 23.0], end=[42.01, 23.0])
         out = align_centerline_to_endpoints(z)
         assert out.centerline == [[42.0, 23.0]]
+
+
+class TestOrientationReconciliation:
+    """merge_match must reorient secondary sources to the primary before
+    copying per-endpoint fields. Regression for the crossed-carriageway bug:
+    21 shipped sections paired TollTracker geometry/Latin names with the
+    opposite end's BG TOLL settlements and km markers (e.g. i5-05)."""
+
+    def _tt_southbound_i5(self) -> Zone:
+        # Казанлък (42.613, 25.435) -> Ягода (42.547, 25.559): southbound.
+        return _make_zone(
+            road="Път I-5",
+            direction="south",
+            start_settlement="Казанлък",
+            end_settlement="Ягода",
+            start_lat=42.613,
+            start_lng=25.435,
+            end_lat=42.547,
+            end_lng=25.559,
+            start_km=None,
+            end_km=None,
+            source="tolltracker",
+            car=90,
+            truck=80,
+            bus=80,
+        )
+
+    def _bg_reversed_row(self) -> Zone:
+        # Same physical carriageway, listed end-first (Ягода -> Казанлък),
+        # carrying the authoritative km markers. No GPS coords.
+        return _make_zone(
+            road="Път I-5",
+            direction="south",
+            start_settlement="Ягода",
+            end_settlement="Казанлък",
+            start_km="212+716",
+            end_km="199+527",
+            source="bgtoll",
+            car=90,
+            truck=80,
+            bus=80,
+        )
+
+    def test_reverse_matched_bg_fields_land_on_correct_ends(self):
+        tt = self._tt_southbound_i5()
+        bg = self._bg_reversed_row()
+        merged = merge_match(ZoneMatch(bgtoll=bg, tolltracker=tt, confidence=0.5))
+
+        # Coordinates come from TollTracker, settlements/km from BG TOLL —
+        # and they must describe the SAME end.
+        assert merged.start.lat == pytest.approx(42.613)
+        assert merged.start.settlement == "Казанлък"
+        assert merged.start.km_marker == "199+527"
+        assert merged.end.settlement == "Ягода"
+        assert merged.end.km_marker == "212+716"
+        assert merged.description == "Казанлък – Ягода"
+
+    def test_forward_matched_bg_unchanged(self):
+        tt = self._tt_southbound_i5()
+        bg = _make_zone(
+            road="Път I-5",
+            direction="south",
+            start_settlement="Казанлък",
+            end_settlement="Ягода",
+            start_km="199+527",
+            end_km="212+716",
+            source="bgtoll",
+            car=90,
+            truck=80,
+            bus=80,
+        )
+        merged = merge_match(ZoneMatch(bgtoll=bg, tolltracker=tt, confidence=0.5))
+        assert merged.start.settlement == "Казанлък"
+        assert merged.start.km_marker == "199+527"
+
+    def test_geometric_flip_for_coordinate_sources(self):
+        primary = self._tt_southbound_i5()
+        # KML drew the same carriageway in the opposite point order.
+        kml = _make_zone(
+            road="Път I-5",
+            direction="north",
+            start_settlement="Ягода",
+            end_settlement="Казанлък",
+            start_lat=42.547,
+            start_lng=25.559,
+            end_lat=42.613,
+            end_lng=25.435,
+            start_km=None,
+            end_km=None,
+            source="kml",
+            car=90,
+            truck=80,
+            bus=80,
+        )
+        oriented = _orient_to(kml, primary)
+        assert oriented.start.lat == pytest.approx(42.613)
+        assert oriented.start.settlement == "Казанлък"
+        assert oriented.end.settlement == "Ягода"
+        assert oriented.direction == "south"
+        # Centerline reversed to run with the primary.
+        assert oriented.centerline[0] == [42.613, 25.435]
+
+    def test_km_fallback_when_settlements_disagree(self):
+        # BG TOLL spells the settlements differently, so name matching is
+        # inconclusive — km ordering vs the road's km direction decides.
+        # I-5 km increases southward; primary is southbound, so km must
+        # increase start -> end. This row decreases -> reversed.
+        tt = self._tt_southbound_i5()
+        bg = _make_zone(
+            road="Път I-5",
+            direction="south",
+            start_settlement="с. Ягода (обл. Ст. Загора)",
+            end_settlement="гр. Казанлък",
+            start_km="212+716",
+            end_km="199+527",
+            source="bgtoll",
+            car=90,
+            truck=80,
+            bus=80,
+        )
+        merged = merge_match(ZoneMatch(bgtoll=bg, tolltracker=tt, confidence=0.3))
+        assert merged.start.km_marker == "199+527"
+        assert merged.end.km_marker == "212+716"
+
+
+class TestConsecutiveZoneMatching:
+    """Consecutive zones share a camera: zone A ends where zone B starts.
+    The matcher's weak signals must not pair a zone with its neighbor."""
+
+    def test_km_edge_touch_does_not_overlap(self):
+        a = _make_zone(start_km="100+000", end_km="110+000")
+        b = _make_zone(start_km="110+000", end_km="120+000")
+        assert not _km_ranges_overlap(a, b)
+
+    def test_km_small_overlap_does_not_count(self):
+        a = _make_zone(start_km="100+000", end_km="110+000")
+        b = _make_zone(start_km="108+000", end_km="120+000")  # 20% of shorter
+        assert not _km_ranges_overlap(a, b)
+
+    def test_km_same_range_overlaps(self):
+        a = _make_zone(start_km="100+000", end_km="110+000")
+        b = _make_zone(start_km="100+200", end_km="109+800")
+        assert _km_ranges_overlap(a, b)
+
+    def test_km_reversed_same_range_overlaps(self):
+        a = _make_zone(start_km="100+000", end_km="110+000")
+        b = _make_zone(start_km="110+000", end_km="100+000")
+        assert _km_ranges_overlap(a, b)
+
+    def test_coords_shared_camera_is_not_close(self):
+        # B starts exactly where A ends (shared camera) — single-endpoint
+        # coincidence must NOT count as the same zone.
+        a = _make_zone(start_lat=42.50, start_lng=23.70, end_lat=42.50, end_lng=23.80)
+        b = _make_zone(start_lat=42.50, start_lng=23.80, end_lat=42.50, end_lng=23.90)
+        assert not _coords_close(a, b)
+
+    def test_coords_same_zone_is_close(self):
+        a = _make_zone(start_lat=42.50, start_lng=23.70, end_lat=42.50, end_lng=23.80)
+        b = _make_zone(start_lat=42.501, start_lng=23.701, end_lat=42.501, end_lng=23.801)
+        assert _coords_close(a, b)
+
+    def test_coords_reversed_same_zone_is_close(self):
+        a = _make_zone(start_lat=42.50, start_lng=23.70, end_lat=42.50, end_lng=23.80)
+        b = _make_zone(start_lat=42.50, start_lng=23.80, end_lat=42.50, end_lng=23.70)
+        assert _coords_close(a, b)
+
+    def test_consecutive_zones_do_not_cross_pair(self):
+        # Two consecutive BG TOLL rows; TollTracker only has the SECOND
+        # section, with settlements spelled differently (no name signal).
+        # The remaining signals must not attach the TT zone to row A.
+        bg_a = _make_zone(
+            start_settlement="Камера1", end_settlement="Камера2",
+            start_km="100+000", end_km="110+000",
+        )
+        bg_b = _make_zone(
+            start_settlement="Камера2", end_settlement="Камера3",
+            start_km="110+000", end_km="120+000",
+        )
+        tt_b = _make_zone(
+            start_settlement="Kамера2-различно", end_settlement="Kамера3-различно",
+            start_km="110+000", end_km="120+000",
+            start_lat=42.50, start_lng=23.80, end_lat=42.50, end_lng=23.90,
+            source="tolltracker",
+        )
+        matches = match_zones([bg_a, bg_b], [tt_b], [])
+        for m in matches:
+            if m.bgtoll is bg_a:
+                assert m.tolltracker is None, "zone A stole its neighbor's data"
+            if m.tolltracker is tt_b:
+                assert m.bgtoll is not bg_a
+
+
+class TestValidateConsistencyChecks:
+    def _zone(self, **kw) -> Zone:
+        base = _make_zone(
+            start_lat=42.50, start_lng=23.70, end_lat=42.50, end_lng=23.90, **kw
+        )
+        return base
+
+    def test_translit_mismatch_warns(self):
+        z = self._zone().model_copy(update={"id": "trakiya-01-east"})
+        z = z.model_copy(update={
+            "start": z.start.model_copy(update={"settlement_latin": "Ihtiman"}),
+        })
+        _, warnings = validate([z])
+        assert any("Latin name" in w for w in warnings)
+
+    def test_translit_match_silent(self):
+        z = self._zone().model_copy(update={"id": "trakiya-01-east"})
+        z = z.model_copy(update={
+            "start": z.start.model_copy(update={"settlement_latin": "Vakarel"}),
+            "end": z.end.model_copy(update={"settlement_latin": "Ihtiman"}),
+        })
+        _, warnings = validate([z])
+        assert not any("Latin name" in w for w in warnings)
+
+    def test_translit_tolerates_qualifier_prefix(self):
+        z = self._zone(start_settlement="м/у 18 и п.в.Илиянци").model_copy(
+            update={"id": "trakiya-01-east"}
+        )
+        z = z.model_copy(update={
+            "start": z.start.model_copy(update={"settlement_latin": "Iliyantsi"}),
+            "description": f"{z.start.settlement} – {z.end.settlement}",
+        })
+        _, warnings = validate([z])
+        assert not any("Latin name" in w for w in warnings)
+
+    def test_km_direction_mismatch_warns(self):
+        # Тракия km increases eastward; an "east" zone with decreasing km
+        # is mislabeled (or its endpoints are crossed).
+        z = self._zone(start_km="43+448", end_km="24+288").model_copy(
+            update={"id": "trakiya-01-east"}
+        )
+        _, warnings = validate([z])
+        assert any("implies" in w and "km" in w for w in warnings)
+
+    def test_km_direction_consistent_silent(self):
+        z = self._zone().model_copy(update={"id": "trakiya-01-east"})
+        _, warnings = validate([z])
+        assert not any("implies" in w for w in warnings)
+
+    def test_description_mismatch_warns(self):
+        z = self._zone().model_copy(
+            update={"id": "trakiya-01-east", "description": "Ихтиман – Вакарел"}
+        )
+        _, warnings = validate([z])
+        assert any("description" in w for w in warnings)
+
+    def test_junction_gap_in_band_warns(self):
+        # B starts ~220 m past A's end on the same road+direction.
+        a = self._zone().model_copy(update={"id": "trakiya-01-east"})
+        b = _make_zone(
+            start_settlement="Ихтиман", end_settlement="Друго",
+            start_km="43+448", end_km="60+000",
+            start_lat=42.502, start_lng=23.90, end_lat=42.50, end_lng=23.99,
+        ).model_copy(update={"id": "trakiya-02-east"})
+        _, warnings = validate([a, b])
+        assert any("junction gap" in w for w in warnings)
+
+    def test_junction_coincident_silent(self):
+        a = self._zone().model_copy(update={"id": "trakiya-01-east"})
+        b = _make_zone(
+            start_settlement="Ихтиман", end_settlement="Друго",
+            start_km="43+448", end_km="60+000",
+            start_lat=42.50, start_lng=23.90, end_lat=42.50, end_lng=23.99,
+        ).model_copy(update={"id": "trakiya-02-east"})
+        _, warnings = validate([a, b])
+        assert not any("junction gap" in w for w in warnings)
+
+    def test_junction_distant_zones_silent(self):
+        a = self._zone().model_copy(update={"id": "trakiya-01-east"})
+        b = _make_zone(
+            start_settlement="Далечно", end_settlement="Друго",
+            start_km="100+000", end_km="120+000",
+            start_lat=42.50, start_lng=24.50, end_lat=42.50, end_lng=24.70,
+        ).model_copy(update={"id": "trakiya-03-east"})
+        _, warnings = validate([a, b])
+        assert not any("junction gap" in w for w in warnings)

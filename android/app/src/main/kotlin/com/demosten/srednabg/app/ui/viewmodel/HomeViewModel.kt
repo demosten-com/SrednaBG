@@ -16,6 +16,7 @@ import com.demosten.srednabg.app.data.ZoneRepository
 import com.demosten.srednabg.app.permissions.PermissionRepository
 import com.demosten.srednabg.app.permissions.PermissionState
 import com.demosten.srednabg.app.service.LocationTrackingService
+import com.demosten.srednabg.core.VehicleType
 import com.demosten.srednabg.core.ZoneState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -37,6 +38,12 @@ class HomeViewModel @Inject constructor(
 
     val debugMaxSpeedOverride: StateFlow<Int?> = settingsRepository.debugMaxSpeedOverride
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    // Driver's vehicle type — the in-zone badge and exit verdict must show the
+    // same limit the engine judges against, not the car default.
+    val vehicleType: StateFlow<VehicleType> = settingsRepository.vehicleType
+        .map(VehicleType::fromSetting)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), VehicleType.CAR)
 
     val zoneState: StateFlow<ZoneState> = LocationTrackingService.zoneState
 

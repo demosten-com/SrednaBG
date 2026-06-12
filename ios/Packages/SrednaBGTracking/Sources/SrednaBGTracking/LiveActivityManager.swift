@@ -90,14 +90,16 @@ public actor LiveActivityManager {
     }
 
     /// Push a content update for the current `ZoneState`. No-op if the activity
-    /// hasn't been started yet (i.e., before `sessionStart`).
-    public func update(state: ZoneState, currentSpeedKmh: Double?) async {
+    /// hasn't been started yet (i.e., before `sessionStart`). `limitKmh` is the
+    /// vehicle-type-resolved limit from `ZoneTrackingService` — the badge must
+    /// match the limit the engine judges against, not the car default.
+    public func update(state: ZoneState, currentSpeedKmh: Double?, limitKmh: Int?) async {
         guard activity != nil else { return }
         switch state {
         case .outside, .exiting:
             await pushOutsidePhase()
         case .inZone(let inZone):
-            let content = Self.contentState(from: inZone, currentSpeedKmh: currentSpeedKmh)
+            let content = Self.contentState(from: inZone, currentSpeedKmh: currentSpeedKmh, limitKmh: limitKmh)
             self.lastZoneContent = content
             await pushInZone(content: content)
         }
@@ -158,17 +160,20 @@ public actor LiveActivityManager {
     // MARK: - Pure projections (testable without ActivityKit runtime)
 
     /// Pure projection from `ZoneState.InZone` + the latest GPS speed to the
-    /// payload the widget renders.
+    /// payload the widget renders. `limitKmh` is the vehicle-type-resolved
+    /// limit; the car limit is only a fallback for a nil (shouldn't happen
+    /// in-zone, but the projection must stay total).
     public static func contentState(
         from inZone: ZoneState.InZone,
-        currentSpeedKmh: Double?
+        currentSpeedKmh: Double?,
+        limitKmh: Int?
     ) -> ZoneActivityAttributes.ContentState {
         ZoneActivityAttributes.ContentState(
             phase: .inZone,
             roadName: inZone.zone.road,
             avgSpeedKmh: roundedInt(inZone.avgSpeed),
             currentSpeedKmh: roundedInt(currentSpeedKmh),
-            speedLimitKmh: inZone.zone.speedLimits.car,
+            speedLimitKmh: limitKmh ?? inZone.zone.speedLimits.car,
             distanceTraveledM: max(0, Int(inZone.distanceTraveled.rounded())),
             zoneTotalM: max(1, inZone.zone.distanceM),
             distanceRemainingM: max(0, Int(inZone.distanceRemaining.rounded())),

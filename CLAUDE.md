@@ -28,7 +28,7 @@ Each subfolder owns its own `CLAUDE.md` with build commands, key files, and subf
 - `backend/` — Offline map-bundle builder (self-contained Planetiler JAR; no Docker) + local zone-data staging. See `backend/CLAUDE.md`.
 - `qa/` — End-to-end QA harness driving the emulator via adb. See `qa/CLAUDE.md`.
 - `ios/` — SwiftPM monorepo (Swift 6) + Xcode app shell. See `ios/CLAUDE.md`.
-- `web/` — Static marketing site for `srednabg.com` (download cards link App Store, Play Store, and F-Droid); same Namecheap host runs the scraper cron and serves `/api/*`. Also hosts the latest `/assets/map-bundle.zip` (the release workflow snapshots it per-tag onto the GitHub Release) and houses the F-Droid metadata source of truth in `web/fdroid/` (recipe now merged into `fdroiddata`). See `web/CLAUDE.md`.
+- `web/` — Static marketing site for `srednabg.com` (download cards link App Store, Play Store, and F-Droid); same Namecheap host runs the scraper cron and serves `/api/*`. Houses the F-Droid metadata source of truth in `web/fdroid/` (recipe now merged into `fdroiddata`); the latest map bundle lives on the rolling `map-bundle-latest` GitHub Release, not on the web host. See `web/CLAUDE.md`.
 
 ## Three-Tier Data Flow
 
@@ -53,7 +53,7 @@ Each subfolder owns its own `CLAUDE.md` with build commands, key files, and subf
 ## CI/CD
 
 - `.github/workflows/android-build.yml` — on push/PR: core tests, assemble debug APK, lint, upload APK artifact
-- `.github/workflows/android-release.yml` — on `v*.*.*` tag: signed release APK + `.sha256` published to a GitHub Release. Downloads the latest `srednabg.com/assets/map-bundle.zip`, verifies it against the single digest in `web/fdroid/map-bundle-checksums.txt`, and snapshots it onto the Release as an immutable `map-bundle-<tag>.zip` (+`.sha256`) — the durable build input F-Droid's prebuild fetches. The `MAP_BUNDLE_URL` secret is an optional override that skips the pin. See `android/CLAUDE.md` for the release tag → versionCode mapping.
+- `.github/workflows/android-release.yml` — on `v*.*.*` tag: signed release APK + `.sha256` published to a GitHub Release. Downloads the latest map bundle from the rolling `map-bundle-latest` GitHub Release, verifies it against the single digest in `web/fdroid/map-bundle-checksums.txt`, and snapshots it onto the Release as an immutable `map-bundle-<tag>.zip` (+`.sha256`) — the durable build input F-Droid's prebuild fetches. The `MAP_BUNDLE_URL` secret is an optional override that skips the pin. See `android/CLAUDE.md` for the release tag → versionCode mapping.
 - `.github/workflows/scraper.yml` — PR validation only (scrapers/** path filter) + manual trigger; production scheduling lives on the Namecheap cron (see `scrapers/CLAUDE.md` "Hosted deployment")
 
 Per-locale F-Droid release notes go in `web/fdroid/{en-US,bg}/changelogs/<versionCode>.txt`.

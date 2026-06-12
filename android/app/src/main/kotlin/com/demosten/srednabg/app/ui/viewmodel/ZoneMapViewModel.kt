@@ -15,6 +15,7 @@ import com.demosten.srednabg.core.GpsPoint
 import com.demosten.srednabg.core.MapTheme
 import com.demosten.srednabg.core.MapThemeMode
 import com.demosten.srednabg.core.MapThemeResolver
+import com.demosten.srednabg.core.VehicleType
 import com.demosten.srednabg.core.Zone
 import com.demosten.srednabg.core.ZoneState
 import com.demosten.srednabg.core.snapToZone
@@ -72,6 +73,12 @@ class ZoneMapViewModel @Inject constructor(
 
     val debugMaxSpeedOverride: StateFlow<Int?> = settingsRepository.debugMaxSpeedOverride
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    // Driver's vehicle type — the status chip's badge and exit verdict must show
+    // the same limit the engine judges against, not the car default.
+    val vehicleType: StateFlow<VehicleType> = settingsRepository.vehicleType
+        .map(VehicleType::fromSetting)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), VehicleType.CAR)
 
     /**
      * Effective map theme. Combines the user's mode (Auto/Light/Dark) with

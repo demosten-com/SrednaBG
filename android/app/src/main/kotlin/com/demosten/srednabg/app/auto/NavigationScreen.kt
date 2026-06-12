@@ -37,6 +37,7 @@ import com.demosten.srednabg.app.data.ZoneRepository
 import com.demosten.srednabg.app.service.LocationTrackingService
 import com.demosten.srednabg.app.ui.util.orDash
 import com.demosten.srednabg.core.GpsPoint
+import com.demosten.srednabg.core.VehicleType
 import com.demosten.srednabg.core.Zone
 import com.demosten.srednabg.core.ZoneState
 import com.demosten.srednabg.core.snapToZone
@@ -345,6 +346,13 @@ class NavigationScreen(carContext: CarContext) : Screen(carContext) {
         try {
             val safeArea = stableArea ?: visibleArea ?: Rect(0, 0, canvas.width, canvas.height)
             val activeZone = (currentZoneState as? ZoneState.InZone)?.zone
+            // The overlay also needs the limit while Exiting (verdict color),
+            // when activeZone — which drives the map highlight — is null.
+            val overlayZone = when (val state = currentZoneState) {
+                is ZoneState.InZone -> state.zone
+                is ZoneState.Exiting -> state.zone
+                is ZoneState.Outside -> null
+            }
             val displayPosition = snapToZone(currentPosition, currentZoneState)
 
             mapRenderer.draw(
@@ -362,7 +370,7 @@ class NavigationScreen(carContext: CarContext) : Screen(carContext) {
                 canvas = canvas,
                 stableArea = safeArea,
                 zoneState = currentZoneState,
-                speedLimit = activeZone?.let { getSpeedLimit(it) } ?: 0,
+                speedLimit = overlayZone?.let { getSpeedLimit(it) } ?: 0,
                 currentSpeedKmh = currentPosition?.speed,
                 labels = overlayLabels,
             )
@@ -378,11 +386,7 @@ class NavigationScreen(carContext: CarContext) : Screen(carContext) {
 
     private fun getSpeedLimit(zone: Zone): Int {
         val vehicleType = runBlocking { settingsRepository.vehicleType.first() }
-        return when (vehicleType) {
-            "truck" -> zone.speedLimits.truck
-            "bus" -> zone.speedLimits.bus
-            else -> zone.speedLimits.car
-        }
+        return VehicleType.fromSetting(vehicleType).limit(zone.speedLimits)
     }
 
     private fun buildMapActionStrip(): ActionStrip {

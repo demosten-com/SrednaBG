@@ -31,6 +31,7 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.demosten.srednabg.app.data.SettingsRepository
 import com.demosten.srednabg.app.ui.MainActivity
 import com.demosten.srednabg.app.ui.theme.SrednaBGTheme
+import com.demosten.srednabg.core.VehicleType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -72,7 +73,10 @@ class OverlayController(
                 SrednaBGTheme {
                     val debug by settingsRepository.debugMaxSpeedOverride
                         .collectAsStateWithLifecycle(initialValue = null)
+                    val vehicleSetting by settingsRepository.vehicleType
+                        .collectAsStateWithLifecycle(initialValue = SettingsRepository.DEFAULT_VEHICLE_TYPE)
                     OverlayContent(
+                        vehicleType = VehicleType.fromSetting(vehicleSetting),
                         debugMaxSpeedOverride = debug,
                         modifier = Modifier
                             .pointerInput(Unit) {

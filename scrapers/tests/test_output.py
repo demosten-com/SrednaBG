@@ -9,6 +9,8 @@ import json
 from datetime import UTC, datetime
 from unittest.mock import patch
 
+import pytest
+
 from src import output, validator
 from src.bgtoll_scraper import scrape as bgtoll_scrape
 from src.tolltracker_fetcher import scrape as tolltracker_scrape
@@ -173,3 +175,58 @@ class TestPipelineHashStability:
 
         # The hash served to clients is stable across dates.
         assert version1["hash"] == version2["hash"]
+
+
+class TestPublishGuard:
+    """The pipeline must refuse to overwrite good data with a collapsed
+    scrape (e.g. every upstream source broke and returned [])."""
+
+    def _db(self, count: int, roads: list[str] | None = None) -> ZoneDatabase:
+        roads = roads or ["АМ Тракия", "АМ Хемус", "АМ Струма", "АМ Марица"]
+        zones = [
+            _sample_zone(f"test-{i:02d}-east").model_copy(
+                update={"road": roads[i % len(roads)]}
+            )
+            for i in range(count)
+        ]
+        return ZoneDatabase(version="v1", zones=zones).with_hash()
+
+    def test_healthy_db_passes(self):
+        assert output.publish_guard_errors(self._db(72)) == []
+
+    def test_too_few_zones_fails(self):
+        errors = output.publish_guard_errors(self._db(3))
+        assert any("minimum" in e for e in errors)
+
+    def test_empty_db_fails(self):
+        errors = output.publish_guard_errors(
+            ZoneDatabase(version="v1", zones=[]).with_hash()
+        )
+        assert errors
+
+    def test_missing_motorway_fails(self):
+        db = self._db(72, roads=["АМ Тракия", "АМ Хемус", "АМ Струма"])
+        errors = output.publish_guard_errors(db)
+        assert any("АМ Марица" in e for e in errors)
+
+    def test_count_drop_vs_previous_fails(self):
+        errors = output.publish_guard_errors(self._db(50), prev_count=100)
+        assert any("dropped" in e for e in errors)
+
+    def test_small_count_change_vs_previous_passes(self):
+        assert output.publish_guard_errors(self._db(70), prev_count=72) == []
+
+    def test_main_exits_nonzero_and_leaves_files(self, tmp_path, monkeypatch):
+        # Seed a healthy target dir, then make the pipeline collapse.
+        healthy = self._db(72)
+        output.write_target_dir(healthy, tmp_path)
+        zones_before = (tmp_path / "zones.json").read_text()
+
+        monkeypatch.setattr(output, "run_pipeline", lambda: self._db(2))
+        monkeypatch.setattr(
+            "sys.argv", ["src.output", "--target-dir", str(tmp_path)]
+        )
+        with pytest.raises(SystemExit) as exc:
+            output.main()
+        assert exc.value.code == 1
+        assert (tmp_path / "zones.json").read_text() == zones_before

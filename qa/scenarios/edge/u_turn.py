@@ -27,14 +27,17 @@ from ._helpers import base_plan, scenario_setup, scenario_teardown
 
 
 def build() -> Scenario:
-    fwd = base_plan("trakiya-01-east", speed_kmh=110, exit_km=2).compressed(2.0)
+    # Splice on the UNCOMPRESSED plan and compress LAST — rebuilding
+    # TrackPoints from a compressed plan drops `sim_offset_ms` and doubles
+    # the fed speed on the return leg (see wrong_direction.py).
+    fwd = base_plan("trakiya-01-east", speed_kmh=110, exit_km=2)
     # Reverse: start from after the original exit, traverse backward.
     last_ms = fwd.duration_ms
     rev_pts = [
         TrackPoint(p.lat, p.lng, last_ms + 1000 + (last_ms - p.t_offset_ms))
         for p in reversed(fwd.points)
     ]
-    plan = DrivePlan(name=f"{fwd.name}-uturn", points=fwd.points + rev_pts)
+    plan = DrivePlan(name=f"{fwd.name}-uturn", points=fwd.points + rev_pts).compressed(2.0)
 
     def setup(ctx: RunContext) -> None:
         scenario_setup(ctx, settings_id="S1")
@@ -50,7 +53,7 @@ def build() -> Scenario:
                 (ZoneStateChange, lambda e: e.new == "InZone"),
                 (ZoneStateChange, lambda e: e.new == "Exiting"),
             ],
-            within_s=fwd.duration_ms / 1000 + 30,
+            within_s=plan.duration_ms / 1000 + 30,
             description="first east-bound entry+exit",
         )
 

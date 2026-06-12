@@ -7,7 +7,11 @@
 # Update zone data from scrapers output.
 #
 # Stages scrapers/data/zones.json into backend/data/ (local inspection copy)
-# and generates a matching version.json metadata file.
+# and generates a matching version.json metadata file. The metadata follows the
+# production convention (scrapers/src/output.py write_target_dir): `version`
+# and `hash` are the values embedded in zones.json — the canonical content hash
+# that excludes volatile per-zone fields — not a raw digest of the file bytes.
+# An existing map_hash (patched in by build-map-bundle.sh) is preserved.
 #
 # Usage:
 #   ./update-zones.sh [path/to/zones.json]
@@ -36,19 +40,30 @@ mkdir -p "$DATA_DIR"
 cp "$ZONES_SOURCE" "$ZONES_DEST"
 echo "Copied zones.json to $ZONES_DEST"
 
-# Generate version.json
-VERSION=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-HASH=$(shasum -a 256 "$ZONES_DEST" | cut -d' ' -f1)
-ZONE_COUNT=$(python3 -c "import json; print(len(json.load(open('$ZONES_DEST'))['zones']))" 2>/dev/null || echo "0")
+# Generate version.json from the data itself (fails loudly on malformed JSON).
+python3 - "$ZONES_DEST" "$VERSION_DEST" << 'PY'
+import json
+import sys
 
-cat > "$VERSION_DEST" << EOF
-{
-  "version": "$VERSION",
-  "hash": "sha256:$HASH",
-  "min_app_version": "1.0.0",
-  "zone_count": $ZONE_COUNT
+zones_path, version_path = sys.argv[1], sys.argv[2]
+with open(zones_path, encoding="utf-8") as f:
+    db = json.load(f)
+try:
+    with open(version_path, encoding="utf-8") as f:
+        prev_map_hash = json.load(f).get("map_hash")
+except (OSError, ValueError):
+    prev_map_hash = None
+meta = {
+    "version": db["version"],
+    "hash": db["hash"],
+    "min_app_version": "1.0.0",
+    "zone_count": len(db["zones"]),
+    "map_hash": prev_map_hash,
 }
-EOF
+with open(version_path, "w", encoding="utf-8") as f:
+    json.dump(meta, f, indent=2)
+    f.write("\n")
+PY
 
 echo "Generated version.json:"
 cat "$VERSION_DEST"

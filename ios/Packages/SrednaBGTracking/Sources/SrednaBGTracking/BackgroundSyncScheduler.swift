@@ -5,6 +5,7 @@
 
 #if os(iOS)
 import Foundation
+import os
 @preconcurrency import BackgroundTasks
 
 /// Wraps `BGTaskScheduler` for the two periodic syncs:
@@ -64,13 +65,25 @@ public enum BackgroundSyncScheduler {
         work: @escaping @Sendable () async -> Void,
         reschedule: @escaping @Sendable () -> Void
     ) {
+        // `setTaskCompleted` must be called exactly once: the job's success
+        // path races the expiration handler when iOS expires us just as
+        // `work()` finishes. Whoever flips the flag first completes the task.
+        let completed = OSAllocatedUnfairLock(initialState: false)
+        let completeOnce: @Sendable (Bool) -> Void = { success in
+            let isFirst = completed.withLock { done in
+                if done { return false }
+                done = true
+                return true
+            }
+            if isFirst { task.setTaskCompleted(success: success) }
+        }
         let job = Task {
             await work()
-            task.setTaskCompleted(success: true)
+            completeOnce(true)
         }
         task.expirationHandler = {
             job.cancel()
-            task.setTaskCompleted(success: false)
+            completeOnce(false)
         }
         // Always re-arm before returning — otherwise iOS won't fire us again.
         reschedule()

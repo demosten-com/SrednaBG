@@ -13,6 +13,7 @@ import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import com.demosten.srednabg.app.data.SettingsRepository
+import com.demosten.srednabg.core.VehicleType
 import com.demosten.srednabg.core.ZoneState
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -65,6 +66,10 @@ class AudioAlertManager @Inject constructor(
         if (tts != null) return
         tts = TextToSpeech(context) { status ->
             if (status == TextToSpeech.SUCCESS) {
+                // shutdown() may have raced this async callback; a dead engine
+                // must not be marked initialized or speak() would request audio
+                // focus that no utterance callback ever releases.
+                if (tts == null) return@TextToSpeech
                 isInitialized = true
                 tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                     override fun onStart(utteranceId: String?) {}
@@ -190,11 +195,8 @@ class AudioAlertManager @Inject constructor(
     }
 
     private suspend fun getSpeedLimit(state: ZoneState.InZone): Int {
-        return when (settingsRepository.vehicleType.first()) {
-            "truck" -> state.zone.speedLimits.truck
-            "bus" -> state.zone.speedLimits.bus
-            else -> state.zone.speedLimits.car
-        }
+        val vehicleType = VehicleType.fromSetting(settingsRepository.vehicleType.first())
+        return vehicleType.limit(state.zone.speedLimits)
     }
 
     private suspend fun getEntryMessage(road: String, limit: Int): String {
@@ -248,7 +250,13 @@ class AudioAlertManager @Inject constructor(
         // QUEUE_ADD appends, so add to it. The shared utterance id is fine — the
         // listener counts onDone/onError callbacks, not ids.
         pendingUtterances = if (queueMode == TextToSpeech.QUEUE_FLUSH) 1 else pendingUtterances + 1
-        tts?.speak(text, queueMode, null, "srednabg_alert")
+        val result = tts?.speak(text, queueMode, null, "srednabg_alert")
+        if (result != TextToSpeech.SUCCESS) {
+            // A rejected enqueue never reaches the utterance listener, so undo
+            // its count here or the audio focus stays held (other apps ducked).
+            Log.w(TAG, "speak: enqueue failed (result=$result)")
+            onUtteranceFinished()
+        }
     }
 
     private fun onUtteranceFinished() {

@@ -25,10 +25,11 @@ from __future__ import annotations
 import queue
 import subprocess
 import threading
+from collections import Counter
 from dataclasses import dataclass, field
 from typing import Iterable, Optional
 
-from .events import Anr, Crash, Event
+from .events import Anr, Crash, Event, UnparsedLog
 
 
 @dataclass
@@ -48,6 +49,19 @@ class LogObserver:
     recent_lines: list[str] = field(default_factory=list)
     max_recent: int = 400
     _stop: bool = False
+
+    # Suite-lifetime parse bookkeeping, read by the parser self-test scenario.
+    # Unlike `queue`/`recent_lines`, these survive `clear()` — the self-test
+    # runs last in the suite and judges the whole run.
+    type_counts: Counter = field(default_factory=Counter)
+    unparsed_samples: list[str] = field(default_factory=list)
+    max_unparsed_samples: int = 50
+
+    # "FATAL EXCEPTION" and the line naming the crashing process arrive on
+    # separate logcat lines; when the marker is seen without a package id,
+    # scan this many following lines for it before giving up.
+    _crash_scan_left: int = 0
+    _crash_head: str = ""
 
     # Subclasses MUST set these on construction.
     package_id: str = ""
@@ -93,12 +107,19 @@ class LogObserver:
         for raw in self.proc.stdout:
             if self._stop:
                 break
-            raw = raw.rstrip("\n")
-            self._record_recent(raw)
-            self._maybe_emit_crash(raw)
-            ev = self._parse(raw)
-            if ev:
-                self.queue.put(ev)
+            self._handle_line(raw.rstrip("\n"))
+
+    def _handle_line(self, raw: str) -> None:
+        """Record + parse one raw log line. Split out of `_pump` so the
+        per-line behavior is testable without a subprocess."""
+        self._record_recent(raw)
+        self._maybe_emit_crash(raw)
+        ev = self._parse(raw)
+        if ev:
+            self.type_counts[type(ev).__name__] += 1
+            if isinstance(ev, UnparsedLog) and len(self.unparsed_samples) < self.max_unparsed_samples:
+                self.unparsed_samples.append(raw)
+            self.queue.put(ev)
 
     def _record_recent(self, raw: str) -> None:
         self.recent_lines.append(raw)
@@ -108,12 +129,28 @@ class LogObserver:
     def _maybe_emit_crash(self, raw: str) -> None:
         # Android: "FATAL EXCEPTION", "ANR in <package>"
         # iOS: simctl log emits "fault" predicate lines containing the bundle id
-        if "FATAL EXCEPTION" in raw and self.package_id in raw:
-            from .parsers import _now_ms
-            self.queue.put(Crash(monotonic_ms=_now_ms(), raw=raw,
-                                 process=self.package_id, stack_head=raw))
-        elif "ANR in " in raw and self.package_id in raw:
-            from .parsers import _now_ms
+        #
+        # logcat splits a Java crash across lines — "FATAL EXCEPTION: main"
+        # first, "Process: <package>, PID: …" next — so the marker line alone
+        # never carries the package id. Remember the marker and scan the next
+        # few lines for our package before emitting.
+        from .parsers import _now_ms
+        if "FATAL EXCEPTION" in raw:
+            if self.package_id in raw:
+                self.queue.put(Crash(monotonic_ms=_now_ms(), raw=raw,
+                                     process=self.package_id, stack_head=raw))
+            else:
+                self._crash_head = raw
+                self._crash_scan_left = 6
+            return
+        if self._crash_scan_left > 0:
+            self._crash_scan_left -= 1
+            if self.package_id in raw:
+                self._crash_scan_left = 0
+                self.queue.put(Crash(monotonic_ms=_now_ms(), raw=f"{self._crash_head}\n{raw}",
+                                     process=self.package_id, stack_head=self._crash_head))
+                return
+        if "ANR in " in raw and self.package_id in raw:
             self.queue.put(Anr(monotonic_ms=_now_ms(), raw=raw,
                                process=self.package_id, reason=raw))
 
@@ -136,7 +173,11 @@ class LogObserver:
                 return
 
     def clear(self) -> None:
-        """Discard buffered events and recent lines. Use before a scenario."""
+        """Discard buffered events and recent lines. Use before a scenario.
+
+        Deliberately does NOT reset `type_counts` / `unparsed_samples` —
+        those accumulate for the whole suite so the parser self-test
+        (last scenario of the smoke suite) can judge the entire run."""
         list(self.drain())
         self.recent_lines.clear()
 

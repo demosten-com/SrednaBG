@@ -38,11 +38,11 @@ import com.demosten.srednabg.core.bearingBetween
 import com.demosten.srednabg.core.haversineDistance
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
@@ -325,7 +325,7 @@ class LocationTrackingService : LifecycleService() {
             Log.d(TAG, "ensureLoaded done; collecting zones")
             var firstInit = true
             zoneRepository.zones
-                .distinctUntilChangedBy { zones -> zones.map { it.id }.toSet() }
+                .distinctZoneCatalog()
                 .collect { zones ->
                     Log.d(TAG, "zones changed (n=${zones.size}); ${if (firstInit) "initializing" else "re-initializing"} detector")
                     initializeDetector(zones)
@@ -435,3 +435,11 @@ class LocationTrackingService : LifecycleService() {
             .build()
     }
 }
+
+/**
+ * Gate for detector re-initialization on zone-catalog updates. Full-content
+ * comparison, not just IDs: a zone whose limit or centerline moved under a
+ * stable ID must still reach the running detector — parity with iOS
+ * `ZoneTrackingService.updateZones`.
+ */
+internal fun Flow<List<Zone>>.distinctZoneCatalog(): Flow<List<Zone>> = distinctUntilChanged()

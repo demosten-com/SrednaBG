@@ -20,7 +20,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from src import bgtoll_scraper, kml_scraper, osm_overpass, tolltracker_fetcher
-from src.validator import align_centerline_to_endpoints, merge_all, normalize_road
+from src.validator import (
+    REQUIRED_MOTORWAYS,
+    align_centerline_to_endpoints,
+    merge_all,
+    normalize_road,
+)
 from src.zone_schema import ZoneDatabase
 
 logger = logging.getLogger(__name__)
@@ -28,6 +33,14 @@ logger = logging.getLogger(__name__)
 DEFAULT_OUTPUT = Path(__file__).parent.parent / "data" / "zones.json"
 SNAPSHOT_RETENTION = 26
 MIN_APP_VERSION = "1.0.0"
+
+# Publish guard: refuse to overwrite good data with a collapsed scrape. If an
+# upstream source breaks (site redesign, payload format change), its scraper
+# returns [] rather than raising — without these floors the pipeline would
+# publish a near-empty zones.json to the live /api/zones and every client
+# would happily sync it.
+MIN_PUBLISH_ZONES = 50
+MIN_PREV_RATIO = 0.7
 
 
 def run_pipeline() -> ZoneDatabase:
@@ -75,13 +88,42 @@ def write_output(db: ZoneDatabase, path: Path = DEFAULT_OUTPUT) -> None:
     logger.info("Wrote %d zones to %s", len(db.zones), path)
 
 
-def _read_prev_hash(version_path: Path) -> str:
+def _read_version_meta(version_path: Path) -> dict:
     if not version_path.exists():
-        return ""
+        return {}
     try:
-        return json.loads(version_path.read_text(encoding="utf-8")).get("hash", "")
+        meta = json.loads(version_path.read_text(encoding="utf-8"))
+        return meta if isinstance(meta, dict) else {}
     except (OSError, ValueError):
-        return ""
+        return {}
+
+
+def _read_prev_hash(version_path: Path) -> str:
+    return _read_version_meta(version_path).get("hash", "")
+
+
+def publish_guard_errors(db: ZoneDatabase, prev_count: int | None = None) -> list[str]:
+    """Reasons ``db`` must NOT be published, or an empty list if it may be.
+
+    ``prev_count`` is the zone count currently being served (from
+    version.json), when known.
+    """
+    errors: list[str] = []
+    count = len(db.zones)
+    if count < MIN_PUBLISH_ZONES:
+        errors.append(
+            f"only {count} zones scraped (minimum {MIN_PUBLISH_ZONES}) — "
+            f"an upstream source has likely broken"
+        )
+    roads = {normalize_road(z.road) for z in db.zones}
+    for motorway in sorted(REQUIRED_MOTORWAYS - roads):
+        errors.append(f"no zones for {motorway}")
+    if prev_count and count < prev_count * MIN_PREV_RATIO:
+        errors.append(
+            f"zone count dropped {prev_count} -> {count} "
+            f"(more than {int((1 - MIN_PREV_RATIO) * 100)}%)"
+        )
+    return errors
 
 
 def write_target_dir(db: ZoneDatabase, dir_: Path) -> str:
@@ -197,6 +239,21 @@ def main() -> None:
 
     start = time.monotonic()
     db = run_pipeline()
+
+    prev_count = None
+    if args.target_dir is not None:
+        prev_count = _read_version_meta(args.target_dir / "version.json").get(
+            "zone_count"
+        )
+    guard_errors = publish_guard_errors(db, prev_count)
+    if guard_errors:
+        for err in guard_errors:
+            logger.error("Publish guard: %s", err)
+        logger.error(
+            "Refusing to write output — existing data left untouched"
+        )
+        sys.exit(1)
+
     if args.target_dir is not None:
         prev_hash = write_target_dir(db, args.target_dir)
     else:

@@ -164,7 +164,8 @@ public struct HomeScreen: View {
             Spacer()
 
             HStack {
-                infoItem(label: L10n.speedLimit, value: String(inZone.zone.speedLimits.car))
+                infoItem(label: L10n.speedLimit,
+                         value: String(settings.vehicleType.limit(inZone.zone.speedLimits)))
                 Spacer()
                 infoItem(label: L10n.maxForRemainder,
                          value: String(settings.debugMaxSpeedOverride ?? Int(inZone.speedStatus.maxSpeedForRemainder)))
@@ -184,7 +185,10 @@ public struct HomeScreen: View {
     }
 
     private func exitingCard(_ exiting: ZoneState.Exiting) -> some View {
-        let isOver = (exiting.finalAvgSpeed ?? 0) > Double(exiting.zone.speedLimits.car)
+        // Same vehicle-resolved limit the engine judged against in-zone — the
+        // exit verdict must not flip back to the car limit.
+        let limit = settings.vehicleType.limit(exiting.zone.speedLimits)
+        let isOver = (exiting.finalAvgSpeed ?? 0) > Double(limit)
         let color: Color = isOver ? Theme.statusRed : Theme.statusGreen
         return VStack(spacing: 12) {
             Text(String(format: L10n.statusExiting, exiting.zone.road))

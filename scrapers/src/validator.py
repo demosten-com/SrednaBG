@@ -15,53 +15,22 @@ Merging priority per field:
 """
 
 import logging
-import math
 import re
 import unicodedata
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
+from src.geo import haversine_m as _haversine
+from src.geo import polyline_length_m as _polyline_length_m
+from src.roads import (
+    ROAD_DIRECTIONS,
+    normalize_road,
+    opposite_direction,
+    road_slug,
+)
 from src.zone_schema import Zone, ZoneEndpoint
 
 logger = logging.getLogger(__name__)
-
-# Road name normalization across sources
-ROAD_NAME_ALIASES: dict[str, str] = {
-    'АМ "Тракия"': "АМ Тракия",
-    "АМ Тракия": "АМ Тракия",
-    'АМ "Хемус"': "АМ Хемус",
-    "АМ Хемус": "АМ Хемус",
-    'АМ "Струма"': "АМ Струма",
-    "АМ Струма": "АМ Струма",
-    'АМ "Марица"': "АМ Марица",
-    "АМ Марица": "АМ Марица",
-    'АМ "Европа"': "АМ Европа",
-    "АМ Европа": "АМ Европа",
-    'АМ "Европа" (Северна скоростна тангента)': "АМ Европа",
-    "Път I-1": "Път I-1",
-    "Път I-2": "Път I-2",
-    "Път I-3": "Път I-3",
-    "Път I-4": "Път I-4",
-    "Път I-5": "Път I-5",
-    "Път I-6": "Път I-6",
-    "Път II-55": "Път II-55",
-    "I-1": "Път I-1",
-    "I-2": "Път I-2",
-    "I-3": "Път I-3",
-    "I-4": "Път I-4",
-    "I-5": "Път I-5",
-    "I-6": "Път I-6",
-    "II-55": "Път II-55",
-}
-
-# Road slug for ID generation
-ROAD_SLUGS: dict[str, str] = {
-    "АМ Тракия": "trakiya",
-    "АМ Хемус": "hemus",
-    "АМ Струма": "struma",
-    "АМ Марица": "maritsa",
-    "АМ Европа": "europa",
-}
 
 REQUIRED_MOTORWAYS = {"АМ Тракия", "АМ Хемус", "АМ Струма", "АМ Марица"}
 
@@ -76,33 +45,6 @@ class ZoneMatch:
     kml: Zone | None = None
     confidence: float = 0.0
     match_method: str = ""
-
-
-def normalize_road(name: str) -> str:
-    """Normalize a road name to canonical form."""
-    name = name.strip()
-    if name in ROAD_NAME_ALIASES:
-        return ROAD_NAME_ALIASES[name]
-    # Strip parenthetical suffixes and try again
-    stripped = re.sub(r"\s*\(.*\)\s*$", "", name).strip()
-    if stripped != name and stripped in ROAD_NAME_ALIASES:
-        return ROAD_NAME_ALIASES[stripped]
-    # Handle bare national road patterns
-    match = re.match(r"^(I{1,3})-(\d+)$", name)
-    if match:
-        return f"Път {name}"
-    return name
-
-
-def road_slug(canonical: str) -> str:
-    """Convert canonical road name to slug for zone IDs."""
-    if canonical in ROAD_SLUGS:
-        return ROAD_SLUGS[canonical]
-    match = re.match(r"Път\s+(I{1,3})-(\d+)", canonical)
-    if match:
-        prefix = match.group(1).lower()
-        return f"{prefix}{match.group(2)}"
-    return re.sub(r"[^a-z0-9]", "", canonical.lower())
 
 
 def _normalize_settlement(name: str | None) -> str:
@@ -123,19 +65,6 @@ def _normalize_settlement(name: str | None) -> str:
     return text
 
 
-def _haversine(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
-    """Haversine distance in meters between two points."""
-    R = 6371000  # Earth radius in meters
-    lat1_r, lat2_r = math.radians(lat1), math.radians(lat2)
-    dlat = math.radians(lat2 - lat1)
-    dlng = math.radians(lng2 - lng1)
-    a = (
-        math.sin(dlat / 2) ** 2
-        + math.cos(lat1_r) * math.cos(lat2_r) * math.sin(dlng / 2) ** 2
-    )
-    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-
-
 def _parse_km(km_str: str | None) -> float | None:
     """Parse km marker string to float km value."""
     if not km_str:
@@ -147,9 +76,15 @@ def _parse_km(km_str: str | None) -> float | None:
 
 
 def _km_ranges_overlap(
-    zone_a: Zone, zone_b: Zone, tolerance_km: float = 2.0
+    zone_a: Zone, zone_b: Zone, min_overlap_ratio: float = 0.5
 ) -> bool:
-    """Check if two zones' km marker ranges overlap within tolerance."""
+    """Check if two zones' km marker ranges substantially overlap.
+
+    Requires the overlap to cover at least ``min_overlap_ratio`` of the
+    shorter range. Consecutive zones share a camera, so their km ranges
+    *touch* — an edge-touch (or near-touch) must not count as a match or
+    a zone can claim its neighbor's data when stronger signals are absent.
+    """
     a_start = _parse_km(zone_a.start.km_marker)
     a_end = _parse_km(zone_a.end.km_marker)
     b_start = _parse_km(zone_b.start.km_marker)
@@ -161,7 +96,11 @@ def _km_ranges_overlap(
     a_min, a_max = min(a_start, a_end), max(a_start, a_end)
     b_min, b_max = min(b_start, b_end), max(b_start, b_end)
 
-    return a_min <= b_max + tolerance_km and b_min <= a_max + tolerance_km
+    overlap = min(a_max, b_max) - max(a_min, b_min)
+    shorter = min(a_max - a_min, b_max - b_min)
+    if shorter <= 0:
+        return False
+    return overlap >= min_overlap_ratio * shorter
 
 
 def _settlements_match(zone_a: Zone, zone_b: Zone) -> bool:
@@ -186,21 +125,32 @@ def _settlements_match(zone_a: Zone, zone_b: Zone) -> bool:
 
 
 def _coords_close(zone_a: Zone, zone_b: Zone, threshold_m: float = 2000) -> bool:
-    """Check if two zones' endpoints are within threshold meters."""
+    """Check if the zones' endpoint pairs coincide within threshold meters.
+
+    Both endpoints must match, in either orientation. A single-endpoint
+    check would also accept the *neighboring* zone at a shared camera.
+    """
     if (zone_a.start.lat == 0 and zone_a.start.lng == 0) or (
         zone_b.start.lat == 0 and zone_b.start.lng == 0
     ):
         return False
 
-    # Check if start points match (in either order)
-    d_ss = _haversine(
-        zone_a.start.lat, zone_a.start.lng, zone_b.start.lat, zone_b.start.lng
+    fwd = max(
+        _haversine(
+            zone_a.start.lat, zone_a.start.lng, zone_b.start.lat, zone_b.start.lng
+        ),
+        _haversine(zone_a.end.lat, zone_a.end.lng, zone_b.end.lat, zone_b.end.lng),
     )
-    d_se = _haversine(
-        zone_a.start.lat, zone_a.start.lng, zone_b.end.lat, zone_b.end.lng
+    rev = max(
+        _haversine(
+            zone_a.start.lat, zone_a.start.lng, zone_b.end.lat, zone_b.end.lng
+        ),
+        _haversine(
+            zone_a.end.lat, zone_a.end.lng, zone_b.start.lat, zone_b.start.lng
+        ),
     )
 
-    return d_ss < threshold_m or d_se < threshold_m
+    return min(fwd, rev) < threshold_m
 
 
 def match_zones(
@@ -352,6 +302,76 @@ def match_zones(
     return matches
 
 
+def _flip_zone(zone: Zone) -> Zone:
+    """Return a copy of ``zone`` traversed in the opposite direction."""
+    update: dict = {
+        "start": zone.end,
+        "end": zone.start,
+        "centerline": [list(p) for p in reversed(zone.centerline)],
+        "direction": opposite_direction(zone.direction),
+    }
+    if zone.end.settlement and zone.start.settlement:
+        update["description"] = f"{zone.end.settlement} – {zone.start.settlement}"
+    return zone.model_copy(update=update)
+
+
+def _orientation(src: Zone, primary: Zone) -> int:
+    """How ``src`` is oriented relative to ``primary``.
+
+    Returns +1 (same direction), -1 (reversed), or 0 (undecidable).
+    Tries, in order: endpoint geometry, settlement names, km-marker order
+    vs the road's known km direction.
+    """
+    # Geometric: compare summed endpoint distances for both pairings.
+    if src.start.lat != 0 and primary.start.lat != 0:
+        fwd = _haversine(
+            src.start.lat, src.start.lng, primary.start.lat, primary.start.lng
+        ) + _haversine(src.end.lat, src.end.lng, primary.end.lat, primary.end.lng)
+        rev = _haversine(
+            src.start.lat, src.start.lng, primary.end.lat, primary.end.lng
+        ) + _haversine(src.end.lat, src.end.lng, primary.start.lat, primary.start.lng)
+        return 1 if fwd <= rev else -1
+
+    # Settlement names (works for BG TOLL, which has no coordinates).
+    s_start = _normalize_settlement(src.start.settlement)
+    s_end = _normalize_settlement(src.end.settlement)
+    p_start = _normalize_settlement(primary.start.settlement)
+    p_end = _normalize_settlement(primary.end.settlement)
+    if s_start and p_start:
+        if s_start == p_start or (s_end and p_end and s_end == p_end):
+            return 1
+        if s_start == p_end or (s_end and p_start and s_end == p_start):
+            return -1
+
+    # km-marker order vs the road's known km direction for primary.direction.
+    start_km = _parse_km(src.start.km_marker)
+    end_km = _parse_km(src.end.km_marker)
+    directions = ROAD_DIRECTIONS.get(normalize_road(primary.road))
+    if start_km is not None and end_km is not None and directions is not None:
+        if primary.direction in directions:
+            expected_increasing = primary.direction == directions[0]
+            src_increasing = end_km > start_km
+            return 1 if src_increasing == expected_increasing else -1
+
+    return 0
+
+
+def _orient_to(src: Zone | None, primary: Zone) -> Zone | None:
+    """Reorient ``src`` so its start/end correspond to ``primary``'s.
+
+    Sources may describe the same physical section in opposite endpoint
+    order (the matcher accepts reversed pairs). Field-by-field merging is
+    only safe once every source agrees on which end is the start — without
+    this, a reverse-matched pair crosses settlements/km markers onto the
+    opposite carriageway's geometry.
+    """
+    if src is None or src is primary:
+        return src
+    if _orientation(src, primary) == -1:
+        return _flip_zone(src)
+    return src
+
+
 def merge_match(m: ZoneMatch) -> Zone:
     """Merge a ZoneMatch into a single Zone using field priority rules.
 
@@ -373,6 +393,14 @@ def merge_match(m: ZoneMatch) -> Zone:
     primary = tt or kml or bg or osm
     if primary is None:
         raise ValueError("ZoneMatch has no zones")
+
+    # Reorient every secondary source to the primary's travel direction, so
+    # per-endpoint fields (settlements, km markers, Latin names) merged from
+    # different sources land on the same physical end.
+    bg = _orient_to(bg, primary)
+    tt = _orient_to(tt, primary)
+    kml = _orient_to(kml, primary)
+    osm = _orient_to(osm, primary)
 
     # Road name: prefer BG TOLL canonical
     road = normalize_road((bg or tt or kml or osm).road)
@@ -571,15 +599,6 @@ GEOMETRY_SNAP_EPS_M = 5.0
 GEOMETRY_WARN_GAP_M = 150.0
 
 
-def _polyline_length_m(centerline: list[list[float]]) -> float:
-    """Total arc length (m) of a [[lat, lng], ...] polyline."""
-    return sum(
-        _haversine(centerline[i - 1][0], centerline[i - 1][1],
-                   centerline[i][0], centerline[i][1])
-        for i in range(1, len(centerline))
-    )
-
-
 def align_centerline_to_endpoints(zone: Zone) -> Zone:
     """Make the centerline start at ``zone.start`` and end at ``zone.end``, and
     set ``distance_m`` to the centerline arc length.
@@ -626,6 +645,39 @@ def align_centerline_to_endpoints(zone: Zone) -> Zone:
         "centerline": cl,
         "distance_m": max(1, round(_polyline_length_m(cl))),
     })
+
+
+# Cyrillic -> Latin transliteration for the consistency check below (BDS/
+# streamlined system, lowercase only — the check is case-insensitive).
+_CYR_TO_LAT = {
+    "а": "a", "б": "b", "в": "v", "г": "g", "д": "d", "е": "e", "ж": "zh",
+    "з": "z", "и": "i", "й": "y", "к": "k", "л": "l", "м": "m", "н": "n",
+    "о": "o", "п": "p", "р": "r", "с": "s", "т": "t", "у": "u", "ф": "f",
+    "х": "h", "ц": "ts", "ч": "ch", "ш": "sh", "щ": "sht", "ъ": "a",
+    "ь": "y", "ю": "yu", "я": "ya",
+}
+
+# Junction continuity band: a gap below the floor is a shared camera (fine);
+# one above the ceiling is a genuine inter-zone stretch (fine); in between
+# is a seam that should coincide but doesn't — bad upstream data.
+JUNCTION_GAP_MIN_M = 10.0
+JUNCTION_GAP_MAX_M = 500.0
+
+
+def _transliterate(cyrillic: str) -> str:
+    """Lowercase Bulgarian-Cyrillic-to-Latin transliteration (loose)."""
+    return "".join(_CYR_TO_LAT.get(c, c) for c in cyrillic.lower())
+
+
+def _latin_matches_cyrillic(cyrillic: str, latin: str) -> bool:
+    """Loose check that a Latin settlement name transliterates the Cyrillic one.
+
+    Prefix containment either way tolerates qualifiers like
+    'м/у 18 и п.в.Илиянци' vs 'Iliyantsi' and transliteration variants.
+    """
+    t = _transliterate(cyrillic)
+    norm_latin = latin.lower()
+    return norm_latin[:4] in t or t[:4] in norm_latin
 
 
 def validate(zones: list[Zone]) -> tuple[list[Zone], list[str]]:
@@ -678,8 +730,69 @@ def validate(zones: list[Zone]) -> tuple[list[Zone], list[str]]:
                     f"{last_to_start:.0f} m) — not aligned to endpoints"
                 )
 
+        # Latin names must transliterate their Cyrillic counterparts. A
+        # mismatch means per-endpoint fields from different sources were
+        # merged onto opposite ends (the crossed-carriageway merge bug).
+        for label, ep in (("start", z.start), ("end", z.end)):
+            if ep.settlement and ep.settlement_latin and not _latin_matches_cyrillic(
+                ep.settlement, ep.settlement_latin
+            ):
+                warnings.append(
+                    f"Zone {z.id} {label} settlement '{ep.settlement}' does not "
+                    f"match its Latin name '{ep.settlement_latin}'"
+                )
+
+        # km markers must run the way this road's km axis runs for the
+        # zone's direction label.
+        start_km = _parse_km(z.start.km_marker)
+        end_km = _parse_km(z.end.km_marker)
+        directions = ROAD_DIRECTIONS.get(normalize_road(z.road))
+        if (
+            start_km is not None
+            and end_km is not None
+            and start_km != end_km
+            and directions is not None
+            and z.direction in directions
+        ):
+            expected_increasing = z.direction == directions[0]
+            if (end_km > start_km) != expected_increasing:
+                warnings.append(
+                    f"Zone {z.id} km markers run {z.start.km_marker} -> "
+                    f"{z.end.km_marker} but direction '{z.direction}' implies "
+                    f"{'increasing' if expected_increasing else 'decreasing'} km"
+                )
+
+        # Description must mirror the endpoint settlements in travel order.
+        if z.start.settlement and z.end.settlement:
+            expected_desc = f"{z.start.settlement} – {z.end.settlement}"
+            if z.description != expected_desc:
+                warnings.append(
+                    f"Zone {z.id} description '{z.description}' does not match "
+                    f"its endpoints ('{expected_desc}')"
+                )
+
         roads_seen.add(normalize_road(z.road))
         valid.append(z)
+
+    # Junction continuity: consecutive zones share a camera, so A.end and
+    # B.start must coincide. A gap inside the ambiguous band means the seam
+    # drifted (the app would briefly drop to Outside between the zones).
+    for a in valid:
+        if a.end.lat == 0 and a.end.lng == 0:
+            continue
+        for b in valid:
+            if a is b or a.direction != b.direction:
+                continue
+            if normalize_road(a.road) != normalize_road(b.road):
+                continue
+            if b.start.lat == 0 and b.start.lng == 0:
+                continue
+            gap = _haversine(a.end.lat, a.end.lng, b.start.lat, b.start.lng)
+            if JUNCTION_GAP_MIN_M < gap < JUNCTION_GAP_MAX_M:
+                warnings.append(
+                    f"Zones {a.id} -> {b.id} junction gap is {gap:.0f} m — "
+                    f"shared-camera endpoints should coincide"
+                )
 
     # Coverage check
     for motorway in REQUIRED_MOTORWAYS:

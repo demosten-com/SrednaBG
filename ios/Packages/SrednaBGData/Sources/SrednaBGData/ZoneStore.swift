@@ -70,12 +70,9 @@ public actor ZoneStore {
             at: url.deletingLastPathComponent(),
             withIntermediateDirectories: true
         )
-        // Write to a sibling temp file then rename for atomic replacement.
-        let tmp = url.appendingPathExtension("tmp")
-        try data.write(to: tmp, options: .atomic)
-        if FileManager.default.fileExists(atPath: url.path) {
-            try FileManager.default.removeItem(at: url)
-        }
-        try FileManager.default.moveItem(at: tmp, to: url)
+        // `.atomic` already does the temp-file + rename dance — unlike a
+        // manual remove-then-move there is no instant where `zones.json`
+        // doesn't exist on disk.
+        try data.write(to: url, options: .atomic)
     }
 }

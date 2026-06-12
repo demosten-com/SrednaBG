@@ -12,22 +12,28 @@
 # the sha256sum line (64-char digest) both exceed F-Droid's metadata line
 # width. `fdroid rewritemeta` folds long lines, and that fold collides with the
 # trailing-spaces lint — so a single short `bash ...` call is the only form that
-# satisfies both rewritemeta and lint. The URL + digest stay auditable here, in
-# the repo at the build tag.
+# satisfies both rewritemeta and lint. The URL stays auditable here and the
+# digest in web/fdroid/map-bundle-checksums.txt — both in the repo at the
+# build tag.
 #
 # The bundle is the immutable per-tag asset that android-release.yml attaches to
 # the GitHub Release (durable as the source itself). The tag is derived from the
-# literal versionName, so this script needs NO per-release edit — only SHA256
-# changes, and only when the map bundle is actually rebuilt (matches the
-# `map-bundle.zip` line in web/fdroid/map-bundle-checksums.txt).
+# literal versionName and the expected digest is read from
+# web/fdroid/map-bundle-checksums.txt (the single pinned source of truth, in the
+# repo at the build tag), so this script needs NO per-release edit at all.
 set -euo pipefail
-
-SHA256="0513907ed5108c34a5a13646f5c4dc8968c44f372587bef888543c80b757bcd1"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 DATA_DIR="$SCRIPT_DIR/../data"
 ZIP="$DATA_DIR/map-bundle.zip"
+CHECKSUMS="$REPO_ROOT/web/fdroid/map-bundle-checksums.txt"
+
+SHA256="$(grep -oE '^[0-9a-f]{64}' "$CHECKSUMS" | head -1)"
+if [ -z "$SHA256" ]; then
+  echo "fetch-fdroid-map-bundle: no sha256 digest found in $CHECKSUMS" >&2
+  exit 1
+fi
 
 # Derive vX.Y.Z from the build's own versionName so the URL tracks the tag.
 VN="$(grep -oE 'versionName = "[0-9]+\.[0-9]+\.[0-9]+"' "$REPO_ROOT/android/app/build.gradle.kts" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"

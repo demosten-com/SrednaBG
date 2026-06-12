@@ -116,8 +116,15 @@ public final class CLLocationTracker: NSObject, LocationProviding, @unchecked Se
     }
 
     #if DEBUG
-    public func injectDebugFix(lat: Double, lng: Double, speedMps: Double, bearing: Double?) async {
+    public func injectDebugFix(lat: Double, lng: Double, speedMps: Double, bearing: Double?,
+                               timestampMs: Int64?) async {
         let coord = CLLocationCoordinate2D(latitude: lat, longitude: lng)
+        // `timestampMs` carries the harness's simulated timeline: under a
+        // compressed drive the stamps run AHEAD of the wall clock, which is
+        // what keeps the speed-inference dt realistic (without it, 4×-faster
+        // wall delivery infers 4× the encoded speed and clamps at 250 km/h —
+        // mirrors Android's FEED_POINT `time_ms` handling).
+        let stamp = timestampMs.map { Date(timeIntervalSince1970: Double($0) / 1000.0) } ?? Date()
         let loc = CLLocation(
             coordinate: coord,
             altitude: 0,
@@ -125,9 +132,13 @@ public final class CLLocationTracker: NSObject, LocationProviding, @unchecked Se
             verticalAccuracy: 5,
             course: bearing ?? -1,
             speed: speedMps,
-            timestamp: Date()
+            timestamp: stamp
         )
-        emit(location: loc)
+        // assumeFresh: the wall-clock age gate in `emit` would reject sim
+        // stamps from the future; an injected fix is fresh by definition
+        // (delivered the instant it was built) — Android equivalently keys
+        // freshness off elapsedRealtime delivery age, not `location.time`.
+        emit(location: loc, assumeFresh: true)
     }
     #endif
 
@@ -183,7 +194,7 @@ extension CLLocationTracker: CLLocationManagerDelegate {
         }
     }
 
-    fileprivate func emit(location: CLLocation) {
+    fileprivate func emit(location: CLLocation, assumeFresh: Bool = false) {
         // QA harness tripwire: line shape must match `qa/parsers.py` LOC_RE.
         QALog.location.info(
             "onLocation: lat=\(location.coordinate.latitude, privacy: .public) lng=\(location.coordinate.longitude, privacy: .public) speed=\(location.speed >= 0 ? location.speed : -1, privacy: .public) accuracy=\(location.horizontalAccuracy >= 0 ? location.horizontalAccuracy : -1, privacy: .public) provider=gps mock=false"
@@ -205,7 +216,7 @@ extension CLLocationTracker: CLLocationManagerDelegate {
         // Android's MAX_FIX_AGE_MS (CoreLocation timestamps are wall-
         // clock, so compare to Date()).
         let ageS = Date().timeIntervalSince(location.timestamp)
-        let freshFix = ageS >= 0 && ageS <= 10
+        let freshFix = assumeFresh || (ageS >= 0 && ageS <= 10)
         let speedAccMps: Double? = location.speedAccuracy >= 0 ? location.speedAccuracy : nil
         let raw = RawLocationFix(
             lat: location.coordinate.latitude,

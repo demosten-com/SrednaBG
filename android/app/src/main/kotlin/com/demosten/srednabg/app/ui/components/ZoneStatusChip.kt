@@ -37,10 +37,21 @@ import com.demosten.srednabg.app.ui.theme.SpeedAmberDeep
 import com.demosten.srednabg.app.ui.theme.SpeedGreen
 import com.demosten.srednabg.app.ui.theme.SpeedRed
 import com.demosten.srednabg.app.ui.util.orDash
+import com.demosten.srednabg.core.VehicleType
 import com.demosten.srednabg.core.ZONE_COLOR_GREEN
 import com.demosten.srednabg.core.ZONE_COLOR_RED
 import com.demosten.srednabg.core.ZoneState
 import com.demosten.srednabg.core.zoneStatusColor
+
+/**
+ * Exit verdict shown on the Exiting surfaces: did the final average exceed the
+ * limit the engine judged against? Must use the vehicle-type-resolved limit —
+ * the verdict would otherwise flip back to the car default for truck/bus.
+ */
+internal fun exitVerdictOverLimit(state: ZoneState.Exiting, vehicleType: VehicleType): Boolean {
+    val finalAvg = state.finalAvgSpeed ?: return false
+    return finalAvg > vehicleType.limit(state.zone.speedLimits)
+}
 
 /**
  * Driver-facing zone status card. Shared by the in-app [ZoneMapScreen] map
@@ -52,13 +63,15 @@ import com.demosten.srednabg.core.zoneStatusColor
 internal fun ZoneStatusChip(
     state: ZoneState,
     currentSpeedKmh: Double?,
+    vehicleType: VehicleType,
     debugMaxSpeedOverride: Int?,
     modifier: Modifier = Modifier,
 ) {
     when (state) {
         is ZoneState.Outside -> Unit
-        is ZoneState.InZone -> InZoneChip(state, currentSpeedKmh, debugMaxSpeedOverride, modifier)
-        is ZoneState.Exiting -> ExitingChip(state, modifier)
+        is ZoneState.InZone ->
+            InZoneChip(state, currentSpeedKmh, vehicleType, debugMaxSpeedOverride, modifier)
+        is ZoneState.Exiting -> ExitingChip(state, vehicleType, modifier)
     }
 }
 
@@ -66,10 +79,13 @@ internal fun ZoneStatusChip(
 private fun InZoneChip(
     state: ZoneState.InZone,
     currentSpeedKmh: Double?,
+    vehicleType: VehicleType,
     debugMaxSpeedOverride: Int?,
     modifier: Modifier = Modifier,
 ) {
-    val limit = state.zone.speedLimits.car
+    // Vehicle-type-resolved limit — the engine's over-limit verdict uses it,
+    // so the badge must show the same number, not the car default.
+    val limit = vehicleType.limit(state.zone.speedLimits)
     // The chip's surface is the system theme's surfaceContainerHigh — light
     // in light theme, dark in dark theme — regardless of the map tile theme.
     // The core's zoneStatusColor returns the light-on-dark variants; swap to
@@ -188,10 +204,11 @@ private fun InZoneChip(
 @Composable
 private fun ExitingChip(
     state: ZoneState.Exiting,
+    vehicleType: VehicleType,
     modifier: Modifier = Modifier,
 ) {
     val finalAvg = state.finalAvgSpeed
-    val overLimit = finalAvg != null && finalAvg > state.zone.speedLimits.car
+    val overLimit = exitVerdictOverLimit(state, vehicleType)
     val isLightChip = !isSystemInDarkTheme()
     val color = when {
         overLimit && isLightChip -> SpeedRed
@@ -277,6 +294,8 @@ internal fun ZoneStatusPill(
 
 @Composable
 private fun chipStatusColor(state: ZoneState.InZone, currentSpeedKmh: Double?): Color {
+    // Amber tier is deliberately car-relative (matches core zoneStatusColor and
+    // the iOS surfaces); red comes from the engine's vehicle-aware isOverLimit.
     val limit = state.zone.speedLimits.car
     return if (isSystemInDarkTheme()) {
         Color(zoneStatusColor(state, currentSpeedKmh))

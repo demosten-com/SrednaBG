@@ -19,7 +19,9 @@
 #     ├── fonts/<fontstack>/<range>.pbf (vendored glyphs)
 #     ├── bulgaria.mbtiles            (freshly generated, z5–z12)
 #     └── version.json                ({"version": ..., "map_hash": "sha256:..."})
-#   backend/data/map-bundle.zip       — zipped bundle served at /api/map/bundle.zip
+#   backend/data/map-bundle.zip       — zipped bundle, published to the rolling
+#                                        map-bundle-latest GitHub Release by
+#                                        web/fdroid/scripts/publish-map-bundle.sh
 #
 # Runtime (Android/iOS) picks style-light.json or style-dark.json per the
 # day/night resolver + Map-theme preference, then replaces {MBTILES_URI} /

@@ -83,7 +83,8 @@ class Device(abc.ABC):
 
     @abc.abstractmethod
     def feed_point(self, lat: float, lng: float, speed_ms: float,
-                   bearing: Optional[float] = None) -> None:
+                   bearing: Optional[float] = None,
+                   time_ms: Optional[int] = None) -> None:
         """Inject a fix with speed and bearing through the app's debug back-channel.
 
         Unlike `geo_fix`, this goes through the in-app debug surface
@@ -92,6 +93,11 @@ class Device(abc.ABC):
         zone state machine without waiting for FLP to synthesize speed
         from successive positions. Required for deterministic Green /
         Yellow / Red band selection in the screenshot orchestrator.
+
+        `time_ms` (epoch ms) overrides the fix timestamp so compressed
+        drives still present a realistic cadence to the Kalman filter /
+        speed inference. Honored by both platforms (Android FEED_POINT
+        `time_ms` extra; iOS `/inject` `time_ms` query param).
         """
 
     # ── debug surface ───────────────────────────────────────────────────────

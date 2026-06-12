@@ -55,7 +55,8 @@ struct LiveActivityManagerContentStateTests {
         let state = inZone(avg: 120.4, traveled: 4_000.6, remaining: 15_159.4)
         let content = LiveActivityManager.contentState(
             from: state,
-            currentSpeedKmh: 132.7
+            currentSpeedKmh: 132.7,
+            limitKmh: 140
         )
         #expect(content.phase == .inZone)
         #expect(content.roadName == "АМ Тракия")
@@ -66,6 +67,28 @@ struct LiveActivityManagerContentStateTests {
         #expect(content.zoneTotalM == 19_160)
         #expect(content.distanceRemainingM == 15_159)
         #expect(content.isOverLimit == false)
+    }
+
+    @Test("Badge shows the vehicle-resolved limit, not the car default")
+    func vehicleResolvedLimitWins() {
+        // Truck limit (90) differs from car (140) in the fixture zone — the
+        // chip must show the limit the engine's over-limit verdict used.
+        let content = LiveActivityManager.contentState(
+            from: inZone(avg: 100),
+            currentSpeedKmh: 100,
+            limitKmh: VehicleType.truck.limit(Self.zone.speedLimits)
+        )
+        #expect(content.speedLimitKmh == 90)
+    }
+
+    @Test("Nil limit falls back to the car limit so the projection stays total")
+    func nilLimitFallsBackToCar() {
+        let content = LiveActivityManager.contentState(
+            from: inZone(avg: 100),
+            currentSpeedKmh: 100,
+            limitKmh: nil
+        )
+        #expect(content.speedLimitKmh == 140)
     }
 
     @Test("trackingPlaceholder uses .tracking phase with no zone fields")
@@ -83,7 +106,8 @@ struct LiveActivityManagerContentStateTests {
     func zoneCompletePreservesRecap() {
         let live = LiveActivityManager.contentState(
             from: inZone(avg: 130, traveled: 10_000, remaining: 9_160),
-            currentSpeedKmh: 132
+            currentSpeedKmh: 132,
+            limitKmh: 140
         )
         let recap = LiveActivityManager.zoneComplete(from: live)
         #expect(recap.phase == .zoneComplete)
@@ -102,14 +126,16 @@ struct LiveActivityManagerContentStateTests {
     func nilSpeedsBecomeNil() {
         let content = LiveActivityManager.contentState(
             from: inZone(avg: nil),
-            currentSpeedKmh: nil
+            currentSpeedKmh: nil,
+            limitKmh: 140
         )
         #expect(content.avgSpeedKmh == nil)
         #expect(content.currentSpeedKmh == nil)
 
         let infinite = LiveActivityManager.contentState(
             from: inZone(avg: .infinity),
-            currentSpeedKmh: .nan
+            currentSpeedKmh: .nan,
+            limitKmh: 140
         )
         #expect(infinite.avgSpeedKmh == nil)
         #expect(infinite.currentSpeedKmh == nil)
@@ -119,7 +145,8 @@ struct LiveActivityManagerContentStateTests {
     func greenStatus() {
         let content = LiveActivityManager.contentState(
             from: inZone(avg: 120, over: false),
-            currentSpeedKmh: 130
+            currentSpeedKmh: 130,
+            limitKmh: 140
         )
         #expect(content.statusColorPacked == zoneColorGreen)
     }
@@ -128,7 +155,8 @@ struct LiveActivityManagerContentStateTests {
     func yellowStatus() {
         let content = LiveActivityManager.contentState(
             from: inZone(avg: 120, over: false),
-            currentSpeedKmh: 145
+            currentSpeedKmh: 145,
+            limitKmh: 140
         )
         #expect(content.statusColorPacked == zoneColorYellow)
     }
@@ -137,7 +165,8 @@ struct LiveActivityManagerContentStateTests {
     func redStatus() {
         let content = LiveActivityManager.contentState(
             from: inZone(avg: 145, over: true),
-            currentSpeedKmh: 100
+            currentSpeedKmh: 100,
+            limitKmh: 140
         )
         #expect(content.statusColorPacked == zoneColorRed)
         #expect(content.isOverLimit)
@@ -170,7 +199,7 @@ struct LiveActivityManagerContentStateTests {
             ),
             distanceRemaining: 0
         )
-        let content = LiveActivityManager.contentState(from: state, currentSpeedKmh: nil)
+        let content = LiveActivityManager.contentState(from: state, currentSpeedKmh: nil, limitKmh: nil)
         #expect(content.zoneTotalM >= 1)
     }
 }

@@ -68,9 +68,10 @@ extension AppContainer {
             },
             startTracking: { await tracking.start() },
             stopTracking: { await tracking.stop() },
-            feedLocation: { lat, lng, speed, bearing in
+            feedLocation: { lat, lng, speed, bearing, timeMs in
                 Task { @MainActor in
-                    await tracking.debugFeed(lat: lat, lng: lng, speedMps: speed, bearing: bearing)
+                    await tracking.debugFeed(lat: lat, lng: lng, speedMps: speed,
+                                             bearing: bearing, timestampMs: timeMs)
                 }
             }
         )

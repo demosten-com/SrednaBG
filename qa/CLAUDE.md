@@ -13,9 +13,10 @@ End-to-end QA harness (Python, stdlib + PyYAML). Drives the running Android emul
 - `qa/log_observer.py` — abstract observer with `for_current_device()` factory.
 - `qa/adb.py` — shells out to `adb` (Android-only). Kept as the Android backend library.
 - `qa/events.py` — typed event dataclasses (platform-agnostic).
-- `qa/drive.py` — parses GPX into a `DrivePlan`, pumps `device.geo_fix()` at the right cadence.
+- `qa/drive.py` — parses GPX into a `DrivePlan`, pumps `device.feed_point()` at the right cadence with explicit per-fix speed + bearing (derived from the plan geometry) and `time_ms` stamps from the plan's sim timeline (`TrackPoint.sim_offset_ms`, preserved by `compressed()`). It deliberately does NOT use `geo_fix` — `adb emu geo fix` carries neither speed nor bearing, the emulator's GPS pipe delivers it late/bunched, and the app's inferred course then flips on the jumps, matching the opposite-carriageway sibling at a shared camera (the "arrow drives the zone backwards" artifact).
 - `qa/assertions.py` — `expect` / `expect_in_order` / `expect_never` over the event queue.
-- `qa/runner.py` — runs ordered scenario steps with per-scenario log-buffer isolation.
+- `qa/runner.py` — runs ordered scenario steps with per-scenario log-buffer isolation. `Scenario.timeout_s` is a hard wall: steps run on a worker thread; on expiry the runner sets the drive-abort flag (unblocks an in-flight `pump()` via `DriveAborted`), records the timeout with the stuck step's name, and moves on.
+- Bulk/representative scenarios assert enter + exit, the YAML's `forbid_in_zone_rebound` (no same-zone re-entry after its `Exiting` — the flap class), and optional `expect_avg_kmh` ± `avg_kmh_tolerance` (mean of in-zone `DisplaySpeed` events). Generated GPX fixtures under `qa/fixtures/gpx/` (gitignored) embed a content hash of the zone geometry + route params in the filename, so a zones.json change regenerates them automatically — no manual cache busting.
 - `qa/settings.py` — flips settings via the active device (broadcast on Android, HTTP POST to the debug listener on iOS).
 - `qa/sync.py` — triggers sync via the active device and inspects on-disk map bundle integrity.
 - `qa/ui.py`, `qa/report.py` — UI walk + report generation.
@@ -103,7 +104,7 @@ python qa/srednabg_qa.py --suite representative  --platform ios
 - **Headless on a Mac mini**: the iOS Simulator needs an active GUI session (Metal rendering). No workaround.
 - **TTS muting**: there's no OS-level mute toggle on the simulator. The harness's `mute_audio()` POSTs `/mute?on=1` to the debug listener, which swaps the `AVSpeechTTSEngine` for a no-op while still emitting `speak:` log lines (so the parser self-test still trips on broken phrase changes).
 - **Network offline**: `simctl status_bar` doesn't actually gate the network. `IosDevice.go_offline()` flips a `QAFlags.networkOffline` UserDefaults flag that makes the `DebugActionRouter` short-circuit sync requests to `Failed`. Observable behavior matches Android's airplane-mode path.
-- **Mid-route GPS mutation**: `simctl location set` per-point is slower than `adb emu geo fix` (≈100–500 ms vs <10 ms). The steady-cruise suites (smoke / representative / full-zones) run fine on it; edge scenarios that fan out fixes rapidly (`gps_dropout`, `wrong_direction`, `u_turn`, `vehicle_swap`) are still Android-only until a faster iOS pump lands.
+- **Mid-route GPS mutation**: the pump feeds the iOS debug listener's `/inject` endpoint (not `simctl location set`), which carries speed + bearing **and honors the pump's `time_ms` stamp** (forwarded into the injected `CLLocation`; injected fixes bypass the wall-clock age gate since they're fresh by delivery). Compressed plans therefore present the encoded cadence on iOS too — without the stamp, 4×-faster wall delivery used to infer 4× the encoded speed and clamp the display at 250 km/h. The compression-dependent edge scenarios (`gps_dropout`, `wrong_direction`, `u_turn`, `vehicle_swap`, `vehicle_type_limit_badge`) were written Android-first and are unverified on iOS — the `time_ms` blocker is gone, but run them once on the Simulator before relying on them there.
 
 Reports land in `qa/reports/<suite>-<timestamp>/` (`junit.xml` + `summary.md` + `screenshots/`); exit code 0 = all passed. Invoke from a Claude Code session with the `/qa-app` skill — it runs the orchestrator, parses the report, and summarizes back in <200 words.
 
@@ -125,7 +126,7 @@ fixtures (committed under `qa/fixtures/gpx-xcode/`):
 
 - YAML for "drive zone X at speed Y" variations.
 - Python under `qa/scenarios/edge/` for mid-trip changes (dropout, U-turn, etc.) — register the module in `EDGE_SCENARIOS` in `qa/srednabg_qa.py`.
-- Use `device.current().geo_fix(...)` and `qa.settings` / `qa.sync` (not `qa.adb` directly) so the scenario runs on both platforms.
+- Use `pump()` / `device.current().feed_point(...)` and `qa.settings` / `qa.sync` (not `qa.adb` directly) so the scenario runs on both platforms.
 - User-reported bugs land with a reproducing scenario (e.g. `stop_silences_tts.py` — Stop must silence in-flight TTS; `dense_centerline.py` — short-segment zones don't false-exit/re-enter).
 
 ## Manual zone feeding + full-zone direction validation (Android, debug build)
@@ -213,7 +214,7 @@ Both apps gate map sync behind `FeatureFlags.IS_MAP_SYNC_ENABLED` (Kotlin) / `Fe
 
 ## Tripwire
 
-When log line shapes change in either platform's app — `AudioAlertManager.kt` / `LocationTrackingService.kt` on Android, `QALog` + `ZoneTrackingService.swift` / `CLLocationTracker.swift` / `AudioAlertManager.swift` on iOS — the smoke suite's parser self-test fails loudly with a pointer to the affected line. Fix the regex in `qa/parsers.py` (the shared module) and both platforms re-converge.
+When log line shapes change in either platform's app — `AudioAlertManager.kt` / `LocationTrackingService.kt` on Android, `QALog` + `ZoneTrackingService.swift` / `CLLocationTracker.swift` / `AudioAlertManager.swift` on iOS — the smoke suite's parser self-test (`qa/scenarios/parser_self_test.py`, always the smoke suite's last scenario) fails loudly, naming the missing event type + the dead regex and quoting the unparsed lines. It works off `LogObserver.type_counts` / `unparsed_samples`, which accumulate across the whole suite (`clear()` deliberately keeps them). Fix the regex in `qa/parsers.py` (the shared module) and both platforms re-converge. Note it judges the *whole smoke run* — invoking it alone via `--filter parsers` fails vacuously.
 
 ## Store-screenshot tooling
 

@@ -62,7 +62,9 @@ import com.demosten.srednabg.app.ui.theme.warningAmber
 import com.demosten.srednabg.app.ui.theme.SpeedGreen
 import com.demosten.srednabg.app.ui.theme.SpeedRed
 import com.demosten.srednabg.app.ui.util.orDash
+import com.demosten.srednabg.app.ui.components.exitVerdictOverLimit
 import com.demosten.srednabg.app.ui.viewmodel.HomeViewModel
+import com.demosten.srednabg.core.VehicleType
 import com.demosten.srednabg.core.ZoneState
 
 @Composable
@@ -73,6 +75,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
     val currentSpeedKmh by viewModel.currentSpeedKmh.collectAsStateWithLifecycle()
     val permissionState by viewModel.permissionState.collectAsStateWithLifecycle()
     val debugMaxSpeedOverride by viewModel.debugMaxSpeedOverride.collectAsStateWithLifecycle()
+    val vehicleType by viewModel.vehicleType.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     // Notification permission is requested from inside the NotificationCard
@@ -116,6 +119,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                 currentSpeedKmh = currentSpeedKmh,
                 permissionState = permissionState,
                 debugMaxSpeedOverride = debugMaxSpeedOverride,
+                vehicleType = vehicleType,
                 onOpenAppSettings = { openAppSettings(context) },
                 onRequestNotification = onRequestNotification,
                 onRequestBatteryOptOut = { requestIgnoreBatteryOptimizations(context) },
@@ -180,6 +184,7 @@ private fun StateContent(
     currentSpeedKmh: Double?,
     permissionState: PermissionState,
     debugMaxSpeedOverride: Int?,
+    vehicleType: VehicleType,
     onOpenAppSettings: () -> Unit,
     onRequestNotification: () -> Unit,
     onRequestBatteryOptOut: () -> Unit,
@@ -188,9 +193,9 @@ private fun StateContent(
         // Active tracking always wins — never gate the live display on
         // permission state changes mid-trip.
         isTracking && zoneState is ZoneState.InZone ->
-            InZoneCard(modifier, zoneState, currentSpeedKmh, debugMaxSpeedOverride)
+            InZoneCard(modifier, zoneState, currentSpeedKmh, vehicleType, debugMaxSpeedOverride)
         isTracking && zoneState is ZoneState.Exiting ->
-            ExitingCard(modifier, zoneState, currentSpeedKmh)
+            ExitingCard(modifier, zoneState, currentSpeedKmh, vehicleType)
         isTracking ->
             OutsideCard(modifier, currentSpeedKmh, zoneCount)
         !permissionState.canStartTracking ->
@@ -438,10 +443,16 @@ private fun InZoneCard(
     modifier: Modifier,
     state: ZoneState.InZone,
     currentSpeedKmh: Double?,
+    vehicleType: VehicleType,
     debugMaxSpeedOverride: Int? = null,
 ) {
+    // Vehicle-type-resolved limit — the engine's over-limit verdict uses it,
+    // so the badge must show the same number, not the car default.
+    val limit = vehicleType.limit(state.zone.speedLimits)
     val statusColor = when {
         state.speedStatus.isOverLimit -> SpeedRed
+        // Amber tier is deliberately car-relative (matches core zoneStatusColor
+        // and the iOS surfaces); red comes from the vehicle-aware isOverLimit.
         currentSpeedKmh != null && currentSpeedKmh > state.zone.speedLimits.car -> warningAmber()
         else -> SpeedGreen
     }
@@ -453,7 +464,7 @@ private fun InZoneCard(
     val semanticDescription = stringResource(
         R.string.accessibility_in_zone,
         state.avgSpeed.orDash(),
-        state.zone.speedLimits.car,
+        limit,
         statusText,
     )
 
@@ -500,7 +511,7 @@ private fun InZoneCard(
             ) {
                 InfoItem(
                     label = stringResource(R.string.speed_limit),
-                    value = "${state.zone.speedLimits.car}",
+                    value = "$limit",
                 )
                 InfoItem(
                     label = stringResource(R.string.max_for_remainder),
@@ -526,9 +537,13 @@ private fun InZoneCard(
 }
 
 @Composable
-private fun ExitingCard(modifier: Modifier, state: ZoneState.Exiting, currentSpeedKmh: Double?) {
-    val finalAvg = state.finalAvgSpeed
-    val color = if (finalAvg != null && finalAvg > state.zone.speedLimits.car) SpeedRed else SpeedGreen
+private fun ExitingCard(
+    modifier: Modifier,
+    state: ZoneState.Exiting,
+    currentSpeedKmh: Double?,
+    vehicleType: VehicleType,
+) {
+    val color = if (exitVerdictOverLimit(state, vehicleType)) SpeedRed else SpeedGreen
     val semanticDescription = stringResource(
         R.string.accessibility_exiting,
         state.finalAvgSpeed.orDash(),

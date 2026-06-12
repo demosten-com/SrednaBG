@@ -17,7 +17,6 @@ Namecheap **addon domain**, served from `$HOME/srednabg_com/` on the cPanel host
 | `$HOME/srednabg_com/api/zones.json` | (produced by cron) | Live zone data. Not committed. |
 | `$HOME/srednabg_com/api/version.json` | (produced by cron) | Hash-gated app sync. Not committed. |
 | `$HOME/srednabg_com/api/zones-<ts>.json` | (produced by cron) | Snapshot per change, 26 retained. |
-| `$HOME/srednabg_com/assets/map-bundle.zip` | (produced by `web/fdroid/scripts/publish-map-bundle.sh`) | The single mutable latest map bundle. `.github/workflows/android-release.yml` downloads it, verifies it against the digest in `web/fdroid/map-bundle-checksums.txt`, and snapshots it per-tag onto the GitHub Release as the immutable `map-bundle-<tag>.zip` that F-Droid fetches. Manual SCP upload — no automation. |
 
 The `/api/*` tree is **not in git** — it's produced by the scraper cron on the same host. See `scrapers/CLAUDE.md` "Hosted deployment (Namecheap)".
 
@@ -27,8 +26,8 @@ Source of truth for the SrednaBG F-Droid listing. The build recipe is **merged i
 
 - `metadata.yml` — draft of `metadata/com.demosten.srednabg.yml`. F-Droid's prebuild (`backend/scripts/fetch-fdroid-map-bundle.sh`) does `curl` + `sha256sum -c` on the per-tag `map-bundle-<tag>.zip` GitHub Release asset; the digest only changes when the map content does.
 - `{en-US,bg}/{title,short_description,full_description}.txt` + `changelogs/<versionCode>.txt` — locale-aware listing copy.
-- `map-bundle-checksums.txt` — a single `<sha256>  map-bundle.zip` line (the current bundle's digest), kept in sync with the `SHA256` in `backend/scripts/fetch-fdroid-map-bundle.sh`; consumed by the Android release workflow to verify the latest download.
-- `scripts/publish-map-bundle.sh` — run only when the map content changes: rebuilds the bundle, re-pins the single digest in `map-bundle-checksums.txt` + `fetch-fdroid-map-bundle.sh`, prints the SCP command to replace the hosted `map-bundle.zip`.
+- `map-bundle-checksums.txt` — a single `<sha256>  map-bundle.zip` line (the current bundle's digest); the one pinned source of truth, read at build time by `backend/scripts/fetch-fdroid-map-bundle.sh` and consumed by the Android release workflow to verify the latest download.
+- `scripts/publish-map-bundle.sh` — run only when the map content changes: rebuilds the bundle, re-pins the single digest in `map-bundle-checksums.txt`, and uploads `map-bundle.zip` (+`.sha256`) to the rolling `map-bundle-latest` GitHub Release (`gh release upload --clobber`; the web host no longer serves the bundle). `.github/workflows/android-release.yml` downloads that asset, verifies it against the pinned digest, and snapshots it per-tag as the immutable `map-bundle-<tag>.zip` that F-Droid fetches.
 - `scripts/stage-fdroiddata.sh` — stages the above files into an `fdroiddata` clone, ready for `git add`.
 
 ## .htaccess responsibilities

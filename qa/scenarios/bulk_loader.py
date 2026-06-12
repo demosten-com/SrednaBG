@@ -25,7 +25,9 @@ as Python):
 
 from __future__ import annotations
 
+import hashlib
 import json
+import queue
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -34,12 +36,55 @@ from typing import Any, Optional
 from .. import device as device_mod, settings as settings_mod
 from ..assertions import expect, expect_in_order, expect_never, expect_crash_free, AssertionFailure
 from ..drive import DrivePlan, parse_gpx, pump
-from ..events import Crash, ZoneStateChange
+from ..events import Crash, DisplaySpeed, ZoneStateChange
+from ..log_observer import LogObserver
 from ..runner import RunContext, Scenario, Step, step_drive, step_lambda, step_wait
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-ZONES_JSON = REPO_ROOT / "scrapers" / "data" / "zones.json"
+# The single source of truth both apps bundle (see root CLAUDE.md);
+# scrapers/data/zones.json is a sibling copy kept in sync by the refresh
+# script, but everything in qa/ reads the canonical file.
+ZONES_JSON = REPO_ROOT / "backend" / "data" / "zones.json"
 GPX_FIXTURES_DIR = REPO_ROOT / "qa" / "fixtures" / "gpx"
+
+# Parsed zones.json, cached per (path, mtime) so 72 bulk scenarios don't
+# re-read the 1.4 MB file.
+_zones_cache: dict[tuple[str, float], dict[str, dict]] = {}
+
+
+def _zones_by_id() -> dict[str, dict]:
+    key = (str(ZONES_JSON), ZONES_JSON.stat().st_mtime)
+    if key not in _zones_cache:
+        _zones_cache.clear()
+        data = json.loads(ZONES_JSON.read_text(encoding="utf-8"))
+        zones = data["zones"] if isinstance(data, dict) else data
+        _zones_cache[key] = {z["id"]: z for z in zones}
+    return _zones_cache[key]
+
+
+def _route_hash(zone: dict, spec: "BulkScenarioSpec") -> str:
+    """Deterministic short hash of everything that shapes the generated GPX —
+    the zone geometry plus the route parameters. Embedded in the cached GPX
+    filename so a zones.json change (e.g. a centerline realignment) or a spec
+    change regenerates the fixture instead of silently reusing stale geometry."""
+    payload = json.dumps(
+        {
+            # Bump when the route-construction algorithm itself changes, so
+            # cached fixtures from the old generator regenerate. gen 2:
+            # approach/exit bearings anchored 300 m along the arc (jog-proof).
+            "gen": 2,
+            "centerline": zone.get("centerline"),
+            "start": zone.get("start"),
+            "end": zone.get("end"),
+            "speed_kmh": spec.speed_kmh,
+            "approach_km": spec.approach_km,
+            "exit_km": spec.exit_km,
+            "hz": spec.hz,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:10]
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
@@ -90,11 +135,21 @@ class BulkScenarioSpec:
 
 def _ensure_gpx(spec: BulkScenarioSpec) -> Path:
     """Generate per-zone GPX on demand using make_test_route.py (vendored
-    behavior). Avoids shelling out to keep the harness stdlib-only."""
+    behavior). Avoids shelling out to keep the harness stdlib-only.
+
+    The cached filename embeds `_route_hash` (zone geometry + route params),
+    so the cache self-invalidates when zones.json or the spec changes —
+    stale same-prefix fixtures from earlier data are removed on regeneration."""
     GPX_FIXTURES_DIR.mkdir(parents=True, exist_ok=True)
-    out = GPX_FIXTURES_DIR / f"{spec.zone_id}_{int(spec.speed_kmh)}.gpx"
+    zone = _zones_by_id().get(spec.zone_id)
+    if zone is None:
+        raise RuntimeError(f"zone {spec.zone_id} not found in {ZONES_JSON}")
+    prefix = f"{spec.zone_id}_{int(spec.speed_kmh)}"
+    out = GPX_FIXTURES_DIR / f"{prefix}_{_route_hash(zone, spec)}.gpx"
     if out.exists():
         return out
+    for stale in GPX_FIXTURES_DIR.glob(f"{prefix}*.gpx"):
+        stale.unlink(missing_ok=True)
     # Lazy-import to avoid stdlib path mangling at module load.
     import importlib.util
     script_path = REPO_ROOT / "scrapers" / "scripts" / "make_test_route.py"
@@ -104,13 +159,33 @@ def _ensure_gpx(spec: BulkScenarioSpec) -> Path:
     mod = importlib.util.module_from_spec(spec_mod)
     spec_mod.loader.exec_module(mod)
 
-    zone = mod.load_zone(ZONES_JSON, spec.zone_id)
     centerline = [(p[0], p[1]) for p in zone["centerline"]]
     if len(centerline) < 2:
         raise RuntimeError(f"zone {spec.zone_id} has insufficient centerline")
 
-    entry_bearing = mod.bearing_deg(centerline[1][0], centerline[1][1], centerline[0][0], centerline[0][1])
-    exit_bearing = mod.bearing_deg(centerline[-2][0], centerline[-2][1], centerline[-1][0], centerline[-1][1])
+    def outward_bearing(at_start: bool, anchor_m: float = 300.0) -> float:
+        """Bearing pointing OUTWARD past the zone boundary, anchored ~300 m
+        along the polyline arc instead of the first/last micro-segment.
+
+        Real centerlines jog backward at their very first vertex and hook at
+        their tail (both documented data quirks). Deriving the approach from
+        cl[0]->cl[1] then aims the 2 km lead-in INTO the zone along the road
+        — forward drives approach the start backwards and pivot 180° on it
+        (the observed snap-enter/exit/re-enter artifact), and reversed
+        wrong-direction drives end with a leg that legitimately travels the
+        zone's direction, which the engine correctly admits."""
+        pts = centerline if at_start else list(reversed(centerline))
+        anchor = pts[-1]
+        acc = 0.0
+        for a, b in zip(pts, pts[1:]):
+            acc += mod.haversine_m(a[0], a[1], b[0], b[1])
+            if acc >= anchor_m:
+                anchor = b
+                break
+        return mod.bearing_deg(anchor[0], anchor[1], pts[0][0], pts[0][1])
+
+    entry_bearing = outward_bearing(at_start=True)
+    exit_bearing = outward_bearing(at_start=False)
     approach_start = mod.destination_point(centerline[0][0], centerline[0][1], entry_bearing, spec.approach_km * 1000)
     exit_end = mod.destination_point(centerline[-1][0], centerline[-1][1], exit_bearing, spec.exit_km * 1000)
 
@@ -155,30 +230,65 @@ def build_scenario(spec: BulkScenarioSpec) -> Scenario:
         time.sleep(2.5)
         ctx.obs.clear()
 
-    def assert_enter(ctx: RunContext) -> None:
-        if not spec.expect_enter:
-            return
-        within = _approach_seconds(spec) + 30
-        expect(
-            ctx.obs,
-            ZoneStateChange,
-            where=lambda e: e.new == "InZone" and e.prev == "Outside",
-            within_s=within,
-            description=f"zone entry for {spec.zone_id}",
-        )
+    def assert_drive(ctx: RunContext) -> None:
+        # The drive step completed before this runs, so all events are already
+        # buffered (modulo log-stream lag) — drain once, assert from the list.
+        # A single pass lets the avg-speed check see the DisplaySpeed events
+        # that a chained expect() would have consumed and discarded.
+        events = _drain_buffered(ctx.obs)
+        changes = [e for e in events if isinstance(e, ZoneStateChange)]
 
-    def assert_exit(ctx: RunContext) -> None:
-        if not spec.expect_exit:
+        def transitions() -> str:
+            toks = [f"{e.prev}->{e.new}:{e.zone}" for e in changes]
+            return " ".join(toks) or "(no zone state changes)"
+
+        entry_idx = next((i for i, e in enumerate(changes)
+                          if e.prev == "Outside" and e.new == "InZone"), None)
+        if entry_idx is None:
+            if spec.expect_enter:
+                raise AssertionFailure(
+                    f"no zone entry observed for {spec.zone_id} — {transitions()}",
+                    ctx.obs)
             return
-        within = (plan.duration_ms / 1000.0) + 30
-        expect_in_order(
-            ctx.obs,
-            [
-                (ZoneStateChange, lambda e: e.new == "Exiting"),
-            ],
-            within_s=within,
-            description=f"zone exit for {spec.zone_id}",
-        )
+        entry = changes[entry_idx]
+
+        # Like the original bulk asserts, enter/exit don't pin the zone *id*
+        # (direction validation is validate-zones.sh's job — the approach can
+        # legitimately clip an adjacent zone first); the flap check below is
+        # per-id, so it stays meaningful either way.
+        exit_ev = next((e for e in changes[entry_idx + 1:] if e.new == "Exiting"), None)
+        if spec.expect_exit and exit_ev is None:
+            raise AssertionFailure(
+                f"no zone exit observed for {spec.zone_id} — {transitions()}",
+                ctx.obs)
+
+        if spec.forbid_in_zone_rebound:
+            # Re-entering a zone after its own Exiting on a one-way drive is
+            # the InZone<->Exiting flap the engine's exit hysteresis prevents.
+            exited: set[str] = set()
+            for e in changes:
+                if e.new == "Exiting" and e.zone != "-":
+                    exited.add(e.zone)
+                elif e.new == "InZone" and e.zone in exited:
+                    raise AssertionFailure(
+                        f"in-zone rebound: {e.zone} re-entered after exiting "
+                        f"(flap) — {transitions()}",
+                        ctx.obs)
+
+        if spec.expect_avg_kmh is not None and exit_ev is not None:
+            in_zone = [e.kmh for e in events
+                       if isinstance(e, DisplaySpeed)
+                       and entry.monotonic_ms <= e.monotonic_ms <= exit_ev.monotonic_ms]
+            if not in_zone:
+                raise AssertionFailure(
+                    f"expect_avg_kmh set but no DisplaySpeed events between "
+                    f"entry and exit of {spec.zone_id}", ctx.obs)
+            avg = sum(in_zone) / len(in_zone)
+            if abs(avg - spec.expect_avg_kmh) > spec.avg_kmh_tolerance:
+                raise AssertionFailure(
+                    f"average in-zone speed {avg:.1f} km/h outside "
+                    f"{spec.expect_avg_kmh}±{spec.avg_kmh_tolerance} km/h "
+                    f"({len(in_zone)} fixes)", ctx.obs)
 
     def teardown(ctx: RunContext) -> None:
         settings_mod.stop_tracking()
@@ -187,11 +297,27 @@ def build_scenario(spec: BulkScenarioSpec) -> Scenario:
     steps: list[Step] = [
         step_lambda("setup", setup_step),
         step_drive(plan, compression=1.0),  # already compressed
-        step_lambda("assert_enter", assert_enter),
-        step_lambda("assert_exit", assert_exit),
+        step_lambda("assert_drive", assert_drive),
     ]
     return Scenario(name=spec.name, steps=steps, teardown=teardown,
                     timeout_s=plan.duration_ms / 1000 + 60)
+
+
+def _drain_buffered(obs: LogObserver, *, quiet_s: float = 1.0,
+                    max_wait_s: float = 5.0) -> list:
+    """Collect the events already buffered for a completed drive, allowing a
+    short quiet period for the log stream's tail to land. Stops after
+    `quiet_s` with no new event, or `max_wait_s` overall."""
+    out: list = []
+    deadline = time.monotonic() + max_wait_s
+    quiet_deadline = time.monotonic() + quiet_s
+    while time.monotonic() < min(deadline, quiet_deadline):
+        try:
+            out.append(obs.queue.get(timeout=0.2))
+            quiet_deadline = time.monotonic() + quiet_s
+        except queue.Empty:
+            continue
+    return out
 
 
 def load_specs_from_dir(dir_path: Path) -> list[BulkScenarioSpec]:

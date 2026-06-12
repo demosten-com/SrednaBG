@@ -18,21 +18,26 @@ from ._helpers import base_plan, scenario_setup, scenario_teardown
 
 
 def build() -> Scenario:
-    fast = base_plan("trakiya-01-east", speed_kmh=160).compressed(2.0)
+    # Splice on the UNCOMPRESSED plans and compress LAST — rebuilding
+    # TrackPoints from a compressed plan drops `sim_offset_ms`, which
+    # doubled the recovery leg to 200 km/h (i.e. never actually slowed
+    # down). See wrong_direction.py for the mechanism.
+    fast = base_plan("trakiya-01-east", speed_kmh=160)
     # Splice: first half of the fast plan, then speed-down via slow plan
     # for the second half. We just reuse the same physical points so
     # only the timing differs.
-    slow = base_plan("trakiya-01-east", speed_kmh=100).compressed(2.0)
+    slow = base_plan("trakiya-01-east", speed_kmh=100)
     half = fast.duration_ms // 2
-    plan = fast.slice(0, half)
+    first = fast.slice(0, half)
     # Append slow second half, time-shifted so it follows the fast leg.
     second_half = slow.slice(slow.duration_ms // 2, slow.duration_ms)
-    from ...drive import TrackPoint
+    from ...drive import DrivePlan, TrackPoint
     shifted = [
-        TrackPoint(p.lat, p.lng, p.t_offset_ms + plan.duration_ms + 100)
+        TrackPoint(p.lat, p.lng, p.t_offset_ms + first.duration_ms + 100)
         for p in second_half.points
     ]
-    plan.points.extend(shifted)
+    plan = DrivePlan(name=f"{fast.name}-recovery",
+                     points=first.points + shifted).compressed(2.0)
 
     def setup(ctx: RunContext) -> None:
         scenario_setup(ctx, settings_id="S1")  # voice on, BG, car

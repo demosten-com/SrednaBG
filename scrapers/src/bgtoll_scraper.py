@@ -15,61 +15,19 @@ import unicodedata
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-import requests
 from bs4 import BeautifulSoup
 
+from src.fetch import fetch_text
+from src.roads import infer_direction_from_km, normalize_road, road_slug
 from src.zone_schema import SpeedLimits, Zone, ZoneEndpoint
 
 logger = logging.getLogger(__name__)
 
 BGTOLL_URL = "https://bgtoll.bg/vaprosi-i-otgovori"
 
-# Road name normalization: raw BG TOLL name -> canonical name
-ROAD_ALIASES = {
-    'АМ "Тракия"': "АМ Тракия",
-    'АМ "Хемус"': "АМ Хемус",
-    'АМ "Струма"': "АМ Струма",
-    'АМ "Марица"': "АМ Марица",
-    'АМ "Европа"': "АМ Европа",
-    "АМ Тракия": "АМ Тракия",
-    "АМ Хемус": "АМ Хемус",
-    "АМ Струма": "АМ Струма",
-    "АМ Марица": "АМ Марица",
-    "АМ Европа": "АМ Европа",
-    'АМ "Европа" (Северна скоростна тангента)': "АМ Европа",
-}
-
-# Road slug for ID generation
-ROAD_SLUGS = {
-    "АМ Тракия": "trakiya",
-    "АМ Хемус": "hemus",
-    "АМ Струма": "struma",
-    "АМ Марица": "maritsa",
-    "АМ Европа": "europa",
-}
-
 # Default speed limits by road type (km/h)
 MOTORWAY_SPEED_LIMITS = SpeedLimits(car=140, truck=90, bus=100, motorcycle=140)
 NATIONAL_ROAD_SPEED_LIMITS = SpeedLimits(car=90, truck=80, bus=80, motorcycle=90)
-
-# Direction inference: which way km markers increase on each road
-# (direction_when_km_increases, direction_when_km_decreases)
-ROAD_DIRECTIONS = {
-    # Motorways
-    "АМ Тракия": ("east", "west"),      # Sofia -> Burgas
-    "АМ Хемус": ("east", "west"),       # Sofia -> Varna
-    "АМ Струма": ("south", "north"),    # Sofia -> Kulata
-    "АМ Марица": ("east", "west"),      # Chirpan -> Svilengrad
-    "АМ Европа": ("north", "south"),    # Sofia -> Botevgrad
-    # National roads
-    "Път I-1": ("south", "north"),      # Sofia -> Blagoevgrad -> Kulata (N->S)
-    "Път I-2": ("east", "west"),        # Sofia -> Plovdiv (W->E)
-    "Път I-3": ("south", "north"),      # Byala -> Shipka -> Plovdiv (N->S)
-    "Път I-4": ("east", "west"),        # Sofia -> V. Tarnovo (W->E)
-    "Път I-5": ("south", "north"),      # Ruse -> Stara Zagora -> Kardzhali (N->S)
-    "Път I-6": ("east", "west"),        # Sofia -> Karlovo -> Burgas (W->E)
-    "Път II-55": ("south", "north"),    # V. Tarnovo -> Stara Zagora (N->S)
-}
 
 
 @dataclass
@@ -83,21 +41,7 @@ class RawSection:
 
 def fetch_page(url: str = BGTOLL_URL, timeout: int = 30) -> str:
     """Fetch the BG TOLL FAQ page HTML."""
-    for attempt in range(3):
-        try:
-            resp = requests.get(
-                url,
-                timeout=timeout,
-                headers={"User-Agent": "SrednaBG/1.0 (zone-scraper)"},
-            )
-            resp.raise_for_status()
-            resp.encoding = "utf-8"
-            return resp.text
-        except requests.RequestException as e:
-            logger.warning("BG TOLL fetch attempt %d failed: %s", attempt + 1, e)
-            if attempt == 2:
-                raise
-    return ""  # unreachable
+    return fetch_text(url, timeout=timeout, label="BG TOLL")
 
 
 def parse_html(html: str) -> list[RawSection]:
@@ -178,53 +122,12 @@ def parse_point_text(text: str) -> tuple[str, str | None]:
 
 def normalize_road_name(raw: str) -> str:
     """Normalize BG TOLL road name to canonical form."""
-    # Try direct alias lookup
-    if raw in ROAD_ALIASES:
-        return ROAD_ALIASES[raw]
-
-    # Strip parenthetical suffixes and try again: АМ "Европа" (Северна...) -> АМ "Европа"
-    stripped = re.sub(r"\s*\(.*\)\s*$", "", raw).strip()
-    if stripped != raw and stripped in ROAD_ALIASES:
-        return ROAD_ALIASES[stripped]
-
-    # Handle national road patterns: "I-1", "I-4", "II-55"
-    match = re.match(r"^(I{1,3})-(\d+)$", raw)
-    if match:
-        return f"Път {raw}"
-
-    return raw
-
-
-def road_slug(canonical_road: str) -> str:
-    """Convert canonical road name to URL-safe slug for zone IDs."""
-    if canonical_road in ROAD_SLUGS:
-        return ROAD_SLUGS[canonical_road]
-
-    # National roads: "Път I-4" -> "i4", "Път II-55" -> "ii55"
-    match = re.match(r"Път\s+(I{1,3})-(\d+)", canonical_road)
-    if match:
-        prefix = match.group(1).lower()
-        number = match.group(2)
-        return f"{prefix}{number}"
-
-    # Fallback: transliterate
-    return re.sub(r"[^a-z0-9]", "", canonical_road.lower())
+    return normalize_road(raw)
 
 
 def infer_direction(road: str, start_km: float, end_km: float) -> str:
-    """Infer travel direction from road name and km marker ordering.
-
-    Uses road-specific direction knowledge for all known roads.
-    Falls back to east/west heuristic for unknown roads.
-    """
-    increasing = end_km > start_km
-
-    if road in ROAD_DIRECTIONS:
-        inc_dir, dec_dir = ROAD_DIRECTIONS[road]
-        return inc_dir if increasing else dec_dir
-
-    # Unknown roads: default heuristic — increasing km = east
-    return "east" if increasing else "west"
+    """Infer travel direction from road name and km marker ordering."""
+    return infer_direction_from_km(road, start_km, end_km)
 
 
 def to_zones(sections: list[RawSection]) -> list[Zone]:

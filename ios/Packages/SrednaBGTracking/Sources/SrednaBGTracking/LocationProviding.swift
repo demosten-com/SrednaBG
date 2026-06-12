@@ -33,7 +33,13 @@ public protocol LocationProviding: Sendable {
     /// QA harness hook: synthesize a GPS fix and drive it through the
     /// provider's normal emission pipeline. Default implementation is a
     /// no-op; only the production `CLLocationTracker` overrides in DEBUG.
-    func injectDebugFix(lat: Double, lng: Double, speedMps: Double, bearing: Double?) async
+    ///
+    /// `timestampMs` (epoch ms) overrides the fix timestamp so the harness's
+    /// compressed drives present a realistic cadence to the speed inference /
+    /// Kalman filter — mirrors the Android `FEED_POINT` `time_ms` extra.
+    /// `nil` stamps the fix with the current time.
+    func injectDebugFix(lat: Double, lng: Double, speedMps: Double, bearing: Double?,
+                        timestampMs: Int64?) async
 }
 
 public enum LocationAuthorization: Sendable, Equatable {
@@ -53,7 +59,8 @@ public extension LocationProviding {
     /// Default no-op. Only the production `CLLocationTracker` overrides this
     /// in DEBUG builds so the QA harness can drive synthetic GPS fixes
     /// through the exact same pipeline as real ones.
-    func injectDebugFix(lat: Double, lng: Double, speedMps: Double, bearing: Double?) async {
+    func injectDebugFix(lat: Double, lng: Double, speedMps: Double, bearing: Double?,
+                        timestampMs: Int64?) async {
         // no-op default
     }
 }

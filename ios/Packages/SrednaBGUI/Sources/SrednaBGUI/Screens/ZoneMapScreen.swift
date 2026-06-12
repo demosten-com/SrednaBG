@@ -66,7 +66,11 @@ public struct ZoneMapScreen: View {
                         .padding(.horizontal, 12)
                         .padding(.top, 12)
                 } else if case .inZone(let inZone) = tracking.zoneState {
-                    StatusChip(inZone: inZone, currentSpeedKmh: tracking.currentPosition?.speed)
+                    StatusChip(
+                        inZone: inZone,
+                        currentSpeedKmh: tracking.currentPosition?.speed,
+                        limitKmh: settings.vehicleType.limit(inZone.zone.speedLimits)
+                    )
                         .padding(.horizontal, 12)
                         .padding(.top, 12)
                 }

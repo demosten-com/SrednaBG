@@ -12,7 +12,7 @@
 #
 #   qa/feed-zone.sh                 # list zones
 #   qa/feed-zone.sh 0               # feed zone index 0
-#   qa/feed-zone.sh europa-01-north # feed by id
+#   qa/feed-zone.sh europa-01-east  # feed by id
 #   qa/feed-zone.sh trakiya         # feed by substring (must be unambiguous)
 #
 # Env overrides: SPEED_MS (default 30 ~108km/h)  STEP_M (30)  INTERVAL (1s)

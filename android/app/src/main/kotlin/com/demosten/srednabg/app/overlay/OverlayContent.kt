@@ -13,6 +13,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.demosten.srednabg.app.service.LocationTrackingService
 import com.demosten.srednabg.app.ui.components.ZoneStatusChip
 import com.demosten.srednabg.app.ui.components.ZoneStatusPill
+import com.demosten.srednabg.core.VehicleType
 import com.demosten.srednabg.core.ZoneState
 
 /**
@@ -27,6 +28,7 @@ import com.demosten.srednabg.core.ZoneState
  */
 @Composable
 internal fun OverlayContent(
+    vehicleType: VehicleType,
     debugMaxSpeedOverride: Int?,
     modifier: Modifier = Modifier,
 ) {
@@ -40,6 +42,7 @@ internal fun OverlayContent(
             else -> ZoneStatusChip(
                 state = state,
                 currentSpeedKmh = speed,
+                vehicleType = vehicleType,
                 debugMaxSpeedOverride = debugMaxSpeedOverride,
             )
         }

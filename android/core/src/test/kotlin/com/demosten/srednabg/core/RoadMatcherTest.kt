@@ -68,6 +68,18 @@ class RoadMatcherTest {
     }
 
     @Test
+    fun `matchDirection fails gracefully on unknown direction string`() {
+        // Degenerate centerline forces the cardinal-direction fallback; an
+        // unknown direction string must mean "no match", not a crash — mirrors
+        // the Swift port's matchDirectionFailsGracefullyOnUnknownDirectionString.
+        val degenerate = TRAKIYA_T10.copy(
+            direction = "northeast",
+            centerline = listOf(listOf(42.427, 23.855)),
+        )
+        assertFalse(RoadMatcher.matchDirection(310.0, degenerate))
+    }
+
+    @Test
     fun `findMatchingZone returns correct zone`() {
         val allZones = listOf(TRAKIYA_T10, HEMUS_H12, I4_10)
         val bearing = polylineBearing(TRAKIYA_T10.centerline)

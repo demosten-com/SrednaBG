@@ -12,10 +12,14 @@ import SrednaBGCore
 public struct StatusChip: View {
     public let inZone: ZoneState.InZone
     public let currentSpeedKmh: Double?
+    /// Vehicle-type-resolved limit — the engine's over-limit verdict uses it,
+    /// so the badge must show the same number, not the car default.
+    public let limitKmh: Int
 
-    public init(inZone: ZoneState.InZone, currentSpeedKmh: Double?) {
+    public init(inZone: ZoneState.InZone, currentSpeedKmh: Double?, limitKmh: Int) {
         self.inZone = inZone
         self.currentSpeedKmh = currentSpeedKmh
+        self.limitKmh = limitKmh
     }
 
     public var body: some View {
@@ -49,7 +53,7 @@ public struct StatusChip: View {
                     .minimumScaleFactor(0.7)
             }
             Spacer(minLength: 12)
-            LimitBadge(limit: inZone.zone.speedLimits.car)
+            LimitBadge(limit: limitKmh)
             Spacer(minLength: 12)
             VStack(alignment: .center, spacing: 2) {
                 Text(String(format: "%.1f km", inZone.distanceRemaining / 1000))

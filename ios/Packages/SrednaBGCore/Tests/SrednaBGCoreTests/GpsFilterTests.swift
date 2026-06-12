@@ -21,6 +21,21 @@ struct GpsFilterTests {
     }
 
     @Test
+    func identicalTimestampResetsToMeasurement() {
+        // dt == 0 (e.g. an injected/simulated trace replaying a fix) must take
+        // the "large gap" reset path, not divide into a degenerate prediction.
+        var filter = GpsFilter()
+        let first = GpsPoint(lat: 42.7, lng: 23.3, speed: 100.0, timestamp: epochBase, bearing: 90.0, accuracy: 5.0)
+        _ = filter.filter(first)
+
+        let second = GpsPoint(lat: 42.8, lng: 23.4, speed: 150.0, timestamp: epochBase, bearing: 90.0, accuracy: 5.0)
+        let result = filter.filter(second)
+        #expect(result.lat == second.lat)
+        #expect(result.lng == second.lng)
+        #expect(result.speed == second.speed)
+    }
+
+    @Test
     func stationaryNoisyReadingsConvergeToTruePosition() {
         let trueLat = 42.700
         let trueLng = 23.300

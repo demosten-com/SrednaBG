@@ -14,13 +14,14 @@ per-tag updates. None of this is read directly by F-Droid — to push an update,
 - `{en-US,bg}/full_description.txt` — F-Droid full description (≤4000 chars).
 - `{en-US,bg}/changelogs/<versionCode>.txt` — per-release notes.
 - `map-bundle-checksums.txt` — a single `<sha256>  map-bundle.zip` line (the
-  current bundle's digest), kept in sync with `SHA256` in
-  `backend/scripts/fetch-fdroid-map-bundle.sh`. The Android release workflow
-  uses it to verify the mutable `srednabg.com/assets/map-bundle.zip` before
-  snapshotting it per-tag onto the GitHub Release.
+  current bundle's digest); the one pinned source of truth, read at build time
+  by `backend/scripts/fetch-fdroid-map-bundle.sh`. The Android release workflow
+  uses it to verify the mutable `map-bundle.zip` from the rolling
+  `map-bundle-latest` GitHub Release before snapshotting it per-tag onto the
+  version's Release.
 - `scripts/publish-map-bundle.sh` — run only when the map content changes:
-  rebuilds the bundle, re-pins the digest in both files above, prints the SCP
-  command to replace the hosted `map-bundle.zip`.
+  rebuilds the bundle, re-pins the digest in `map-bundle-checksums.txt`, and
+  uploads the new latest to the rolling `map-bundle-latest` GitHub Release.
 - `scripts/stage-fdroiddata.sh` — copies **only** `metadata.yml` into a target
   fdroiddata clone (`metadata/com.demosten.srednabg.yml`), ready for `git add`.
   Listing copy/graphics are **not** staged — they live in the app repo's
@@ -72,13 +73,14 @@ don't, so it's moot — `gen-fastlane-metadata.sh` writes the Fastlane names.
   available regardless. Map sync is a separate path, compile-time gated off
   (`FeatureFlags.IS_MAP_SYNC_ENABLED = false`). No tracking, and the built
   (aosp) variant has no non-free dependencies.
-- Map bundle is fetched by F-Droid's sandbox from
-  `srednabg.com/assets/map-bundle-<tag>.zip` and SHA-256-verified by
+- Map bundle is fetched by F-Droid's sandbox from the GitHub Release asset
+  `map-bundle-<tag>.zip` and SHA-256-verified by
   `backend/scripts/fetch-fdroid-map-bundle.sh`, which the recipe's `prebuild`
   invokes. The fetch+verify lives in that repo script (not inline prebuild)
   because the curl flags + URL and the 64-char digest each exceed F-Droid's
   metadata line width, and `rewritemeta`'s line-folding then collides with the
-  trailing-spaces lint — a single short `bash …` call satisfies both. URL +
-  digest stay auditable in the script at the build tag.
+  trailing-spaces lint — a single short `bash …` call satisfies both. The URL
+  stays auditable in the script and the digest in `map-bundle-checksums.txt`,
+  both in the repo at the build tag.
 - Reproducible builds are deferred to a later release; F-Droid signs the
   APK with its own key (current recipe builds v1.0.4 / versionCode 10004).

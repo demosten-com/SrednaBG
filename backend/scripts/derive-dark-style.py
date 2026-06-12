@@ -20,7 +20,11 @@ import json
 
 
 # Per-layer paint overrides for a dark night-style palette.
-# Ids match `basic-preview`'s OpenMapTiles schema (see `backend/data/map-bundle/style.json`).
+# Ids match `basic-preview`'s OpenMapTiles schema (see
+# `backend/map-assets/style-template.json`). Coverage is enforced at run time:
+# the build fails if an override targets a layer the style no longer has, or if
+# a color-bearing style layer has no override (so a refreshed template can't
+# silently ship light-colored layers in the dark variant).
 LAYER_OVERRIDES = {
     "background": {"background-color": "hsl(220, 14%, 11%)"},
     "landuse-residential": {"fill-color": "hsl(220, 12%, 14%)"},
@@ -98,6 +102,29 @@ LAYER_OVERRIDES = {
 }
 
 
+def check_coverage(style):
+    """Fail if LAYER_OVERRIDES has drifted from the style's layer set."""
+    layers = style.get("layers", [])
+    layer_ids = {layer.get("id") for layer in layers}
+    stale = sorted(set(LAYER_OVERRIDES) - layer_ids)
+    uncovered = sorted(
+        layer.get("id", "<no id>")
+        for layer in layers
+        if layer.get("id") not in LAYER_OVERRIDES
+        and any("color" in prop for prop in layer.get("paint", {}))
+    )
+    errors = []
+    if stale:
+        errors.append(f"overrides target layers missing from the style: {', '.join(stale)}")
+    if uncovered:
+        errors.append(f"color-bearing layers have no dark override: {', '.join(uncovered)}")
+    if errors:
+        raise SystemExit(
+            "derive-dark-style: style template has drifted from LAYER_OVERRIDES:\n  "
+            + "\n  ".join(errors)
+        )
+
+
 def patch_paint(layer):
     overrides = LAYER_OVERRIDES.get(layer.get("id"))
     if not overrides:
@@ -116,6 +143,8 @@ def main():
     with open(args.src, "r", encoding="utf-8") as f:
         style = json.load(f)
 
+    check_coverage(style)
+
     style["name"] = "Basic preview (dark)"
     style["id"] = "basic-preview-dark"
     if "metadata" not in style:
@@ -126,6 +155,7 @@ def main():
 
     with open(args.dst, "w", encoding="utf-8") as f:
         json.dump(style, f, indent=2, ensure_ascii=False)
+        f.write("\n")
 
 
 if __name__ == "__main__":
