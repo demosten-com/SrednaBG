@@ -96,18 +96,22 @@ class DebugControlReceiver : BroadcastReceiver() {
         // bends → spurious off-road exits). elapsedRealtimeNanos stays "now" so
         // the service's fix-freshness check still passes.
         val timeMs = intent.getStringExtra("time_ms")?.toLongOrNull() ?: System.currentTimeMillis()
+        // Optional reported accuracy (meters). Defaults to a clean 5 m so existing
+        // scenarios are unaffected; a QA scenario can pass a coarse value to
+        // exercise the service's MAX_ACCURACY_M gate (the noisy-fix regression).
+        val accuracyM = intent.getStringExtra("accuracy")?.toFloatOrNull() ?: 5f
         val location = Location("debug-gpx").apply {
             latitude = lat
             longitude = lng
             speed = speedMs
             if (bearing != null) this.bearing = bearing
-            accuracy = 5f
+            accuracy = accuracyM
             time = timeMs
             elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) isMock = true
         }
         injector(location)
-        Log.i(TAG, "feed lat=$lat lng=$lng speed=${speedMs}m/s bearing=$bearing")
+        Log.i(TAG, "feed lat=$lat lng=$lng speed=${speedMs}m/s bearing=$bearing accuracy=${accuracyM}m")
     }
 
     private fun handleSetSetting(intent: Intent) {

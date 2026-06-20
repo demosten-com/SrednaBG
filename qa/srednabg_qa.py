@@ -65,7 +65,14 @@ EDGE_SCENARIOS = [
     "auto_stop",
     "stop_silences_tts",
     "dense_centerline",
+    "noisy_fix_rejected",
 ]
+# Edge scenarios that exercise an Android-only code path and would never pass on
+# iOS. `noisy_fix_rejected` tests the Android service's MAX_ACCURACY_M gate; iOS
+# has no equivalent (CoreLocation pre-filters), so it's skipped under
+# `--platform ios` rather than failed (same philosophy as the location-source
+# flavor tripwire prefix).
+_ANDROID_ONLY_EDGE = {"noisy_fix_rejected"}
 SYNC_SCENARIOS = [
     "zones_happy",
     # Keep network-dependent scenarios before `zones_offline` — it toggles
@@ -164,7 +171,10 @@ def _full_zones_suite() -> list[Scenario]:
 
 
 def _edge_suite() -> list[Scenario]:
-    return _load_module_scenarios("edge", EDGE_SCENARIOS)
+    names = EDGE_SCENARIOS
+    if device_mod.current().platform == "ios":
+        names = [n for n in names if n not in _ANDROID_ONLY_EDGE]
+    return _load_module_scenarios("edge", names)
 
 
 def _sync_suite() -> list[Scenario]:

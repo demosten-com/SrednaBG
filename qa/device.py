@@ -84,7 +84,8 @@ class Device(abc.ABC):
     @abc.abstractmethod
     def feed_point(self, lat: float, lng: float, speed_ms: float,
                    bearing: Optional[float] = None,
-                   time_ms: Optional[int] = None) -> None:
+                   time_ms: Optional[int] = None,
+                   accuracy_m: Optional[float] = None) -> None:
         """Inject a fix with speed and bearing through the app's debug back-channel.
 
         Unlike `geo_fix`, this goes through the in-app debug surface
@@ -98,6 +99,11 @@ class Device(abc.ABC):
         drives still present a realistic cadence to the Kalman filter /
         speed inference. Honored by both platforms (Android FEED_POINT
         `time_ms` extra; iOS `/inject` `time_ms` query param).
+
+        `accuracy_m` (meters) overrides the fix's reported horizontal
+        accuracy (default a clean 5 m). Used by the Android-only
+        `noisy_fix_rejected` scenario to exercise the `MAX_ACCURACY_M`
+        gate; iOS has no such gate and ignores it.
         """
 
     # ── debug surface ───────────────────────────────────────────────────────

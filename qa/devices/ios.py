@@ -166,7 +166,12 @@ class IosDevice(Device):
 
     def feed_point(self, lat: float, lng: float, speed_ms: float,
                    bearing: float | None = None,
-                   time_ms: int | None = None) -> None:
+                   time_ms: int | None = None,
+                   accuracy_m: float | None = None) -> None:
+        # `accuracy_m` is accepted for API parity but ignored: iOS has no
+        # MAX_ACCURACY_M gate (CoreLocation pre-filters), and the scenario
+        # that uses it (noisy_fix_rejected) is Android-only.
+        del accuracy_m
         # `time_ms` (epoch ms) is forwarded to /inject, which stamps the
         # injected CLLocation with it — same semantics as Android's
         # FEED_POINT `time_ms` extra, so compressed drives present the

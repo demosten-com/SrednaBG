@@ -41,6 +41,21 @@ interface LocationSource {
     fun stop()
 }
 
+/**
+ * Provider selection policy for [SystemLocationSource] — pure so it can be
+ * unit-tested without a device.
+ *
+ * **GPS only.** SrednaBG computes average speed across a zone, so it needs a
+ * precise fix; the platform NETWORK (cell/wifi) provider is 100 m–2 km off and
+ * is actively harmful here (interleaved network fixes caused wild speed spikes,
+ * zone flapping, and inflated averages). An imprecise fix is worse than no fix,
+ * so we never register NETWORK or any other fallback provider: when GPS is
+ * unavailable we return empty and the caller surfaces the "enable Location"
+ * warning. The fused (gms) and CoreLocation (iOS) paths are GPS-led by design.
+ */
+internal fun chooseLocationProviders(enabled: List<String>): List<String> =
+    if (LocationManager.GPS_PROVIDER in enabled) listOf(LocationManager.GPS_PROVIDER) else emptyList()
+
 class SystemLocationSource(
     private val locationManager: LocationManager,
     private val listener: LocationUpdateListener,
@@ -70,15 +85,15 @@ class SystemLocationSource(
         }
         Log.d(TAG, "LocationManager providers: all=$allProviders enabled=$enabledProviders isLocationEnabled=$isLocationEnabled")
 
-        val preferred = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
-        val toUse = preferred.filter { it in enabledProviders }
-            .ifEmpty { enabledProviders.filter { it != LocationManager.PASSIVE_PROVIDER } }
+        val toUse = chooseLocationProviders(enabledProviders)
 
         if (toUse.isEmpty()) {
             Log.w(
                 TAG,
-                "LocationManager: no usable providers. Check (1) location permission for this app " +
-                    "and (2) Settings → Location master toggle. allProviders=$allProviders",
+                "LocationManager: GPS provider unavailable. SrednaBG uses GPS only (the cell/wifi " +
+                    "NETWORK provider is not precise enough for zone averaging). Check (1) location " +
+                    "permission for this app and (2) Settings → Location master toggle / GPS. " +
+                    "allProviders=$allProviders enabled=$enabledProviders",
             )
             return
         }

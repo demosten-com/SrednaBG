@@ -36,10 +36,10 @@ android {
     // Two distribution flavors differing only in the location provider:
     //   aosp — LocationManager only, zero Google dependencies. Ships to
     //          F-Droid (which rejects proprietary GMS libs) and GitHub
-    //          Releases (works on every phone, incl. de-Googled). Default.
+    //          Releases (works on every phone, incl. de-Googled).
     //   gms  — adds FusedLocationProviderClient (better fused/batched fixes
     //          where Play Services exists), with a runtime fallback to the
-    //          AOSP path. Ships to the Play Store.
+    //          AOSP path. Ships to the Play Store. Default.
     // The provider-specific code lives in src/{aosp,gms}/; src/main/ never
     // references a GMS type, so the aosp variant compiles without
     // play-services-location and passes F-Droid's source scanner.
@@ -47,10 +47,10 @@ android {
     productFlavors {
         create("aosp") {
             dimension = "distribution"
-            isDefault = true
         }
         create("gms") {
             dimension = "distribution"
+            isDefault = true
         }
     }
 

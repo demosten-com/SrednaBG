@@ -33,7 +33,7 @@ Android depends on `android/`'s debug-only `DebugSyncReceiver` and `DebugControl
 ```bash
 python qa/srednabg_qa.py --suite smoke           # ~5 min — 1 zone + 1 sync + parser self-test
 python qa/srednabg_qa.py --suite representative  # ~30 min — 6 hand-picked zones × 4 settings combos + sync set
-python qa/srednabg_qa.py --suite scenarios       # ~20 min — 12 edge cases (stop, dropout, off-ramp, U-turn, swap, auto-stop, dense-centerline, stop-silences-TTS, …)
+python qa/srednabg_qa.py --suite scenarios       # ~20 min — edge cases (stop, dropout, off-ramp, U-turn, swap, auto-stop, dense-centerline, stop-silences-TTS, noisy-fix-rejected, …)
 python qa/srednabg_qa.py --suite sync            # ~5 min — zones happy + offline; map happy + integrity
 python qa/srednabg_qa.py --suite ui              # <1 min — phone UI walk
 python qa/srednabg_qa.py --suite full-zones      # ~75 min @4× — all 72 zones, minimal asserts
@@ -205,6 +205,13 @@ feeding:
   the pipeline sees a realistic ~1 s cadence while the whole 72-zone sweep still
   finishes in minutes instead of hours. `feed-zone.sh` omits `time_ms` (real
   wall-clock), which is fine at its 1 s default `INTERVAL`.
+- **Fix accuracy**: `FEED_POINT` also accepts an optional `accuracy` (meters)
+  extra (default 5 m); `Device.feed_point(..., accuracy_m=)` threads it through.
+  Used by the **Android-only** `scenarios/edge/noisy_fix_rejected.py` to feed a
+  coarse fix and assert the service's `MAX_ACCURACY_M` (50 m) gate drops it
+  (the defense-in-depth half of the GPS-only / no-NETWORK fix). It's listed in
+  `_ANDROID_ONLY_EDGE` and skipped under `--platform ios` (iOS has no such gate;
+  CoreLocation pre-filters).
 
 ## Map sync — feature-gated off
 

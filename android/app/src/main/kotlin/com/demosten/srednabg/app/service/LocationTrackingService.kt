@@ -64,6 +64,15 @@ class LocationTrackingService : LifecycleService() {
         private const val MIN_SPEED_INFER_M = 5.0
         private const val MIN_SPEED_INFER_DT_SEC = 0.2
         private const val MAX_INFERRED_SPEED_KMH = 250.0
+        // Defense-in-depth accuracy gate. Even with GPS-only sources, a single
+        // coarse fix (multipath / urban canyon, the gms FLP momentarily falling
+        // back to a coarse fix, or the gms SystemLocationSource fallback) would
+        // corrupt the position baseline, speed inference, and zone state. Real
+        // highway GPS is typically <20 m; we drop fixes worse than this so junk
+        // never reaches the pipeline (cell/wifi-grade 100 m–2 km is rejected,
+        // while 50 m still admits first-fix cold-start convergence). This brings
+        // Android closer to CoreLocation's internal quality filtering on iOS.
+        private const val MAX_ACCURACY_M = 50.0
         // FLP can deliver a cached "last known" fix as the first update —
         // possibly from a wifi/cell-derived position tens to hundreds of
         // meters off from the user's actual location. A stale fix as the
@@ -152,6 +161,12 @@ class LocationTrackingService : LifecycleService() {
         )
         val detector = zoneDetector ?: run {
             Log.w(TAG, "onLocation: zoneDetector is null — dropping")
+            return@LocationUpdateListener
+        }
+        // Drop coarse fixes before they touch the position baseline / speed
+        // inference / detector. An imprecise fix is worse than none here.
+        if (location.hasAccuracy() && location.accuracy > MAX_ACCURACY_M) {
+            Log.d(TAG, "Dropping low-accuracy fix: accuracy=${location.accuracy}m > $MAX_ACCURACY_M")
             return@LocationUpdateListener
         }
         val deltaM = if (!lastRawLat.isNaN()) haversineDistance(
