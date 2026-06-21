@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="bg" data-theme="carbon" data-fontset="geometric">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="meta.title">SrednaBG — FAQ</title>
+  <meta name="description" data-i18n="meta.description" content="">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#07090b">
+  <link rel="alternate" hreflang="bg" href="/faq?lang=bg">
+  <link rel="alternate" hreflang="en" href="/faq?lang=en">
+  <link rel="alternate" hreflang="x-default" href="/faq?lang=bg">
+  <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
+  <link rel="stylesheet" href="assets/css/site.css">
+  <style>
+    .faq-wrap { max-width: 860px; margin: 0 auto; padding: 56px 24px 96px; }
+    .faq-head { margin-bottom: 32px; }
+    .faq-head h1 { font-size: clamp(2rem, 4vw, 3rem); letter-spacing: var(--display-tracking); margin: 8px 0 0; }
+
+    .faq-toc { border: 1px solid var(--stroke); border-radius: 14px; background: var(--bg-2); padding: 18px 22px; margin: 0 0 48px; }
+    .faq-toc .toc-label { display: block; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-low); margin-bottom: 10px; }
+    .faq-toc ol { margin: 0; padding-left: 1.25rem; }
+    .faq-toc li { margin-bottom: 6px; color: var(--text-mid); }
+    .faq-toc a { color: var(--text-high); border-bottom: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); }
+    .faq-toc a:hover { border-bottom-color: var(--accent); }
+
+    .faq-item { padding: 28px 0; border-top: 1px solid var(--stroke); scroll-margin-top: 96px; }
+    .faq-item:first-of-type { border-top: 0; }
+    .faq-item h2 { font-size: clamp(1.25rem, 2.4vw, 1.6rem); color: var(--text-high); margin: 0 0 16px; }
+    .faq-item p { color: var(--text-mid); margin: 0 0 12px; }
+    .faq-soon { color: var(--text-low); font-style: italic; }
+
+    .faq-table { width: 100%; border-collapse: collapse; margin: 8px 0 4px; font-size: 0.95rem; }
+    .faq-table caption { text-align: left; color: var(--text-low); font-size: 0.85rem; margin-bottom: 10px; }
+    .faq-table th, .faq-table td { text-align: left; vertical-align: top; padding: 12px 14px; border-bottom: 1px solid var(--stroke); }
+    .faq-table thead th { color: var(--text-high); font-weight: 600; font-size: 0.8rem; letter-spacing: 0.04em; text-transform: uppercase; border-bottom-color: var(--stroke-soft); }
+    .faq-table tbody th { color: var(--text-high); font-weight: 600; width: 32%; }
+    .faq-table tbody td { color: var(--text-mid); }
+    .faq-table tbody tr:hover { background: var(--bg-2); }
+    .faq-tag { display: inline-block; margin-top: 4px; font-size: 0.72rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-low); }
+
+    .faq-verdict { font-weight: 600; }
+    .faq-yes { color: var(--green); }
+    .faq-no { color: var(--red); }
+    .faq-maybe { color: var(--amber); }
+    .faq-note { font-size: 0.85rem; color: var(--text-low); margin-top: 14px; }
+
+    .faq-cell-label { display: none; }
+
+    @media (max-width: 640px) {
+      .faq-table, .faq-table tbody, .faq-table tr, .faq-table th, .faq-table td { display: block; width: auto; }
+      .faq-table thead { display: none; }
+      .faq-table tbody tr { border: 1px solid var(--stroke); border-radius: 12px; padding: 6px 4px; margin-bottom: 14px; }
+      .faq-table th, .faq-table td { border-bottom: 0; padding: 8px 14px; }
+      .faq-table tbody th { width: auto; }
+      .faq-cell-label { display: block; font-size: 0.7rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-low); margin-bottom: 2px; }
+    }
+  </style>
+  <script type="application/json" id="i18n-bg">
+{
+  "meta.title": "Често задавани въпроси — SrednaBG",
+  "meta.description": "Често задавани въпроси за SrednaBG: с какво се различава от Waze и какви разрешения иска приложението и защо.",
+
+  "nav.features": "Функции",
+  "nav.how": "Как работи",
+  "nav.privacy": "Поверителност",
+  "nav.download": "Свали",
+  "nav.faq": "Въпроси",
+  "nav.lang_bg": "Български",
+  "nav.lang_en": "English",
+
+  "faq.eyebrow": "ЧЗВ · ПОМОЩ",
+  "faq.headline": "Често задавани въпроси",
+  "faq.toc_label": "Бързи връзки",
+
+  "faq.q_waze": "С какво SrednaBG се различава от Waze?",
+  "faq.a_waze_intro": "Двете приложения се допълват. Ето кое какво прави:",
+  "faq.waze.col_cap": "Възможност",
+  "faq.waze.col_waze": "Waze",
+  "faq.waze.col_app": "SrednaBG",
+  "faq.waze.r1_cap": "Навигира ви от точка А до Б с пълно гласово упътване.",
+  "faq.waze.r1_waze": "Да",
+  "faq.waze.r1_app": "Не",
+  "faq.waze.r2_cap": "Показва зоните със средна скорост и ви известява при влизане и излизане.",
+  "faq.waze.r2_waze": "Частично*",
+  "faq.waze.r2_app": "Да",
+  "faq.waze.r3_cap": "Изчислява средната ви скорост в зоната и ви държи информирани.",
+  "faq.waze.r3_waze": "Не",
+  "faq.waze.r3_app": "Да",
+  "faq.waze.note": "* Waze отбелязва тези зони и ви известява при влизане и излизане, но когато няколко проверки за средна скорост следват една след друга — краят на едната е началото на следващата — Waze ги показва като една зона. В България в момента има 7 такива участъка (до шест проверки подред на АМ „Тракия“). SrednaBG отчита всяка проверка поотделно и започва нова статистика за всяка.",
+
+  "faq.q_perms": "Какви разрешения са нужни и защо?",
+  "faq.a_perms_intro": "SrednaBG иска само това, което му трябва, за да следи скоростта ви в зоните със средна скорост. Ето всяко разрешение, какво отключва и какво се случва, ако не го дадете.",
+  "faq.perm.col_name": "Разрешение",
+  "faq.perm.col_why": "Защо е нужно",
+  "faq.perm.col_without": "Ако не го дадете",
+
+  "faq.perm.loc.name": "Местоположение по време на употреба (точен GPS)",
+  "faq.perm.loc.why": "Засича влизане и излизане от зона и изчислява средната ви скорост и максималната скорост до края на отсечката.",
+  "faq.perm.loc.without": "Приложението не може да прави нищо — няма засичане на зони и няма средна скорост.",
+
+  "faq.perm.bg.name": "Фоново местоположение („през цялото време“)",
+  "faq.perm.bg.why": "Продължава да следи при заключен екран или когато отпред е друг навигатор (Waze / Google Maps).",
+  "faq.perm.bg.without": "Следенето спира, щом излезете от приложението или заключите екрана.",
+
+  "faq.perm.notif.name": "Известия",
+  "faq.perm.notif.why": "Показва живия статус и гласовите предупреждения, докато следи (на Android е задължително за фоновата услуга за местоположение).",
+  "faq.perm.notif.without": "Няма да виждате статус и предупреждения; на Android услугата пак показва задължителното си известие.",
+
+  "faq.perm.overlay.name": "Показване върху други приложения",
+  "faq.perm.overlay.why": "Показва плаващия жив индикатор върху Waze / Google Maps.",
+  "faq.perm.overlay.without": "Няма плаващ индикатор — всичко останало работи както обикновено.",
+  "faq.perm.overlay.tag": "Само Android · по избор",
+
+  "faq.perm.battery.name": "Игнориране на оптимизациите за батерия",
+  "faq.perm.battery.why": "Не позволява на системата да спре следенето по време на дълго шофиране.",
+  "faq.perm.battery.without": "При дълги пътувания системата може да спре следенето по-рано.",
+  "faq.perm.battery.tag": "Само Android · по избор",
+
+  "footer.license": "MIT лиценз",
+  "footer.copyright": "© 2026 SrednaBG contributors",
+  "footer.no_cookies": "Тази страница не записва нищо на устройството ви.",
+  "footer.privacy": "Политика за поверителност",
+
+  "a11y.skip_to_content": "Към съдържанието",
+  "a11y.toggle_lang": "Смени езика",
+  "a11y.github": "SrednaBG в GitHub",
+  "a11y.home": "Към началото"
+}
+  </script>
+  <script type="application/json" id="i18n-en">
+{
+  "meta.title": "FAQ — SrednaBG",
+  "meta.description": "Frequently asked questions about SrednaBG: how it differs from Waze, and which permissions the app needs and why.",
+
+  "nav.features": "Features",
+  "nav.how": "How it works",
+  "nav.privacy": "Privacy",
+  "nav.download": "Download",
+  "nav.faq": "FAQ",
+  "nav.lang_bg": "Bulgarian",
+  "nav.lang_en": "English",
+
+  "faq.eyebrow": "FAQ · HELP",
+  "faq.headline": "Frequently asked questions",
+  "faq.toc_label": "Quick links",
+
+  "faq.q_waze": "How is SrednaBG different from Waze?",
+  "faq.a_waze_intro": "The two apps complement each other. Here's what each one does:",
+  "faq.waze.col_cap": "Capability",
+  "faq.waze.col_waze": "Waze",
+  "faq.waze.col_app": "SrednaBG",
+  "faq.waze.r1_cap": "Navigates you from A to B, with full turn-by-turn guidance.",
+  "faq.waze.r1_waze": "Yes",
+  "faq.waze.r1_app": "No",
+  "faq.waze.r2_cap": "Shows average-speed zones and alerts you on entry and exit.",
+  "faq.waze.r2_waze": "Partial*",
+  "faq.waze.r2_app": "Yes",
+  "faq.waze.r3_cap": "Calculates your live average speed inside a zone and keeps you informed.",
+  "faq.waze.r3_waze": "No",
+  "faq.waze.r3_app": "Yes",
+  "faq.waze.note": "* Waze flags these zones and alerts you on entry and exit, but where several average-speed checks run back-to-back — the end of one is the start of the next — Waze shows them as a single zone. Bulgaria currently has 7 such stretches (up to six checks in a row on the Trakiya motorway). SrednaBG treats every check on its own and starts a fresh average for each.",
+
+  "faq.q_perms": "What permissions are required, and why?",
+  "faq.a_perms_intro": "SrednaBG asks only for what it needs to track your speed inside average-speed zones. Here is each permission, what it unlocks, and what happens if you don't grant it.",
+  "faq.perm.col_name": "Permission",
+  "faq.perm.col_why": "Why it's needed",
+  "faq.perm.col_without": "If you don't allow it",
+
+  "faq.perm.loc.name": "Location while using the app (precise GPS)",
+  "faq.perm.loc.why": "Detects when you enter and leave a zone and computes your running average and the max speed to the end of the section.",
+  "faq.perm.loc.without": "The app can't do anything — no zone detection and no average speed.",
+
+  "faq.perm.bg.name": "Background location (“all the time”)",
+  "faq.perm.bg.why": "Keeps tracking with the screen locked or another navigator (Waze / Google Maps) in front.",
+  "faq.perm.bg.without": "Tracking pauses as soon as you leave the app or lock the screen.",
+
+  "faq.perm.notif.name": "Notifications",
+  "faq.perm.notif.why": "Shows the live status and spoken alerts while tracking (on Android this is required for the background location service).",
+  "faq.perm.notif.without": "You won't see status and alerts; on Android the service still shows its required notice.",
+
+  "faq.perm.overlay.name": "Display over other apps",
+  "faq.perm.overlay.why": "Floats the live status badge over Waze / Google Maps.",
+  "faq.perm.overlay.without": "No floating overlay — everything else still works as usual.",
+  "faq.perm.overlay.tag": "Android only · optional",
+
+  "faq.perm.battery.name": "Ignore battery optimizations",
+  "faq.perm.battery.why": "Stops the system from killing the tracker during long drives.",
+  "faq.perm.battery.without": "On long trips the system may stop tracking early.",
+  "faq.perm.battery.tag": "Android only · optional",
+
+  "footer.license": "MIT License",
+  "footer.copyright": "© 2026 SrednaBG contributors",
+  "footer.no_cookies": "This page stores nothing on your device.",
+  "footer.privacy": "Privacy policy",
+
+  "a11y.skip_to_content": "Skip to content",
+  "a11y.toggle_lang": "Change language",
+  "a11y.github": "SrednaBG on GitHub",
+  "a11y.home": "Back to home"
+}
+  </script>
+</head>
+<body>
+
+<a href="#main" class="skip" data-i18n="a11y.skip_to_content">Skip to content</a>
+
+<!-- =========================================================== HEADER === -->
+<header class="site-header" id="top">
+  <div class="wrap header-row">
+    <a href="/" class="brand" data-i18n-aria-label="a11y.home" aria-label="SrednaBG">
+      <svg viewBox="0 -4 40 40" fill="none" aria-hidden="true">
+        <path fill="currentColor" d="M36.43,23.68a14.86,14.86,0,0,1-1.21,3.72.47.47,0,0,1-.69.19h0a.48.48,0,0,1-.18-.6,15.58,15.58,0,0,0,1.21-4.29,14.54,14.54,0,0,0-.23-5.05,16.18,16.18,0,0,0-1.67-4.42A16.86,16.86,0,0,0,29.89,8.6a14.41,14.41,0,0,0-5.67-3.08,15.64,15.64,0,0,0-8.71.11A14.73,14.73,0,0,0,9.93,8.78a17.18,17.18,0,0,0-3.25,3.86,16.45,16.45,0,0,0-2.21,6,14.48,14.48,0,0,0,0,4.36,16.08,16.08,0,0,0,1.24,4.14.47.47,0,0,1-.16.59h0a.47.47,0,0,1-.69-.18l-.05-.1a14.89,14.89,0,0,1-1.42-4.88,16.12,16.12,0,0,1,.95-7.53,18.42,18.42,0,0,1,3.7-6,15.85,15.85,0,0,1,5.47-3.9,15.34,15.34,0,0,1,3.7-1,18,18,0,0,1,2.73-.23,16.76,16.76,0,0,1,6,1.06,15.7,15.7,0,0,1,4.65,2.82,18.4,18.4,0,0,1,5,7.19,16.66,16.66,0,0,1,1,4.4A15.36,15.36,0,0,1,36.43,23.68ZM9.7,24.9c.32-.23.35-.13.21-.59a10.76,10.76,0,0,1-.32-4.85,10.44,10.44,0,0,1,2.8-5.57c.15-.15.32-.29.49-.46L10,10.19A14.47,14.47,0,0,0,6.74,26.88C6.81,26.85,8.78,25.53,9.7,24.9ZM13.4,13a10.52,10.52,0,0,1,13.23,0l2.88-3.26a14.39,14.39,0,0,0-19,0Zm20.77,4.14A14.38,14.38,0,0,0,30,10.2l-2.8,3.21A11.45,11.45,0,0,1,28.59,15q1.13-.7,2.28-1.35a.44.44,0,0,1,.22,0,.45.45,0,0,1,.34.14l0,0a.47.47,0,0,1,.06.59h0l0,0a.74.74,0,0,1-.15.2l-1,1-.87.84A12,12,0,0,1,30,17.93a11,11,0,0,1,0,6.56l3.29,2.18A14.47,14.47,0,0,0,34.17,17.11Zm-3.08-3c-1.83,1-3.56,2.18-5.28,3.36s-3.43,2.4-5.14,3.61a2.71,2.71,0,0,0-3.21,1.06,2.61,2.61,0,0,0,.14,3.05,2.67,2.67,0,0,0,3.07.87A2.54,2.54,0,0,0,22,25a2.7,2.7,0,0,0,.28-2.2l2.29-2.2,3.09-3L30,15.32l1.05-1a.78.78,0,0,0,.1-.15ZM19.77,24.88a1.32,1.32,0,1,1-.07-2.64,1.32,1.32,0,0,1,1.35,1.27A1.35,1.35,0,0,1,19.77,24.88Z"/>
+      </svg>
+      <span>SrednaBG</span>
+      <span class="wm-sub">/ Средна БГ</span>
+    </a>
+
+    <nav aria-label="Primary">
+      <ul class="nav-links">
+        <li><a href="/#features" data-i18n="nav.features">Features</a></li>
+        <li><a href="/#how"      data-i18n="nav.how">How it works</a></li>
+        <li><a href="/#privacy"  data-i18n="nav.privacy">Privacy</a></li>
+        <li><a href="/#download" data-i18n="nav.download">Download</a></li>
+        <li><a href="/faq" aria-current="page" data-i18n="nav.faq">FAQ</a></li>
+      </ul>
+    </nav>
+
+    <div class="header-right">
+      <div class="lang-pill" role="group" aria-label="Language">
+        <button type="button" data-lang="bg" aria-pressed="true" data-i18n-aria-label="a11y.toggle_lang">BG</button>
+        <button type="button" data-lang="en" aria-pressed="false" data-i18n-aria-label="a11y.toggle_lang">EN</button>
+      </div>
+      <a href="https://github.com/demosten-com/SrednaBG" class="icon-btn" data-i18n-aria-label="a11y.github" aria-label="SrednaBG on GitHub">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.58.11.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.68-1.28-1.68-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.68 0-1.25.45-2.28 1.18-3.08-.12-.29-.51-1.46.11-3.04 0 0 .97-.31 3.18 1.17a11 11 0 0 1 5.8 0c2.2-1.48 3.17-1.17 3.17-1.17.63 1.58.24 2.75.12 3.04.74.8 1.18 1.83 1.18 3.08 0 4.41-2.7 5.38-5.27 5.66.41.36.78 1.07.78 2.16v3.2c0 .31.21.68.8.56A11.5 11.5 0 0 0 23.5 12 11.5 11.5 0 0 0 12 .5z"/>
+        </svg>
+      </a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ============================================================ FAQ === -->
+  <section id="faq" class="faq-wrap">
+    <div class="faq-head">
+      <span class="eyebrow" data-i18n="faq.eyebrow">FAQ · HELP</span>
+      <h1 data-i18n="faq.headline">Frequently asked questions</h1>
+    </div>
+
+    <nav class="faq-toc" aria-label="FAQ contents">
+      <span class="toc-label" data-i18n="faq.toc_label">Quick links</span>
+      <ol>
+        <li><a href="#q-waze" data-i18n="faq.q_waze">How is SrednaBG different from Waze?</a></li>
+        <li><a href="#q-permissions" data-i18n="faq.q_perms">What permissions are required, and why?</a></li>
+      </ol>
+    </nav>
+
+    <!-- Q1 — Waze comparison -->
+    <article class="faq-item" id="q-waze">
+      <h2 data-i18n="faq.q_waze">How is SrednaBG different from Waze?</h2>
+      <p data-i18n="faq.a_waze_intro">The two apps complement each other. Here's what each one does:</p>
+
+      <table class="faq-table">
+        <thead>
+          <tr>
+            <th scope="col" data-i18n="faq.waze.col_cap">Capability</th>
+            <th scope="col" data-i18n="faq.waze.col_waze">Waze</th>
+            <th scope="col" data-i18n="faq.waze.col_app">SrednaBG</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row" data-i18n="faq.waze.r1_cap">Navigates you from A to B, with full turn-by-turn guidance.</th>
+            <td><span class="faq-cell-label" data-i18n="faq.waze.col_waze">Waze</span><span class="faq-verdict faq-yes" data-i18n="faq.waze.r1_waze">Yes</span></td>
+            <td><span class="faq-cell-label" data-i18n="faq.waze.col_app">SrednaBG</span><span class="faq-verdict faq-no" data-i18n="faq.waze.r1_app">No</span></td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="faq.waze.r2_cap">Shows average-speed zones and alerts you on entry and exit.</th>
+            <td><span class="faq-cell-label" data-i18n="faq.waze.col_waze">Waze</span><span class="faq-verdict faq-maybe" data-i18n="faq.waze.r2_waze">Partial*</span></td>
+            <td><span class="faq-cell-label" data-i18n="faq.waze.col_app">SrednaBG</span><span class="faq-verdict faq-yes" data-i18n="faq.waze.r2_app">Yes</span></td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="faq.waze.r3_cap">Calculates your live average speed inside a zone and keeps you informed.</th>
+            <td><span class="faq-cell-label" data-i18n="faq.waze.col_waze">Waze</span><span class="faq-verdict faq-no" data-i18n="faq.waze.r3_waze">No</span></td>
+            <td><span class="faq-cell-label" data-i18n="faq.waze.col_app">SrednaBG</span><span class="faq-verdict faq-yes" data-i18n="faq.waze.r3_app">Yes</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p class="faq-note" data-i18n="faq.waze.note">* Waze shows these zones but merges chained checks into one.</p>
+    </article>
+
+    <!-- Q2 — permissions -->
+    <article class="faq-item" id="q-permissions">
+      <h2 data-i18n="faq.q_perms">What permissions are required, and why?</h2>
+      <p data-i18n="faq.a_perms_intro">SrednaBG asks only for what it needs.</p>
+
+      <table class="faq-table">
+        <thead>
+          <tr>
+            <th scope="col" data-i18n="faq.perm.col_name">Permission</th>
+            <th scope="col" data-i18n="faq.perm.col_why">Why it's needed</th>
+            <th scope="col" data-i18n="faq.perm.col_without">If you don't allow it</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row" data-i18n="faq.perm.loc.name">Location while using the app</th>
+            <td><span class="faq-cell-label" data-i18n="faq.perm.col_why">Why it's needed</span><span data-i18n="faq.perm.loc.why">…</span></td>
+            <td><span class="faq-cell-label" data-i18n="faq.perm.col_without">If you don't allow it</span><span data-i18n="faq.perm.loc.without">…</span></td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="faq.perm.bg.name">Background location</th>
+            <td><span class="faq-cell-label" data-i18n="faq.perm.col_why">Why it's needed</span><span data-i18n="faq.perm.bg.why">…</span></td>
+            <td><span class="faq-cell-label" data-i18n="faq.perm.col_without">If you don't allow it</span><span data-i18n="faq.perm.bg.without">…</span></td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="faq.perm.notif.name">Notifications</th>
+            <td><span class="faq-cell-label" data-i18n="faq.perm.col_why">Why it's needed</span><span data-i18n="faq.perm.notif.why">…</span></td>
+            <td><span class="faq-cell-label" data-i18n="faq.perm.col_without">If you don't allow it</span><span data-i18n="faq.perm.notif.without">…</span></td>
+          </tr>
+          <tr>
+            <th scope="row">
+              <span data-i18n="faq.perm.overlay.name">Display over other apps</span>
+              <span class="faq-tag" data-i18n="faq.perm.overlay.tag">Android only · optional</span>
+            </th>
+            <td><span class="faq-cell-label" data-i18n="faq.perm.col_why">Why it's needed</span><span data-i18n="faq.perm.overlay.why">…</span></td>
+            <td><span class="faq-cell-label" data-i18n="faq.perm.col_without">If you don't allow it</span><span data-i18n="faq.perm.overlay.without">…</span></td>
+          </tr>
+          <tr>
+            <th scope="row">
+              <span data-i18n="faq.perm.battery.name">Ignore battery optimizations</span>
+              <span class="faq-tag" data-i18n="faq.perm.battery.tag">Android only · optional</span>
+            </th>
+            <td><span class="faq-cell-label" data-i18n="faq.perm.col_why">Why it's needed</span><span data-i18n="faq.perm.battery.why">…</span></td>
+            <td><span class="faq-cell-label" data-i18n="faq.perm.col_without">If you don't allow it</span><span data-i18n="faq.perm.battery.without">…</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </article>
+  </section>
+
+</main>
+
+<!-- ============================================================ FOOTER === -->
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="foot-row">
+      <p data-i18n="footer.copyright">© 2026 SrednaBG contributors</p>
+      <span class="spacer"></span>
+      <p><a href="/privacy" data-i18n="footer.privacy">Privacy policy</a></p>
+      <p data-i18n="footer.no_cookies">This page stores nothing on your device.</p>
+      <div class="lang-pill" role="group" aria-label="Language">
+        <button type="button" data-lang="bg" aria-pressed="true" data-i18n-aria-label="a11y.toggle_lang">BG</button>
+        <button type="button" data-lang="en" aria-pressed="false" data-i18n-aria-label="a11y.toggle_lang">EN</button>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/site.js" defer></script>
+</body>
+</html>

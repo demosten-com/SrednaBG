@@ -30,6 +30,20 @@
     if (meta && dict["meta.description"]) meta.setAttribute("content", dict["meta.description"]);
     if (dict["meta.title"]) document.title = dict["meta.title"];
   }
+  /* ------- carry the active language across internal links (no storage) */
+  function propagateLang(code) {
+    document.querySelectorAll("a[href]").forEach((a) => {
+      const raw = a.getAttribute("href");
+      if (!raw || raw[0] === "#") return;            // in-page anchor: lang already active
+      let u;
+      try { u = new URL(raw, location.href); } catch (_) { return; }
+      if (u.origin !== location.origin) return;      // external link
+      if (/\.(png|jpe?g|svg|webp|gif|ico|apk|zip|json|txt|pdf|xml)$/i.test(u.pathname)) return; // asset
+      u.searchParams.set("lang", code);
+      a.setAttribute("href", u.pathname + u.search + u.hash);
+    });
+  }
+
   function pickLang() {
     const url = new URL(location.href);
     const q = url.searchParams.get("lang");
@@ -43,6 +57,7 @@
     document.documentElement.lang = code;
     apply(dict);
     applyMediaSources(code);
+    propagateLang(code);
     document.querySelectorAll(".lang-pill button").forEach((b) => {
       b.setAttribute("aria-pressed", String(b.dataset.lang === code));
     });
