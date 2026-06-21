@@ -4,6 +4,8 @@ Static marketing site for `srednabg.com`. Pure HTML/CSS/JS — LiteSpeed/Apache 
 
 Landing page is `web/html/index.html` (BG default, EN toggle; i18n strings as inline JSON `<script>` blocks in the `<head>`). Sections: hero, features, how-it-works, screen gallery, privacy, download. The **download grid** has five cards: **App Store** (`apps.apple.com/app/srednabg/id6773132524`), **Google Play** (`com.demosten.srednabg`), **F-Droid** (`f-droid.org/packages/com.demosten.srednabg/`), **APK from GitHub Releases** (with sideload steps), and **Source on GitHub**. The hero "Download the app" CTA anchors to that grid.
 
+A second page **`web/html/faq.html`** holds the FAQ, linked from the nav (`nav.faq`) and served at the clean URL `/faq`. Same i18n pattern as the landing page — its own inline `#i18n-bg` / `#i18n-en` JSON blocks (`faq.*` keys) under `faq.*`, BG default with EN toggle. **Language carries across pages by query param, not storage:** `assets/js/site.js`'s `propagateLang(code)` rewrites every same-origin, non-asset, non-anchor `<a href>` to append `?lang=<code>` whenever the language is applied, so `/` ↔ `/faq` navigation keeps the chosen language. New standalone pages need only their own inline i18n blocks plus a `/<page>` rewrite — `propagateLang` wires the linking automatically.
+
 ## Hosting layout
 
 Namecheap **addon domain**, served from `$HOME/srednabg_com/` on the cPanel host. **Not** under `public_html/srednabg_com/` — that's the default cPanel layout but this account places the addon docroot directly under `$HOME`.
@@ -12,6 +14,7 @@ Namecheap **addon domain**, served from `$HOME/srednabg_com/` on the cPanel host
 |---|---|---|
 | `$HOME/srednabg_com/index.html` | `web/html/index.html` | Manual upload (FTP/SSH); no CI. |
 | `$HOME/srednabg_com/privacy.html` | `web/html/privacy.html` | Served at clean `/privacy` (linked from both store listings). |
+| `$HOME/srednabg_com/faq.html` | `web/html/faq.html` | Served at clean `/faq` (linked from the landing-page nav). |
 | `$HOME/srednabg_com/assets/...` | `web/html/assets/...` | CSS, JS, i18n JSON, screenshots. |
 | `$HOME/srednabg_com/.htaccess` | `web/html/.htaccess` | Force HTTPS, dotfile blocks, HSTS, gzip, expires, /api/* rewrites. |
 | `$HOME/srednabg_com/api/zones.json` | (produced by cron) | Live zone data. Not committed. |
@@ -35,12 +38,12 @@ Source of truth for the SrednaBG F-Droid listing. The build recipe is **merged i
 `web/html/.htaccess` is hardened for pre-launch:
 - HTTP→HTTPS redirect (handles direct TLS and proxied front-ends)
 - Dotfile + backup-file 404s (`.git`, `.env`, `.bak`, editor swap files)
-- Security headers via `mod_headers` (HSTS 180d, `X-Content-Type-Options`, `X-Frame-Options DENY`, Permissions-Policy disabling geo/cam/mic, `X-Robots-Tag noindex,nofollow` while pre-launch)
+- Security headers via `mod_headers` (HSTS 180d, `X-Content-Type-Options`, `X-Frame-Options DENY`, Permissions-Policy disabling geo/cam/mic). The site is **live**, so no `X-Robots-Tag noindex` — search engines may index it.
 - gzip via `mod_deflate` for HTML/CSS/JS/JSON/SVG
 - Cache headers via `mod_expires` + per-file `Cache-Control` (`version.json` 5min, `zones.json` 1h, timestamped snapshots 1yr immutable; CSS/JS 1h; HTML 5min)
-- Extensionless rewrites: `/api/zones` + `/api/version` → `.json`, `/privacy` → `privacy.html`
+- Extensionless rewrites: `/api/zones` + `/api/version` → `.json`, `/privacy` → `privacy.html`, `/faq` → `faq.html`
 
-When site goes live: drop `X-Robots-Tag noindex` and consider HSTS preload — both are .htaccess one-liners.
+The site is live: the `X-Robots-Tag noindex` header has been dropped so search engines can index it. HSTS preload remains intentionally **not** enabled — it requires `max-age` ≥ 1yr + `includeSubDomains` + `preload` and submission to hstspreload.org, and is effectively a one-way door (removal is slow); not worth it for a static marketing site.
 
 ## Build commands
 

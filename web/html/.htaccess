@@ -29,8 +29,9 @@ RedirectMatch 404 ~$
 
 # ---------------------------------------------------------------------------
 # 4. Security + privacy headers. `always` so they apply to 403s / 404s too.
-#    HSTS is 180 days, no preload, no includeSubDomains — conservative
-#    while the site is pre-launch.
+#    HSTS is 180 days, no preload, no includeSubDomains — deliberately
+#    conservative so an HTTPS hiccup can't lock returning visitors out.
+#    The site is live: no X-Robots-Tag noindex, so search engines may index it.
 # ---------------------------------------------------------------------------
 <IfModule mod_headers.c>
     Header always set Strict-Transport-Security "max-age=15552000"
@@ -38,7 +39,6 @@ RedirectMatch 404 ~$
     Header always set X-Frame-Options "DENY"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
     Header always set Permissions-Policy "geolocation=(), camera=(), microphone=()"
-    Header always set X-Robots-Tag "noindex, nofollow"
 </IfModule>
 
 # ---------------------------------------------------------------------------

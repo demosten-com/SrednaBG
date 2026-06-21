@@ -5,6 +5,7 @@
 
 package com.demosten.srednabg.app.ui
 
+import android.content.pm.ActivityInfo
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.SystemBarStyle
@@ -85,6 +86,29 @@ class MainActivity : AppCompatActivity() {
                         val window = (view.context as android.app.Activity).window
                         WindowCompat.getInsetsController(window, view)
                             .isAppearanceLightStatusBars = !darkTheme
+                    }
+                }
+
+                // Lock Home and Settings to portrait — neither was designed
+                // for landscape — while letting the Map tab free-rotate. Driven
+                // from the route here (a single source of truth) rather than
+                // per-screen, so swapping between the two portrait screens
+                // can't race a restore-on-dispose back to free-rotate.
+                // userPortrait: honors the system auto-rotate lock.
+                DisposableEffect(isMapRoute, view) {
+                    val activity = view.context as? android.app.Activity
+                    if (activity != null && !view.isInEditMode) {
+                        activity.requestedOrientation = if (isMapRoute) {
+                            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                        } else {
+                            ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT
+                        }
+                    }
+                    onDispose {
+                        if (activity != null && !view.isInEditMode) {
+                            activity.requestedOrientation =
+                                ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                        }
                     }
                 }
 
