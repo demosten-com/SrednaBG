@@ -79,14 +79,19 @@ public struct ZoneMapScreen: View {
                     controls
                 }
             }
+            // Match the overlay chrome to the active map theme so
+            // `.ultraThinMaterial`, status chips, and button text stay readable
+            // on whichever style is rendered — without this lock SwiftUI follows
+            // the system appearance and the chrome can clash with the map (e.g.
+            // dark chrome over light tiles or vice versa).
+            //
+            // Scoped to the chrome overlay ONLY — applying it to the screen's
+            // content root made SwiftUI push the override onto the tab's hosting
+            // controller, which the shared `UITabBar` then inherited and kept
+            // (dark tab bar lingering on Home/Settings after a night-mode map).
+            .environment(\.colorScheme, lastEvaluatedTheme == .dark ? .dark : .light)
         }
         .animation(.easeInOut(duration: 0.2), value: showLoadingOverlay)
-        // Match SwiftUI chrome to the active map theme so `.ultraThinMaterial`,
-        // status chips, and button text remain readable on whichever style
-        // is rendered — without this lock SwiftUI follows the system
-        // appearance and the chrome can clash with the map (e.g. dark
-        // chrome over light tiles or vice versa).
-        .environment(\.colorScheme, lastEvaluatedTheme == .dark ? .dark : .light)
         #if os(iOS)
         // Hide the nav bar entirely on iOS so the map can bleed into the
         // top safe area — the tab bar's "Map" label already tells the user

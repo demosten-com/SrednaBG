@@ -19,6 +19,11 @@ import SrednaBGUI
 @main
 struct SrednaBGApp: App {
 
+    // Owns `application(_:supportedInterfaceOrientationsFor:)` so Home + Settings
+    // stay portrait while the Map tab rotates. RootView drives the mask via
+    // OrientationLock. Additive — does not affect the init() task registration.
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     @State private var container: AppContainer
 
     init() {

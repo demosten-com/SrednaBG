@@ -109,6 +109,13 @@ public struct RootView: View {
         // tab the user is on. iOS resets `isIdleTimerDisabled` on background;
         // the modifier re-asserts the current value on return to foreground.
         .keepScreenAwake(while: tracking.isTracking)
+        // Lock Home + Settings to portrait (never designed for landscape) while
+        // letting the Map tab rotate freely. `initial: true` asserts portrait at
+        // launch (Home is the default tab). Driven off `selectedTab` so user
+        // taps and the DEBUG `/tab` back-channel share one path. No-op on macOS.
+        .onChange(of: selectedTab, initial: true) { _, tab in
+            OrientationLock.shared.apply(tab == DebugTabName.map ? .free : .portrait)
+        }
         // View-scoped locale override for SwiftUI's own formatters. Does NOT
         // mutate Bundle.main or Locale.current, so AudioAlertManager's TTS
         // voice selection stays on its own path.
