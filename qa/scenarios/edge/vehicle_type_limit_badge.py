@@ -37,6 +37,7 @@ from ... import device as device_mod
 from ...assertions import expect
 from ...events import TtsSpeak, ZoneStateChange
 from ...runner import RunContext, Scenario, step_lambda
+from ...speech_numbers import words
 from ._helpers import load_zone, scenario_setup, scenario_teardown
 
 ZONE_ID = "struma-02-south"  # shortest zone with car (140) != truck (90)
@@ -156,7 +157,10 @@ def build() -> Scenario:
         expect(
             ctx.obs,
             TtsSpeak,
-            where=lambda e: str(TRUCK_LIMIT) in e.text
+            # Speeds are spelled into words before TTS (see qa/speech_numbers.py),
+            # so match the spelled truck limit (ninety / деветдесет) — still
+            # distinct from the car limit (140) — not the bare digits.
+            where=lambda e: (words(TRUCK_LIMIT, False) in e.text or words(TRUCK_LIMIT, True) in e.text)
             and ("limit" in e.text.lower() or "Ограничение" in e.text),
             within_s=10,
             description=f"entry announcement speaks the truck limit {TRUCK_LIMIT}",

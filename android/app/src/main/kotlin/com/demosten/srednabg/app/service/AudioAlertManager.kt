@@ -13,6 +13,7 @@ import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import com.demosten.srednabg.app.data.SettingsRepository
+import com.demosten.srednabg.app.ui.util.SpeechNumbers
 import com.demosten.srednabg.core.VehicleType
 import com.demosten.srednabg.core.ZoneState
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -70,7 +71,6 @@ class AudioAlertManager @Inject constructor(
                 // must not be marked initialized or speak() would request audio
                 // focus that no utterance callback ever releases.
                 if (tts == null) return@TextToSpeech
-                isInitialized = true
                 tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                     override fun onStart(utteranceId: String?) {}
                     override fun onDone(utteranceId: String?) = onUtteranceFinished()
@@ -81,8 +81,16 @@ class AudioAlertManager @Inject constructor(
                 languageJob = scope.launch {
                     settingsRepository.voiceLanguage.collect { lang ->
                         val locale = if (lang == "bg") Locale("bg", "BG") else Locale.ENGLISH
-                        tts?.language = locale
-                        Log.d(TAG, "tts language set: $lang → $locale")
+                        val res = tts?.setLanguage(locale)
+                        if (res == TextToSpeech.LANG_MISSING_DATA || res == TextToSpeech.LANG_NOT_SUPPORTED) {
+                            Log.w(TAG, "tts language $locale unavailable (res=$res); falling back to English")
+                            tts?.setLanguage(Locale.ENGLISH)
+                        }
+                        // Mark ready only AFTER the locale is applied: otherwise the first
+                        // announcement could speak on the device default locale, whose number
+                        // normalization sometimes reads digits one-by-one ("one one two").
+                        isInitialized = true
+                        Log.d(TAG, "tts language set: $lang → $locale (res=$res)")
                     }
                 }
             }
@@ -201,41 +209,41 @@ class AudioAlertManager @Inject constructor(
 
     private suspend fun getEntryMessage(road: String, limit: Int): String {
         return if (settingsRepository.voiceLanguage.first() == "bg") {
-            "Влизате в зона за средна скорост. Ограничение $limit."
+            "Влизате в зона за средна скорост. Ограничение ${SpeechNumbers.toWords(limit, bulgarian = true)}."
         } else {
-            "Entering average speed zone. Speed limit $limit."
+            "Entering average speed zone. Speed limit ${SpeechNumbers.toWords(limit, bulgarian = false)}."
         }
     }
 
     private suspend fun getWithinLimitMessage(avgSpeed: Int): String {
         return if (settingsRepository.voiceLanguage.first() == "bg") {
-            "Средна скорост $avgSpeed. В норма."
+            "Средна скорост ${SpeechNumbers.toWords(avgSpeed, bulgarian = true)}. В норма."
         } else {
-            "Average speed $avgSpeed. Within limit."
+            "Average speed ${SpeechNumbers.toWords(avgSpeed, bulgarian = false)}. Within limit."
         }
     }
 
     private suspend fun getOverLimitMessage(avgSpeed: Int): String {
         return if (settingsRepository.voiceLanguage.first() == "bg") {
-            "Внимание: средна скорост $avgSpeed. Намалете."
+            "Внимание: средна скорост ${SpeechNumbers.toWords(avgSpeed, bulgarian = true)}. Намалете."
         } else {
-            "Warning: average speed $avgSpeed. Slow down."
+            "Warning: average speed ${SpeechNumbers.toWords(avgSpeed, bulgarian = false)}. Slow down."
         }
     }
 
     private suspend fun getRecoveredMessage(avgSpeed: Int): String {
         return if (settingsRepository.voiceLanguage.first() == "bg") {
-            "Средната скорост е отново в норма. $avgSpeed."
+            "Средната скорост е отново в норма. ${SpeechNumbers.toWords(avgSpeed, bulgarian = true)}."
         } else {
-            "Back within limit. $avgSpeed."
+            "Back within limit. ${SpeechNumbers.toWords(avgSpeed, bulgarian = false)}."
         }
     }
 
     private suspend fun getExitMessage(avgSpeed: Int): String {
         return if (settingsRepository.voiceLanguage.first() == "bg") {
-            "Излизате от зоната. Средна скорост $avgSpeed."
+            "Излизате от зоната. Средна скорост ${SpeechNumbers.toWords(avgSpeed, bulgarian = true)}."
         } else {
-            "Leaving zone. Average speed was $avgSpeed."
+            "Leaving zone. Average speed was ${SpeechNumbers.toWords(avgSpeed, bulgarian = false)}."
         }
     }
 

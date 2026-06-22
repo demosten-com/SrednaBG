@@ -84,7 +84,7 @@ struct AudioAlertManagerTests {
         await mgr.handle(previous: .outside, current: Self.inZone(over: false), currentSpeedKmh: 100)
         let calls = await engine.calls
         #expect(calls.count == 1)
-        #expect(calls.first?.phrase == "Entering average speed zone. Speed limit 140.")
+        #expect(calls.first?.phrase == "Entering average speed zone. Speed limit one hundred forty.")
         #expect(calls.first?.language == .en)
     }
 
@@ -152,7 +152,7 @@ struct AudioAlertManagerTests {
             currentSpeedKmh: 100
         )
         calls = await engine.calls
-        #expect(calls.last?.phrase == "Leaving zone. Average speed was 132.")
+        #expect(calls.last?.phrase == "Leaving zone. Average speed was one hundred thirty-two.")
     }
 
     private static let zoneB = Zone(
@@ -199,7 +199,7 @@ struct AudioAlertManagerTests {
         )
         let calls = await engine.calls
         #expect(calls.count == 1)
-        #expect(calls.first?.phrase == "Entering average speed zone. Speed limit 120.")
+        #expect(calls.first?.phrase == "Entering average speed zone. Speed limit one hundred twenty.")
     }
 
     @Test
