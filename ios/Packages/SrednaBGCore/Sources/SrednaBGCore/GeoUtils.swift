@@ -23,12 +23,26 @@ public func haversineDistance(_ lat1: Double, _ lng1: Double, _ lat2: Double, _ 
     return earthRadiusM * 2 * atan2(sqrt(a), sqrt(1 - a))
 }
 
-public func pointToSegmentDistance(
+// The projection of a point onto one polyline segment: the clamped parameter
+// `t` in [0, 1], the projected lat/lng, and the haversine distance from the
+// point to that projection. Shared by the three callers below so the flat-earth
+// projection math lives in exactly one place (mirrors Android's
+// `SegmentProjection` / `projectPointOntoSegment`).
+private struct SegmentProjection {
+    let t: Double
+    let projLat: Double
+    let projLng: Double
+    let distanceM: Double
+}
+
+// Flat-earth projection of P onto segment A→B with cos(lat) correction for
+// longitude, clamped to the segment. A degenerate segment (A == B) yields t = 0,
+// i.e. the projection collapses to A — so the returned distance is haversine(P, A).
+private func projectPointOntoSegment(
     pLat: Double, pLng: Double,
     aLat: Double, aLng: Double,
     bLat: Double, bLng: Double
-) -> Double {
-    // Flat-earth projection with cos(lat) correction for longitude.
+) -> SegmentProjection {
     let midLat = toRadians((aLat + bLat) / 2)
     let cosLat = cos(midLat)
     let metersPerDegLat = 111_320.0
@@ -40,15 +54,24 @@ public func pointToSegmentDistance(
     let py = (pLat - aLat) * metersPerDegLat
 
     let abLenSq = bx * bx + by * by
-    if abLenSq < 1e-10 {
-        return haversineDistance(pLat, pLng, aLat, aLng)
-    }
+    let t: Double = abLenSq < 1e-10 ? 0.0 : min(max((px * bx + py * by) / abLenSq, 0.0), 1.0)
 
-    let t = min(max((px * bx + py * by) / abLenSq, 0.0), 1.0)
-    let projLng = aLng + t * (bLng - aLng)
     let projLat = aLat + t * (bLat - aLat)
+    let projLng = aLng + t * (bLng - aLng)
+    return SegmentProjection(
+        t: t,
+        projLat: projLat,
+        projLng: projLng,
+        distanceM: haversineDistance(pLat, pLng, projLat, projLng)
+    )
+}
 
-    return haversineDistance(pLat, pLng, projLat, projLng)
+public func pointToSegmentDistance(
+    pLat: Double, pLng: Double,
+    aLat: Double, aLng: Double,
+    bLat: Double, bLng: Double
+) -> Double {
+    projectPointOntoSegment(pLat: pLat, pLng: pLng, aLat: aLat, aLng: aLng, bLat: bLat, bLng: bLng).distanceM
 }
 
 public func pointToPolylineDistance(_ lat: Double, _ lng: Double, _ polyline: [[Double]]) -> Double {
@@ -103,32 +126,16 @@ public func projectPointOntoPolyline(
     var bestSegB: [Double] = polyline[1]
 
     for i in 0..<(polyline.count - 1) {
-        let aLat = polyline[i][0]
-        let aLng = polyline[i][1]
-        let bLat = polyline[i + 1][0]
-        let bLng = polyline[i + 1][1]
+        let proj = projectPointOntoSegment(
+            pLat: lat, pLng: lng,
+            aLat: polyline[i][0], aLng: polyline[i][1],
+            bLat: polyline[i + 1][0], bLng: polyline[i + 1][1]
+        )
 
-        let midLat = toRadians((aLat + bLat) / 2)
-        let cosLat = cos(midLat)
-        let mLat = 111_320.0
-        let mLng = 111_320.0 * cosLat
-
-        let bx = (bLng - aLng) * mLng
-        let by = (bLat - aLat) * mLat
-        let px = (lng - aLng) * mLng
-        let py = (lat - aLat) * mLat
-
-        let abLenSq = bx * bx + by * by
-        let t: Double = abLenSq < 1e-10 ? 0.0 : min(max((px * bx + py * by) / abLenSq, 0.0), 1.0)
-
-        let projLat = aLat + t * (bLat - aLat)
-        let projLng = aLng + t * (bLng - aLng)
-        let d = haversineDistance(lat, lng, projLat, projLng)
-
-        if d < bestDist {
-            bestDist = d
-            bestLat = projLat
-            bestLng = projLng
+        if proj.distanceM < bestDist {
+            bestDist = proj.distanceM
+            bestLat = proj.projLat
+            bestLng = proj.projLng
             bestSegA = polyline[i]
             bestSegB = polyline[i + 1]
         }
@@ -172,7 +179,11 @@ public func orientCenterlineToStart(_ centerline: [[Double]], _ start: ZoneEndpo
     return firstToStart <= lastToStart ? centerline : centerline.reversed()
 }
 
-public func projectOntoPolyline(_ lat: Double, _ lng: Double, _ polyline: [[Double]]) -> Double {
+/// Arc length (metres) from the polyline start to the projection of (lat, lng)
+/// onto the polyline — i.e. how far along the line the point sits. Returns a
+/// scalar; contrast `projectPointOntoPolyline`, which returns the projected
+/// point's coordinates/bearing/offset as a `PolylineProjection`.
+public func arcLengthOnPolyline(_ lat: Double, _ lng: Double, _ polyline: [[Double]]) -> Double {
     if polyline.count < 2 { return 0.0 }
 
     var bestDist = Double.greatestFiniteMagnitude
@@ -186,27 +197,11 @@ public func projectOntoPolyline(_ lat: Double, _ lng: Double, _ polyline: [[Doub
         let bLng = polyline[i + 1][1]
 
         let segLen = haversineDistance(aLat, aLng, bLat, bLng)
+        let proj = projectPointOntoSegment(pLat: lat, pLng: lng, aLat: aLat, aLng: aLng, bLat: bLat, bLng: bLng)
 
-        let midLat = toRadians((aLat + bLat) / 2)
-        let cosLat = cos(midLat)
-        let mLat = 111_320.0
-        let mLng = 111_320.0 * cosLat
-
-        let bx = (bLng - aLng) * mLng
-        let by = (bLat - aLat) * mLat
-        let px = (lng - aLng) * mLng
-        let py = (lat - aLat) * mLat
-
-        let abLenSq = bx * bx + by * by
-        let t: Double = abLenSq < 1e-10 ? 0.0 : min(max((px * bx + py * by) / abLenSq, 0.0), 1.0)
-
-        let projLat = aLat + t * (bLat - aLat)
-        let projLng = aLng + t * (bLng - aLng)
-        let d = haversineDistance(lat, lng, projLat, projLng)
-
-        if d < bestDist {
-            bestDist = d
-            bestCumulative = cumulative + t * segLen
+        if proj.distanceM < bestDist {
+            bestDist = proj.distanceM
+            bestCumulative = cumulative + proj.t * segLen
         }
 
         cumulative += segLen

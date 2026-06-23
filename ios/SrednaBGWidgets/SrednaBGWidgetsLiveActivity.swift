@@ -417,7 +417,10 @@ private func formatSpeed(_ value: Int?) -> String {
 }
 
 private func formatRemainingKm(_ meters: Int) -> String {
-    String(format: "%.1f km", Double(meters) / 1000)
+    // Fixed POSIX locale so the dot decimal separator renders consistently —
+    // the widget draws outside the app's `.environment(\.locale)` override, so
+    // a BG-locale device would otherwise show "1,5 km".
+    String(format: "%.1f km", locale: Locale(identifier: "en_US_POSIX"), Double(meters) / 1000)
 }
 
 private func progress(for state: ZoneActivityAttributes.ContentState) -> Double {

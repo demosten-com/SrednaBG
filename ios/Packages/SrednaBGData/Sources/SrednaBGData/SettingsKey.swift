@@ -6,12 +6,11 @@
 import Foundation
 import SrednaBGCore
 
-/// `UserDefaults` keys for the eight user-tunable settings. Keep names byte-
+/// `UserDefaults` keys for the user-tunable settings. Keep names byte-
 /// identical to the Android `SettingsRepository` keys so screenshots, bug
 /// reports, and the QA harness's `DebugControlReceiver` setting names line up
 /// across platforms.
 public enum SettingsKey {
-    public static let alertThresholdKmh = "alert_threshold_kmh"
     public static let voiceEnabled = "voice_enabled"
     public static let periodicVoiceUpdates = "periodic_voice_updates"
     public static let announceOnlyWhenOver = "announce_only_when_over"
@@ -48,7 +47,6 @@ public enum SettingsKey {
 }
 
 public enum SettingsDefaults {
-    public static let alertThresholdKmh = 5
     public static let voiceEnabled = true
     public static let periodicVoiceUpdates = true
     public static let announceOnlyWhenOver = true

@@ -84,22 +84,22 @@ struct GeoUtilsTests {
     }
 
     @Test
-    func projectOntoPolylineAtStart() {
-        let proj = projectOntoPolyline(42.427, 23.855, TRAKIYA_T10.centerline)
+    func arcLengthOnPolylineAtStart() {
+        let proj = arcLengthOnPolyline(42.427, 23.855, TRAKIYA_T10.centerline)
         #expect(proj < 100)
     }
 
     @Test
-    func projectOntoPolylineAtEnd() {
-        let proj = projectOntoPolyline(42.550, 23.703, TRAKIYA_T10.centerline)
+    func arcLengthOnPolylineAtEnd() {
+        let proj = arcLengthOnPolyline(42.550, 23.703, TRAKIYA_T10.centerline)
         let totalLength = computePolylineLength(TRAKIYA_T10.centerline)
         #expect(approxEqual(proj, totalLength, tol: totalLength * 0.05))
     }
 
     @Test
-    func projectOntoPolylineAtMidpoint() {
+    func arcLengthOnPolylineAtMidpoint() {
         let mid = TRAKIYA_T10.centerline[3] // [42.510, 23.770]
-        let proj = projectOntoPolyline(mid[0], mid[1], TRAKIYA_T10.centerline)
+        let proj = arcLengthOnPolyline(mid[0], mid[1], TRAKIYA_T10.centerline)
         let totalLength = computePolylineLength(TRAKIYA_T10.centerline)
         #expect(proj > totalLength * 0.3)
         #expect(proj < totalLength * 0.7)
@@ -230,6 +230,29 @@ struct GeoUtilsTests {
     @Test
     func polylineBearingTooShortReturnsNil() {
         #expect(polylineBearing([[42.0, 23.0]]) == nil)
+    }
+
+    @Test
+    func orientCenterlineAlreadyStartFirstIsUnchanged() {
+        let centerline: [[Double]] = [[42.0, 23.0], [42.1, 23.1], [42.2, 23.2]]
+        let start = ZoneEndpoint(lat: 42.0, lng: 23.0)
+        #expect(orientCenterlineToStart(centerline, start) == centerline)
+    }
+
+    @Test
+    func orientCenterlineEndFirstIsReversed() {
+        let centerline: [[Double]] = [[42.0, 23.0], [42.1, 23.1], [42.2, 23.2]]
+        // start endpoint sits at the LAST point -> centerline runs end-first -> reverse
+        let start = ZoneEndpoint(lat: 42.2, lng: 23.2)
+        #expect(orientCenterlineToStart(centerline, start) == centerline.reversed())
+    }
+
+    @Test
+    func orientCenterlineWithFewerThanTwoPointsIsUnchanged() {
+        let single: [[Double]] = [[42.0, 23.0]]
+        let start = ZoneEndpoint(lat: 99.0, lng: 99.0)
+        #expect(orientCenterlineToStart(single, start) == single)
+        #expect(orientCenterlineToStart([], start) == [])
     }
 
     private func computePolylineLength(_ polyline: [[Double]]) -> Double {

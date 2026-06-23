@@ -26,14 +26,13 @@ the JVM unit test `ZoneStatusChipVerdictTest`.
 
 from __future__ import annotations
 
-import importlib.util
 import re
 import shutil
 import subprocess
 import time
-from pathlib import Path
 
 from ... import device as device_mod
+from ... import geo
 from ...assertions import expect
 from ...events import TtsSpeak, ZoneStateChange
 from ...runner import RunContext, Scenario, step_lambda
@@ -48,46 +47,33 @@ SPEED_MS = SPEED_KMH / 3.6
 INTERVAL_S = 1.0
 APPROACH_M = 500.0
 EXIT_TAIL_M = 300.0
-REPO_ROOT = Path(__file__).resolve().parents[3]
-
-
-def _geo():
-    """Load make_test_route's stdlib geo helpers (bearing/resample)."""
-    path = REPO_ROOT / "scrapers" / "scripts" / "make_test_route.py"
-    spec = importlib.util.spec_from_file_location("make_test_route", path)
-    if not spec or not spec.loader:
-        raise RuntimeError("could not load make_test_route.py")
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
 
 
 def _build_fixes() -> list[tuple[float, float, float]]:
     """(lat, lng, bearing) per fix at constant 100 km/h, 1 Hz: approach →
     full zone → short exit tail."""
-    mod = _geo()
     zone = load_zone(ZONE_ID)
     cl = [(p[0], p[1]) for p in zone["centerline"]]
     # Orient start -> end so we drive the zone's signed direction.
     start = (zone["start"]["lat"], zone["start"]["lng"])
-    if mod.haversine_m(*cl[0], *start) > mod.haversine_m(*cl[-1], *start):
+    if geo.haversine_m(*cl[0], *start) > geo.haversine_m(*cl[-1], *start):
         cl = cl[::-1]
 
-    entry_bearing = mod.bearing_deg(cl[0][0], cl[0][1], cl[1][0], cl[1][1])
-    exit_bearing = mod.bearing_deg(cl[-2][0], cl[-2][1], cl[-1][0], cl[-1][1])
-    approach_start = mod.destination_point(
+    entry_bearing = geo.bearing_deg(cl[0][0], cl[0][1], cl[1][0], cl[1][1])
+    exit_bearing = geo.bearing_deg(cl[-2][0], cl[-2][1], cl[-1][0], cl[-1][1])
+    approach_start = geo.destination_point(
         cl[0][0], cl[0][1], (entry_bearing + 180) % 360, APPROACH_M)
-    exit_end = mod.destination_point(cl[-1][0], cl[-1][1], exit_bearing, EXIT_TAIL_M)
+    exit_end = geo.destination_point(cl[-1][0], cl[-1][1], exit_bearing, EXIT_TAIL_M)
 
     step_m = SPEED_MS * INTERVAL_S
-    pts = list(mod.resample_polyline([approach_start, cl[0]], step_m))
-    pts += list(mod.resample_polyline(cl, step_m))[1:]
-    pts += list(mod.resample_polyline([cl[-1], exit_end], step_m))[1:]
+    pts = list(geo.resample_polyline([approach_start, cl[0]], step_m))
+    pts += list(geo.resample_polyline(cl, step_m))[1:]
+    pts += list(geo.resample_polyline([cl[-1], exit_end], step_m))[1:]
 
     fixes: list[tuple[float, float, float]] = []
     for i, p in enumerate(pts):
         nxt = pts[i + 1] if i + 1 < len(pts) else pts[i]
-        brg = mod.bearing_deg(p[0], p[1], nxt[0], nxt[1]) if nxt != p else exit_bearing
+        brg = geo.bearing_deg(p[0], p[1], nxt[0], nxt[1]) if nxt != p else exit_bearing
         fixes.append((p[0], p[1], brg))
     return fixes
 

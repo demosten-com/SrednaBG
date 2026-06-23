@@ -24,7 +24,6 @@ class SettingsRepository @Inject constructor(
     private val dataStore: DataStore<Preferences>,
 ) {
     companion object {
-        private val KEY_ALERT_THRESHOLD = intPreferencesKey("alert_threshold_kmh")
         private val KEY_VOICE_ENABLED = booleanPreferencesKey("voice_enabled")
         private val KEY_PERIODIC_VOICE_UPDATES = booleanPreferencesKey("periodic_voice_updates")
         private val KEY_ANNOUNCE_ONLY_WHEN_OVER = booleanPreferencesKey("announce_only_when_over")
@@ -56,7 +55,6 @@ class SettingsRepository @Inject constructor(
         private val KEY_OVERLAY_POS_X = intPreferencesKey("overlay_pos_x")
         private val KEY_OVERLAY_POS_Y = intPreferencesKey("overlay_pos_y")
 
-        const val DEFAULT_ALERT_THRESHOLD = 5
         const val DEFAULT_APP_LANGUAGE = "system"
         const val DEFAULT_VEHICLE_TYPE = "car"
         const val DEFAULT_PERIODIC_VOICE_UPDATES = true
@@ -70,10 +68,6 @@ class SettingsRepository @Inject constructor(
         const val LANG_SYSTEM = "system"
         const val LANG_BG = "bg"
         const val LANG_EN = "en"
-    }
-
-    val alertThreshold: Flow<Int> = dataStore.data.map { prefs ->
-        prefs[KEY_ALERT_THRESHOLD] ?: DEFAULT_ALERT_THRESHOLD
     }
 
     val voiceEnabled: Flow<Boolean> = dataStore.data.map { prefs ->
@@ -149,10 +143,6 @@ class SettingsRepository @Inject constructor(
 
     val overlayPosY: Flow<Int> = dataStore.data.map { prefs ->
         prefs[KEY_OVERLAY_POS_Y] ?: OVERLAY_POS_UNSET
-    }
-
-    suspend fun setAlertThreshold(value: Int) {
-        dataStore.edit { it[KEY_ALERT_THRESHOLD] = value }
     }
 
     suspend fun setVoiceEnabled(value: Boolean) {

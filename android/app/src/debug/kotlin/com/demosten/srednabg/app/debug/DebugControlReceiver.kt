@@ -151,7 +151,6 @@ class DebugControlReceiver : BroadcastReceiver() {
             "voice_enabled" -> settings.setVoiceEnabled(raw.toBooleanStrict())
             "periodic_voice_updates" -> settings.setPeriodicVoiceUpdates(raw.toBooleanStrict())
             "announce_only_when_over" -> settings.setAnnounceOnlyWhenOver(raw.toBooleanStrict())
-            "alert_threshold_kmh" -> settings.setAlertThreshold(raw.toInt())
             "map_heading_up" -> settings.setMapHeadingUp(raw.toBooleanStrict())
             "map_theme_mode" -> settings.setMapThemeMode(MapThemeMode.valueOf(raw.uppercase()))
             "map_zoom_override" -> settings.setMapZoomOverride(raw.toFloatOrNull())

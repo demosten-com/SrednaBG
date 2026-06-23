@@ -5,6 +5,14 @@
 
 package com.demosten.srednabg.core
 
+/**
+ * Stateful zone-tracking state machine. Holds mutable state ([state]) across
+ * [update] calls and performs no internal synchronization — it is **not**
+ * thread-safe and must be confined to a single thread. In the app that thread is
+ * the `LocationTrackingService` GPS-consumer coroutine, which owns the only
+ * instance. (The Swift port documents the same contract as a mutating value type
+ * embedded inside a `@MainActor` class.)
+ */
 class ZoneDetector(zones: List<Zone>) {
 
     // Orient every zone's centerline to run start → end once, up front, so all the
@@ -22,9 +30,13 @@ class ZoneDetector(zones: List<Zone>) {
         zone.copy(centerline = orientCenterlineToStart(zone.centerline, zone.start))
     }
 
+    // A zone's centerline is immutable after the orientation above, so its total
+    // arc length never changes — cache it per zone id rather than re-summing the
+    // haversines on every 1 Hz fix in polylineRemaining().
+    private val polylineLengthByZoneId: Map<String, Double> =
+        this.zones.associate { it.id to polylineLengthMeters(it.centerline) }
+
     companion object {
-        const val MAX_ROAD_DISTANCE_M = 100.0
-        const val DIRECTION_TOLERANCE_DEG = 45.0
         const val ENTRY_DISTANCE_M = 500.0
         // Declare the zone finished once within this straight-line distance of the
         // end — by here the end camera is in sight, but the average + remainder
@@ -104,7 +116,7 @@ class ZoneDetector(zones: List<Zone>) {
         //
         // Also require the point to be more than the exit distance from the end:
         // a centerline that hooks/overshoots at its tail makes two of its legs run
-        // within metres of each other near the end, so `projectOntoPolyline` can
+        // within metres of each other near the end, so `arcLengthOnPolyline` can
         // snap a just-exited point back onto the earlier leg and report a large
         // `remaining`. Without this clause that briefly re-admits the zone we are
         // in the middle of exiting (Exiting -> InZone -> Exiting flap on the final
@@ -138,7 +150,6 @@ class ZoneDetector(zones: List<Zone>) {
             zone = zone,
             entryTime = entryTime,
             distanceTraveled = distanceTraveled,
-            avgSpeed = status.avgSpeed,
             speedStatus = status,
             distanceRemaining = remaining,
         )
@@ -179,9 +190,10 @@ class ZoneDetector(zones: List<Zone>) {
         // entry. A single off-road fix is treated as a transient blip: only exit
         // once it persists OFF_ROAD_EXIT_GRACE_FIXES fixes, or immediately when the
         // fix is OFF_ROAD_HARD_M past the road (a real departure, not a blip).
-        if (!RoadMatcher.isOnRoad(point, zone)) {
+        val centerlineDist = RoadMatcher.distanceToCenterline(point, zone)
+        if (centerlineDist > RoadMatcher.maxOnRoadDistanceM(zone)) {
             offRoadStreak++
-            val farGone = RoadMatcher.distanceToCenterline(point, zone) > OFF_ROAD_HARD_M
+            val farGone = centerlineDist > OFF_ROAD_HARD_M
             if (farGone || offRoadStreak >= OFF_ROAD_EXIT_GRACE_FIXES) {
                 return exitZone(point, zone, vehicleType)
             }
@@ -210,7 +222,6 @@ class ZoneDetector(zones: List<Zone>) {
             zone = zone,
             entryTime = entryTime,
             distanceTraveled = distanceTraveled,
-            avgSpeed = status.avgSpeed,
             speedStatus = status,
             distanceRemaining = remaining,
         )
@@ -271,7 +282,8 @@ class ZoneDetector(zones: List<Zone>) {
     // "past the end" checks (mid-zone re-entry guard, end-of-zone exit) stay
     // correct even if distanceM and the centerline ever disagree.
     private fun polylineRemaining(point: GpsPoint, zone: Zone): Double {
-        val traveledOnPolyline = projectOntoPolyline(point.lat, point.lng, zone.centerline)
-        return (polylineLengthMeters(zone.centerline) - traveledOnPolyline).coerceAtLeast(0.0)
+        val traveledOnPolyline = arcLengthOnPolyline(point.lat, point.lng, zone.centerline)
+        val totalLength = polylineLengthByZoneId[zone.id] ?: polylineLengthMeters(zone.centerline)
+        return (totalLength - traveledOnPolyline).coerceAtLeast(0.0)
     }
 }

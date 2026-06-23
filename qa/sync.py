@@ -22,6 +22,7 @@ backends share the same call sites.
 
 from __future__ import annotations
 
+import queue
 import time
 from typing import Optional
 
@@ -48,7 +49,7 @@ def wait_for_sync(obs: LogObserver, action_suffix: str, *, timeout_s: float = 30
     while time.monotonic() < deadline:
         try:
             ev = obs.queue.get(timeout=0.5)
-        except Exception:
+        except queue.Empty:
             continue
         if isinstance(ev, SyncResult) and ev.action == action_suffix:
             return ev

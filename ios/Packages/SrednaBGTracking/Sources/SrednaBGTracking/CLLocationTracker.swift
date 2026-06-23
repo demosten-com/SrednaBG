@@ -28,6 +28,17 @@ import SrednaBGData
 ///     call after a When-In-Use grant is what surfaces it.
 public final class CLLocationTracker: NSObject, LocationProviding, @unchecked Sendable {
 
+    /// Defense-in-depth accuracy gate, mirroring Android's `MAX_ACCURACY_M`.
+    /// Even with GPS-only sourcing, a single coarse fix (multipath / urban
+    /// canyon, or CoreLocation momentarily falling back to a coarse fix) would
+    /// corrupt the position baseline, speed inference, and zone state. Real
+    /// highway GPS is typically <20 m; we drop fixes worse than this so junk
+    /// (cell/wifi-grade 100 m–2 km) never reaches the pipeline, while 50 m
+    /// still admits first-fix cold-start convergence. The existing `freshFix`
+    /// check gates *staleness* (age), not accuracy — a fresh-but-coarse fix
+    /// still needs this gate.
+    private static let maxAccuracyM: Double = 50
+
     private let manager = CLLocationManager()
     private let lock = NSLock()
     private var continuation: AsyncStream<GpsPoint>.Continuation?
@@ -199,6 +210,10 @@ extension CLLocationTracker: CLLocationManagerDelegate {
         QALog.location.info(
             "onLocation: lat=\(location.coordinate.latitude, privacy: .public) lng=\(location.coordinate.longitude, privacy: .public) speed=\(location.speed >= 0 ? location.speed : -1, privacy: .public) accuracy=\(location.horizontalAccuracy >= 0 ? location.horizontalAccuracy : -1, privacy: .public) provider=gps mock=false"
         )
+        // Drop coarse fixes before they touch the pipeline (parity with
+        // Android's MAX_ACCURACY_M). A negative `horizontalAccuracy` means the
+        // location is invalid; anything worse than the gate is cell/wifi-grade.
+        guard location.horizontalAccuracy >= 0, location.horizontalAccuracy <= Self.maxAccuracyM else { return }
         let nowMs = Int64(location.timestamp.timeIntervalSince1970 * 1000)
         let pass: Bool = lock.withLock {
             if Self.shouldForward(nowMs: nowMs, lastForwardedMs: lastForwardedMs, intervalMs: requestedIntervalMs) {
@@ -228,10 +243,27 @@ extension CLLocationTracker: CLLocationManagerDelegate {
             speedAccuracyMps: speedAccMps,
             freshFix: freshFix
         )
-        let (point, hasBearing, cont) = lock.withLock {
+        let (point, hasBearing, inferredKmh, cont) = lock.withLock {
             let (point, hasBearing) = builder.build(raw)
-            return (point, hasBearing, continuation)
+            return (point, hasBearing, builder.speedInference.lastInferredKmh, continuation)
         }
+        // QA harness tripwire: line shape must match `qa/parsers.py`
+        // DISPLAY_SPEED_RE. Mirrors Android `LocationTrackingService`'s
+        // displaySpeed log — same fields, same order — and like Android is
+        // emitted BEFORE the bearing early-return so stationary fixes still
+        // report the decaying speed (cold-start-spike / speed-decay-after-stop
+        // QA scenarios observe exactly this on iOS). `reportedKmh` mirrors the
+        // noise-gate computation inside `GpsPointBuilder.build`; `accMs` renders
+        // the literal `NaN` (not Swift's "nan") when speed accuracy is absent so
+        // the regex's `NaN|<number>` alternative matches.
+        let rawSpeedMps = max(raw.speedMps ?? 0, 0)
+        let withinNoise = raw.speedAccuracyMps.map { rawSpeedMps < $0 } ?? false
+        let reportedKmh = withinNoise ? 0 : rawSpeedMps * 3.6
+        let accMs = raw.speedAccuracyMps.map { String($0) } ?? "NaN"
+        let fixAgeMs = Int64(ageS * 1000)
+        QALog.location.info(
+            "displaySpeed: kmh=\(point.speed, privacy: .public) inferredKmh=\(inferredKmh, privacy: .public) reportedKmh=\(reportedKmh, privacy: .public) rawMs=\(rawSpeedMps, privacy: .public) accMs=\(accMs, privacy: .public) fixAgeMs=\(fixAgeMs, privacy: .public) fresh=\(freshFix ? "true" : "false", privacy: .public)"
+        )
         // Skip the publish until we have a real bearing — same rationale
         // as the Android `LocationTrackingService` early-return: a default
         // 0° heading would false-match a zone whose `polylineBearing`
@@ -242,7 +274,10 @@ extension CLLocationTracker: CLLocationManagerDelegate {
 
     public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         // Transient errors are normal; the system will retry. Permanent
-        // failures arrive via `locationManagerDidChangeAuthorization`.
+        // failures arrive via `locationManagerDidChangeAuthorization`. Log
+        // (don't surface UI) so a real GPS hardware failure is diagnosable
+        // in the QA stream instead of vanishing silently.
+        QALog.location.debug("didFailWithError: \(String(describing: error), privacy: .public)")
     }
 
     public func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {

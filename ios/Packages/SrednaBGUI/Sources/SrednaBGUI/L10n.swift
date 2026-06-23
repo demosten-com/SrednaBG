@@ -56,8 +56,6 @@ public enum L10n {
     public static var permissionTryAgain: String { loc("permissionTryAgain") }
 
     // MARK: SettingsScreen
-    public static var settingAlertThreshold: String { loc("settingAlertThreshold") }
-    public static var settingAlertThresholdDesc: String { loc("settingAlertThresholdDesc") } // "%d"
     public static var settingVoiceAlerts: String { loc("settingVoiceAlerts") }
     public static var settingVoiceAlertsDesc: String { loc("settingVoiceAlertsDesc") }
     public static var settingPeriodicUpdates: String { loc("settingPeriodicUpdates") }
@@ -95,7 +93,7 @@ public enum L10n {
     public static var syncUpToDate: String { loc("syncUpToDate") }
     public static var syncFailed: String { loc("syncFailed") }
 
-    // MARK: AboutScreen
+    // MARK: About (rendered inline in SettingsScreen's about section)
     public static var aboutTitle: String { loc("aboutTitle") }
     public static var aboutVersion: String { loc("aboutVersion") }                       // "%@"
     public static var aboutLicense: String { loc("aboutLicense") }

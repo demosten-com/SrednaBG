@@ -26,7 +26,6 @@ sibling zone at a shared camera (observed as the map arrow driving the zone
 
 from __future__ import annotations
 
-import math
 import threading
 import time
 import xml.etree.ElementTree as ET
@@ -36,6 +35,7 @@ from pathlib import Path
 from typing import Iterable, Optional
 
 from . import device as device_mod
+from . import geo
 
 GPX_NS = "{http://www.topografix.com/GPX/1/1}"
 
@@ -153,19 +153,11 @@ def parse_gpx(gpx_path: Path) -> DrivePlan:
 
 
 def _haversine_m(a: TrackPoint, b: TrackPoint) -> float:
-    phi1, phi2 = math.radians(a.lat), math.radians(b.lat)
-    dphi = math.radians(b.lat - a.lat)
-    dl = math.radians(b.lng - a.lng)
-    h = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dl / 2) ** 2
-    return 2 * 6_371_000.0 * math.asin(math.sqrt(h))
+    return geo.haversine_m(a.lat, a.lng, b.lat, b.lng)
 
 
 def _bearing_deg(a: TrackPoint, b: TrackPoint) -> float:
-    phi1, phi2 = math.radians(a.lat), math.radians(b.lat)
-    dl = math.radians(b.lng - a.lng)
-    y = math.sin(dl) * math.cos(phi2)
-    x = math.cos(phi1) * math.sin(phi2) - math.sin(phi1) * math.cos(phi2) * math.cos(dl)
-    return (math.degrees(math.atan2(y, x)) + 360) % 360
+    return geo.bearing_deg(a.lat, a.lng, b.lat, b.lng)
 
 
 # Last injected fix timestamp (epoch ms) across pump() calls. Compression makes
@@ -263,33 +255,6 @@ def synthetic_drive(
     Used by edge scenarios that construct routes in-Python rather than
     going through the GPX file (e.g. wrong-direction reversal, U-turn).
     """
-    from math import asin, atan2, cos, degrees, radians, sin, sqrt
-
-    EARTH = 6_371_000.0
-
-    def haversine_m(a: tuple[float, float], b: tuple[float, float]) -> float:
-        phi1, phi2 = radians(a[0]), radians(b[0])
-        dphi = radians(b[0] - a[0])
-        dl = radians(b[1] - a[1])
-        h = sin(dphi / 2) ** 2 + cos(phi1) * cos(phi2) * sin(dl / 2) ** 2
-        return 2 * EARTH * asin(sqrt(h))
-
-    def bearing(a: tuple[float, float], b: tuple[float, float]) -> float:
-        phi1, phi2 = radians(a[0]), radians(b[0])
-        dl = radians(b[1] - a[1])
-        y = sin(dl) * cos(phi2)
-        x = cos(phi1) * sin(phi2) - sin(phi1) * cos(phi2) * cos(dl)
-        return (degrees(atan2(y, x)) + 360) % 360
-
-    def step(p: tuple[float, float], brg: float, d_m: float) -> tuple[float, float]:
-        ang = d_m / EARTH
-        theta = radians(brg)
-        phi1 = radians(p[0])
-        l1 = radians(p[1])
-        phi2 = asin(sin(phi1) * cos(ang) + cos(phi1) * sin(ang) * cos(theta))
-        l2 = l1 + atan2(sin(theta) * sin(ang) * cos(phi1), cos(ang) - sin(phi1) * sin(phi2))
-        return degrees(phi2), ((degrees(l2) + 540) % 360) - 180
-
     wp = list(waypoints)
     if len(wp) < 2:
         raise ValueError("need at least 2 waypoints")
@@ -297,13 +262,13 @@ def synthetic_drive(
     points: list[tuple[float, float]] = [wp[0]]
     for i in range(len(wp) - 1):
         a, b = wp[i], wp[i + 1]
-        seg_len = haversine_m(a, b)
+        seg_len = geo.haversine_m(a[0], a[1], b[0], b[1])
         if seg_len < 1.0:
             continue
-        brg = bearing(a, b)
+        brg = geo.bearing_deg(a[0], a[1], b[0], b[1])
         d = step_m
         while d < seg_len:
-            points.append(step(a, brg, d))
+            points.append(geo.destination_point(a[0], a[1], brg, d))
             d += step_m
         points.append(b)
     dt = int(1000 / hz)

@@ -35,6 +35,19 @@ data class Zone(
     val lastVerified: String,
 )
 
+/**
+ * A single GPS fix fed into the engine.
+ *
+ * @property lat latitude in decimal degrees (WGS84).
+ * @property lng longitude in decimal degrees (WGS84).
+ * @property speed ground speed in **km/h** (the engine divides by 3.6 where it
+ *   needs m/s — never assume m/s).
+ * @property timestamp fix time as epoch **milliseconds**.
+ * @property bearing course over ground in **degrees** clockwise from true north,
+ *   `[0, 360)`.
+ * @property accuracy horizontal accuracy radius in **metres**, or null when the
+ *   provider reports none.
+ */
 data class GpsPoint(
     val lat: Double,
     val lng: Double,
@@ -44,6 +57,18 @@ data class GpsPoint(
     val accuracy: Double? = null,
 )
 
+/**
+ * Derived running-average speed status for the active zone.
+ *
+ * @property avgSpeed running average over the zone so far in **km/h**, or null
+ *   until enough active tracking has accumulated.
+ * @property maxSpeedForRemainder the highest sustainable average for the rest of
+ *   the zone that still finishes legal, in **km/h**.
+ * @property distanceRemaining road left to the zone end in **metres**.
+ * @property timeRemaining legal time budget left for the remainder in **seconds**
+ *   (may be negative once the budget is exhausted).
+ * @property isOverLimit true when [avgSpeed] already exceeds the effective limit.
+ */
 data class SpeedStatus(
     val avgSpeed: Double?,
     val maxSpeedForRemainder: Double,
@@ -59,14 +84,17 @@ sealed class ZoneState {
         val zone: Zone,
         val entryTime: Long,
         val distanceTraveled: Double,
-        val avgSpeed: Double?,
         val speedStatus: SpeedStatus,
         // Polyline arc-length to zone.end from the live GPS position — drives
         // the user-facing label and progress bar. Distinct from
         // speedStatus.distanceRemaining, which is relative to effectiveZoneDistance
         // and the speed×time integrator (used by the avg-speed math).
         val distanceRemaining: Double,
-    ) : ZoneState()
+    ) : ZoneState() {
+        // Convenience alias — the running average always lives in speedStatus.
+        // Kept as a derived property so the two can never disagree.
+        val avgSpeed: Double? get() = speedStatus.avgSpeed
+    }
 
     data class Exiting(
         val zone: Zone,

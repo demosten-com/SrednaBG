@@ -127,9 +127,22 @@ def road_slug(canonical: str) -> str:
 
 def opposite_direction(direction: str) -> str:
     """Return the opposite compass direction."""
-    return {"east": "west", "west": "east", "north": "south", "south": "north"}[
-        direction
-    ]
+    opposites = {"east": "west", "west": "east", "north": "south", "south": "north"}
+    try:
+        return opposites[direction]
+    except KeyError:
+        raise ValueError(f"unknown direction: {direction!r}") from None
+
+
+def is_motorway(road: str) -> bool:
+    """True for motorways, given a canonical name or a road code.
+
+    Single source of truth for the per-scraper checks that used to be spelled
+    three different ways: BG TOLL canonical names (``АМ Тракия``), KML road
+    codes (``A-1``), and bare codes (``A1``). TollTracker doesn't call this —
+    its payload carries an explicit ``roadType`` field.
+    """
+    return road.startswith("АМ") or bool(re.match(r"^A-?\d", road))
 
 
 def infer_direction_from_coords(

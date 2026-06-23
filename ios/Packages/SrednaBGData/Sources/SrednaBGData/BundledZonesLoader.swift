@@ -36,6 +36,11 @@ public struct BundledZonesLoader: Sendable {
             decoder.keyDecodingStrategy = .convertFromSnakeCase
             return try decoder.decode(ZonesResponse.self, from: data)
         } catch {
+            // A malformed bundled asset would otherwise leave the user on an
+            // empty map with no diagnostic. Log before falling back to nil
+            // (the next network sync still repopulates). Mirrors Android's
+            // `loadFromAssets` `Log.w` on decode failure.
+            QALog.location.error("bundled-zones decode failed: \(String(describing: error), privacy: .public)")
             return nil
         }
     }

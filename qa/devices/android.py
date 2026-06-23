@@ -117,26 +117,54 @@ class AndroidDevice(Device):
         adb.broadcast(ACTION_SYNC_MAP, DEBUG_SYNC_RECEIVER)
 
     # ── network gating ──────────────────────────────────────────────────────
+    def _device_online(self) -> bool:
+        """True iff the *device* can reach the network.
+
+        Probes on-device (`ping` from the emulator) — a host `urllib` check
+        would test the Mac's connectivity, not the emulator's, and so reports
+        "online" even after the device is in airplane mode. toybox `ping`
+        prints a bogus RTT on the emulator (clock quirk) but the rc and the
+        "0% packet loss" / "1 received" markers are reliable.
+        """
+        rc, out, _ = adb.shell_check("ping -c 1 -W 2 8.8.8.8", timeout=8.0)
+        # rc is 0 only when a reply arrives. The "1 received" marker is a
+        # second guard; avoid "0% packet loss" — it's a substring of the
+        # offline "100% packet loss" line.
+        return rc == 0 and "1 received" in out
+
     def go_offline(self) -> None:
+        # Airplane mode alone propagates too slowly / unreliably on emulator
+        # images: the sync used to fire while the radio was still up and read a
+        # cached `UpToDate` (the `sync.zones_offline` flake). Cut wifi + data
+        # explicitly too, then *verify* the device is genuinely unreachable
+        # before returning so the offline assertion isn't racing the radio.
         rc, _, err = adb.shell_check("cmd connectivity airplane-mode enable")
         if rc != 0:
             raise RuntimeError(f"failed to enable airplane mode: {err.strip()}")
-        time.sleep(1.5)
+        adb.set_wifi_enabled(False)
+        adb.set_data_enabled(False)
+        deadline = time.monotonic() + 15.0
+        while time.monotonic() < deadline:
+            if not self._device_online():
+                return
+            time.sleep(0.5)
+        raise RuntimeError(
+            "device still reachable after airplane-mode + wifi/data disable — "
+            "offline assertion would be invalid"
+        )
 
     def go_online(self) -> None:
         rc, _, err = adb.shell_check("cmd connectivity airplane-mode disable")
         if rc != 0:
             raise RuntimeError(f"failed to disable airplane mode: {err.strip()}")
-        import urllib.request
-        deadline = time.monotonic() + 15.0
+        adb.set_wifi_enabled(True)
+        adb.set_data_enabled(True)
+        deadline = time.monotonic() + 30.0
         while time.monotonic() < deadline:
-            try:
-                with urllib.request.urlopen(PROD_VERSION_URL, timeout=2.0) as r:
-                    if r.status == 200:
-                        return
-            except Exception:
-                pass
+            if self._device_online():
+                return
             time.sleep(0.5)
+        raise RuntimeError("device did not regain connectivity after going online")
 
     # ── cosmetic chrome (screenshot harness) ────────────────────────────────
     def set_system_appearance(self, mode: str) -> None:

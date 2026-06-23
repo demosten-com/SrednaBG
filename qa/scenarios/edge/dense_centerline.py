@@ -26,12 +26,10 @@ exited exactly once.
 
 from __future__ import annotations
 
-import importlib.util
-import math
 import time
-from pathlib import Path
 
 from ... import device as device_mod
+from ... import geo
 from ...assertions import AssertionFailure
 from ...events import ZoneStateChange
 from ...runner import RunContext, Scenario, step_lambda
@@ -41,35 +39,22 @@ ZONE_ID = "struma-02-south"
 SPEED_MS = 30.0          # 108 km/h, under the 140 limit; > avg segment so the
                          # old integrator over-counts at the 1 Hz feed cadence.
 INTERVAL_S = 1.0
-REPO_ROOT = Path(__file__).resolve().parents[3]
-
-
-def _geo():
-    """Load make_test_route's stdlib geo helpers (bearing/haversine)."""
-    path = REPO_ROOT / "scrapers" / "scripts" / "make_test_route.py"
-    spec = importlib.util.spec_from_file_location("make_test_route", path)
-    if not spec or not spec.loader:
-        raise RuntimeError("could not load make_test_route.py")
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
 
 
 def _build_fixes() -> list[tuple[float, float, float]]:
     """(lat, lng, bearing) per fix: 4 approach points then every raw centerline
     vertex — deliberately uneven spacing to reproduce the integrator over-count."""
-    mod = _geo()
     zone = load_zone(ZONE_ID)
     cl = [(p[0], p[1]) for p in zone["centerline"]]
     # Orient start -> end so we drive the zone's signed direction.
     start = (zone["start"]["lat"], zone["start"]["lng"])
-    if mod.haversine_m(*cl[0], *start) > mod.haversine_m(*cl[-1], *start):
+    if geo.haversine_m(*cl[0], *start) > geo.haversine_m(*cl[-1], *start):
         cl = cl[::-1]
 
-    entry_bearing = mod.bearing_deg(cl[0][0], cl[0][1], cl[1][0], cl[1][1])
-    seg0 = mod.haversine_m(cl[0][0], cl[0][1], cl[1][0], cl[1][1])
+    entry_bearing = geo.bearing_deg(cl[0][0], cl[0][1], cl[1][0], cl[1][1])
+    seg0 = geo.haversine_m(cl[0][0], cl[0][1], cl[1][0], cl[1][1])
     approach = [
-        mod.destination_point(cl[0][0], cl[0][1], (entry_bearing + 180) % 360, seg0 * k)
+        geo.destination_point(cl[0][0], cl[0][1], (entry_bearing + 180) % 360, seg0 * k)
         for k in (4, 3, 2, 1)
     ]
     pts = approach + cl
@@ -77,7 +62,7 @@ def _build_fixes() -> list[tuple[float, float, float]]:
     fixes: list[tuple[float, float, float]] = []
     for i in range(len(pts)):
         nxt = pts[i + 1] if i + 1 < len(pts) else pts[i]
-        brg = mod.bearing_deg(pts[i][0], pts[i][1], nxt[0], nxt[1]) if nxt != pts[i] else entry_bearing
+        brg = geo.bearing_deg(pts[i][0], pts[i][1], nxt[0], nxt[1]) if nxt != pts[i] else entry_bearing
         fixes.append((pts[i][0], pts[i][1], brg))
     return fixes
 

@@ -24,29 +24,28 @@
 #
 # Requires the DEBUG build installed + the Pixel_8a emulator running.
 import argparse
-import math
 import os
-import subprocess
 import sys
+import tempfile
 import time
+from pathlib import Path
 
-import feed_zone
+# Allow `python3 qa/colocated_zones.py …` (run from colocated-zones.sh) to
+# import the qa package, matching srednabg_qa.py's bootstrap.
+_HERE = Path(__file__).resolve().parent
+if str(_HERE.parent) not in sys.path:
+    sys.path.insert(0, str(_HERE.parent))
 
-PKG = os.environ.get("PKG", "com.demosten.srednabg")
-RC = f"{PKG}/{PKG}.app.debug.DebugControlReceiver"
+from qa import adb, feed_zone, parsers  # noqa: E402
+from qa.events import TtsSpeak, ZoneStateChange  # noqa: E402
+
+PKG = adb.PACKAGE
+RC = adb.DEBUG_CONTROL_RECEIVER
 TTS_TAG = "SrednaBG.TTS"
 
 ACT_START = "com.demosten.srednabg.debug.START_TRACKING"
 ACT_STOP = "com.demosten.srednabg.debug.STOP_TRACKING"
 ACT_FEED = "com.demosten.srednabg.debug.FEED_POINT"
-ACT_SET = "com.demosten.srednabg.debug.SET_SETTING"
-
-PERMS = [
-    "android.permission.ACCESS_FINE_LOCATION",
-    "android.permission.ACCESS_COARSE_LOCATION",
-    "android.permission.ACCESS_BACKGROUND_LOCATION",
-    "android.permission.POST_NOTIFICATIONS",
-]
 
 # Two zones are co-located when zone A's end camera is also zone B's start camera
 # on the same road + carriageway direction (gap ~0 m in the data).
@@ -58,19 +57,28 @@ ENTRY_FRAGMENTS = ("Entering average speed zone", "Влизате в зона")
 EXIT_FRAGMENTS = ("Leaving zone", "Излизате от зоната")
 
 
-def adb(*args, capture=True):
-    return subprocess.run(["adb", *args], capture_output=capture, text=True)
-
-
-def broadcast(action, extras=None):
-    cmd = ["shell", "am", "broadcast", "-n", RC, "-a", action]
-    for k, v in (extras or {}).items():
-        cmd += ["--es", k, str(v)]
-    return adb(*cmd)
+def launch_app():
+    """Bring the app to the foreground so START_TRACKING's foreground-service
+    start is permitted. Android 12+ denies an FGS start from a background
+    broadcast receiver (uidState RCVR → code:DENIED), so without a visible
+    activity the service never runs and no announcements fire. Poll until the
+    activity is resumed so a launch failure surfaces instead of a silent pass."""
+    adb.shell("am start -W -a android.intent.action.MAIN "
+              f"-c android.intent.category.LAUNCHER -n {adb.MAIN_ACTIVITY}")
+    deadline = time.monotonic() + 10.0
+    while time.monotonic() < deadline:
+        out = adb.shell("dumpsys activity activities")
+        for line in out.splitlines():
+            if "ResumedActivity" in line and PKG in line:
+                return True
+        time.sleep(0.5)
+    print(f"  WARNING: {PKG} did not reach the foreground within 10s; "
+          f"START_TRACKING will likely be denied (background FGS start).")
+    return False
 
 
 def set_setting(key, value):
-    broadcast(ACT_SET, {"key": key, "value": value})
+    adb.broadcast(adb.ACTION_SET_SETTING, RC, {"key": key, "value": value})
 
 
 # --- pair detection -------------------------------------------------------
@@ -110,26 +118,25 @@ def resolve_pair(zones, spec):
 # --- device setup ---------------------------------------------------------
 
 def set_network(enabled):
-    s = "enable" if enabled else "disable"
-    adb("shell", "svc", "wifi", s)
-    adb("shell", "svc", "data", s)
-    adb("shell", "cmd", "connectivity", "airplane-mode",
-        "disable" if enabled else "enable")
+    adb.set_wifi_enabled(enabled)
+    adb.set_data_enabled(enabled)
+    adb.shell(f"cmd connectivity airplane-mode {'disable' if enabled else 'enable'}")
 
 
 def setup_device(keep_online):
     print("Setup: muting audio…")
-    for s in range(1, 11):
-        adb("shell", "media", "volume", "--stream", str(s), "--set", "0")
+    adb.mute_audio()
     if not keep_online:
         print("Setup: forcing device offline + clearing app data so the bundle "
               "loads…")
         set_network(False)
         time.sleep(1.0)
-        adb("shell", "pm", "clear", PKG)
-        for p in PERMS:
-            adb("shell", "pm", "grant", PKG, p)
+        adb.shell(f"pm clear {PKG}")
+        adb.grant_runtime_permissions()
         time.sleep(0.5)
+    # Foreground the app (after any pm clear) so the FGS start is permitted.
+    print("Setup: foregrounding the app (required for the FGS start)…")
+    launch_app()
     # Deterministic announcement state: English voice on, no periodic chatter.
     set_setting("app_language", "en")
     set_setting("voice_enabled", "true")
@@ -138,9 +145,14 @@ def setup_device(keep_online):
 
 
 def restore_device(keep_online):
+    # setup_device always mutes, so always unmute on teardown.
+    print("Teardown: restoring audio…")
+    adb.unmute_audio()
     if not keep_online:
         print("Teardown: restoring network…")
         set_network(True)
+        print("Note: app data was cleared (pm clear) for offline bundle testing; "
+              "the app starts fresh on the next manual use.")
 
 
 # --- continuous drive across the pair ------------------------------------
@@ -168,13 +180,13 @@ def build_pair_route(a, b, step):
 
 
 def feed_route(full, step, speed, sim_dt_ms):
-    broadcast(ACT_STOP)
+    adb.broadcast(ACT_STOP, RC)
     time.sleep(0.8)
-    adb("logcat", "-c")
-    broadcast(ACT_START)
+    adb.clear_logcat()
+    adb.broadcast(ACT_START, RC)
     time.sleep(2.0)
 
-    base_ms = int(time.time() * 1000)
+    base_ms = int(time.time() * 1000)   # epoch fix stamp — time.time() is correct here
     lines = []
     for i in range(1, len(full)):
         a, b = full[i - 1], full[i]
@@ -185,16 +197,20 @@ def feed_route(full, step, speed, sim_dt_ms):
             f"--es speed_ms {speed:.0f} --es bearing {br:.0f} "
             f"--es time_ms {base_ms + i * sim_dt_ms} >/dev/null 2>&1")
 
-    import tempfile
-    script = os.path.join(tempfile.gettempdir(), "srednabg_pair_feed.sh")
+    # PID-stamped temp name so concurrent runs don't clobber each other; removed
+    # from the device after the batch.
+    name = f"srednabg_pair_feed_{os.getpid()}.sh"
+    script = os.path.join(tempfile.gettempdir(), name)
     with open(script, "w") as f:
         f.write("\n".join(lines) + "\n")
-    remote = "/data/local/tmp/srednabg_pair_feed.sh"
-    adb("push", script, remote)
-    adb("shell", "sh", remote)
+    remote = f"/data/local/tmp/{name}"
+    adb.push(script, remote)
+    adb.shell(f"sh {remote}", timeout=max(180.0, len(full) * 0.5))
+    adb.shell(f"rm -f {remote}")
+    os.remove(script)
 
     time.sleep(1.0)
-    broadcast(ACT_STOP)
+    adb.broadcast(ACT_STOP, RC)
     time.sleep(0.6)
 
 
@@ -202,25 +218,18 @@ def feed_route(full, step, speed, sim_dt_ms):
 
 def parse_events(dump):
     """Return the TTS log as an ordered list of events:
-       ("state", prev, new, zone) | ("entry", text) | ("exit", text)."""
+       ("state", prev, new, zone) | ("entry", text) | ("exit", text).
+
+    Uses the shared `qa.parsers` regex set (STATE_RE / SPEAK_RE) instead of
+    hand-rolled string slicing, so a log-format change is fixed in one place."""
     events = []
     for line in dump.splitlines():
-        si = line.find("onZoneStateChanged ")
-        if si >= 0:
-            fields = {}
-            for tok in line[si:].split():
-                if "=" in tok:
-                    k, _, v = tok.partition("=")
-                    fields[k] = v
-            new = fields.get("new")
-            if new:
-                zone = fields.get("zone")
-                events.append(("state", fields.get("prev"), new,
-                               zone if zone != "-" else None))
-            continue
-        sp = line.find('speak: "')
-        if sp >= 0:
-            text = line[sp + len('speak: "'):].rstrip().rstrip('"')
+        ev = parsers.parse_threadtime_line(line)
+        if isinstance(ev, ZoneStateChange):
+            zone = ev.zone if ev.zone != "-" else None
+            events.append(("state", ev.prev, ev.new, zone))
+        elif isinstance(ev, TtsSpeak):
+            text = ev.text
             if any(fr in text for fr in ENTRY_FRAGMENTS):
                 events.append(("entry", text))
             elif any(fr in text for fr in EXIT_FRAGMENTS):
@@ -309,7 +318,7 @@ def main():
     ap.add_argument("--keep-online", action="store_true")
     args = ap.parse_args()
 
-    if adb("get-state").returncode != 0:
+    if adb.get_state() is None:
         sys.exit("no adb device — boot the Pixel_8a emulator first")
 
     zones = feed_zone.load_zones(args.zones)
@@ -336,7 +345,7 @@ def main():
         print(f"[{n}/{len(pairs)}] {a_id} -> {b_id} … ", end="", flush=True)
         full = build_pair_route(a, b, args.step)
         feed_route(full, args.step, args.speed, args.sim_dt_ms)
-        dump = adb("logcat", "-d", "-s", f"{TTS_TAG}:D").stdout
+        dump = adb.logcat_dump("-s", f"{TTS_TAG}:D")
         events = parse_events(dump)
         ok, reasons = evaluate(a_id, b_id, events)
         results.append((a_id, b_id, ok, reasons, summarize(events)))

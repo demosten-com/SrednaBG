@@ -12,8 +12,6 @@ import Foundation
 /// `update(_:vehicleType:)` honors the driver's selected vehicle type when
 /// looking up the speed limit (Android's `ZoneDetector` matches this).
 public struct ZoneDetector: Sendable {
-    public static let maxRoadDistanceM = 100.0
-    public static let directionToleranceDeg = 45.0
     public static let entryDistanceM = 500.0
     // Declare the zone finished once within this straight-line distance of the
     // end — by here the end camera is in sight, but the average + remainder
@@ -52,6 +50,10 @@ public struct ZoneDetector: Sendable {
     // through `Codable` and a derived stored field breaks (de)serialization
     // (matches the Kotlin note).
     private let zones: [Zone]
+    // A zone's centerline is immutable after the orientation in `init`, so its
+    // total arc length never changes — cache it per zone id rather than re-summing
+    // the haversines on every 1 Hz fix in `polylineRemaining`. Mirrors Android.
+    private let polylineLengthByZoneId: [String: Double]
     private var lastPoint: GpsPoint?
     private var activeZone: Zone?
     private var entryTime: Int64 = 0
@@ -62,7 +64,12 @@ public struct ZoneDetector: Sendable {
     private var offRoadStreak = 0
 
     public init(zones: [Zone]) {
-        self.zones = zones.map { $0.with(centerline: orientCenterlineToStart($0.centerline, $0.start)) }
+        let oriented = zones.map { $0.with(centerline: orientCenterlineToStart($0.centerline, $0.start)) }
+        self.zones = oriented
+        self.polylineLengthByZoneId = Dictionary(
+            oriented.map { ($0.id, polylineLengthMeters($0.centerline)) },
+            uniquingKeysWith: { first, _ in first }
+        )
     }
 
     @discardableResult
@@ -102,7 +109,7 @@ public struct ZoneDetector: Sendable {
         // just past the end still in the road-width band has ~0 remaining and must
         // NOT re-enter the just-completed zone), AND require it to be more than the
         // exit distance from the end — a centerline that hooks/overshoots at its
-        // tail can make `projectOntoPolyline` snap a just-exited point back onto an
+        // tail can make `arcLengthOnPolyline` snap a just-exited point back onto an
         // earlier leg and report a large `remaining`, briefly re-admitting the zone
         // we are exiting (Exiting → InZone → Exiting flap on the final ~100 m). The
         // straight-line `distToEnd` clause closes that. Mirrors Android.
@@ -137,7 +144,6 @@ public struct ZoneDetector: Sendable {
             zone: zone,
             entryTime: entryTime,
             distanceTraveled: distanceTraveled,
-            avgSpeed: status.avgSpeed,
             speedStatus: status,
             distanceRemaining: remaining
         ))
@@ -173,9 +179,10 @@ public struct ZoneDetector: Sendable {
         // uses. A single off-road fix is treated as a transient blip: only exit
         // once it persists `offRoadExitGraceFixes` fixes, or immediately when the
         // fix is `offRoadHardM` past the road (a real departure, not a blip).
-        if !RoadMatcher.isOnRoad(point, zone) {
+        let centerlineDist = RoadMatcher.distanceToCenterline(point, zone)
+        if centerlineDist > RoadMatcher.maxOnRoadDistanceM(zone) {
             offRoadStreak += 1
-            let farGone = RoadMatcher.distanceToCenterline(point, zone) > Self.offRoadHardM
+            let farGone = centerlineDist > Self.offRoadHardM
             if farGone || offRoadStreak >= Self.offRoadExitGraceFixes {
                 return exitZone(point, zone, vehicleType: vehicleType)
             }
@@ -208,7 +215,6 @@ public struct ZoneDetector: Sendable {
             zone: zone,
             entryTime: entryTime,
             distanceTraveled: distanceTraveled,
-            avgSpeed: status.avgSpeed,
             speedStatus: status,
             distanceRemaining: remaining
         ))
@@ -266,10 +272,11 @@ public struct ZoneDetector: Sendable {
     // speed×time integrator so it stays accurate across GPS dropouts, mid-zone
     // cold-starts, and simulated jumps. Mirrors Android's `polylineRemaining`.
     private func polylineRemaining(_ point: GpsPoint, _ zone: Zone) -> Double {
-        let traveledOnPolyline = projectOntoPolyline(point.lat, point.lng, zone.centerline)
+        let traveledOnPolyline = arcLengthOnPolyline(point.lat, point.lng, zone.centerline)
         // Measure against the centerline's own arc length, not the official
         // `zone.distanceM`, so "remaining" is exactly 0 at the polyline end
         // regardless of any drift between the two (matches Android).
-        return max(polylineLengthMeters(zone.centerline) - traveledOnPolyline, 0.0)
+        let totalLength = polylineLengthByZoneId[zone.id] ?? polylineLengthMeters(zone.centerline)
+        return max(totalLength - traveledOnPolyline, 0.0)
     }
 }

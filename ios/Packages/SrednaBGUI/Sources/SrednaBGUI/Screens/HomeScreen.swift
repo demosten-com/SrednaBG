@@ -170,7 +170,10 @@ public struct HomeScreen: View {
                 infoItem(label: L10n.maxForRemainder,
                          value: String(settings.debugMaxSpeedOverride ?? Int(inZone.speedStatus.maxSpeedForRemainder)))
                 Spacer()
-                infoItem(label: L10n.remaining, value: String(format: "%.1f km", inZone.distanceRemaining / 1000))
+                infoItem(
+                    label: L10n.remaining,
+                    value: String(format: "%.1f km", locale: Locale(identifier: "en_US_POSIX"), inZone.distanceRemaining / 1000)
+                )
             }
 
             Text(statusText)

@@ -16,7 +16,7 @@ import os
 import shutil
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from src import bgtoll_scraper, kml_scraper, osm_overpass, tolltracker_fetcher
@@ -140,8 +140,13 @@ def write_target_dir(db: ZoneDatabase, dir_: Path) -> str:
     prev_hash = _read_prev_hash(version_path)
     new_text = db.model_dump_json(indent=2, exclude_none=True)
 
-    if zones_path.exists() and zones_path.read_text(encoding="utf-8") != new_text:
-        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    # Snapshot only on a genuine content change. Gate on the data hash, not the
+    # file bytes: ``last_verified`` is re-stamped to today on every zone every run
+    # (validator.merge_match), so a byte comparison would rotate a spurious
+    # snapshot every cron run. ``db.hash`` excludes ``last_verified`` (HASH_EXCLUDE),
+    # so it only differs when the zone data actually changed.
+    if zones_path.exists() and prev_hash and db.hash != prev_hash:
+        ts = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
         shutil.copy2(zones_path, dir_ / f"zones-{ts}.json")
 
     atomic_write_text(zones_path, new_text)

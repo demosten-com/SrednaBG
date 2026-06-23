@@ -34,6 +34,7 @@ import re
 import shutil
 import subprocess
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -185,18 +186,32 @@ class IosDevice(Device):
             params["bearing"] = f"{bearing:.2f}"
         if time_ms is not None:
             params["time_ms"] = str(time_ms)
-        self._debug_get("/inject", params)
+        self._debug_get("/inject", params, retries=2)
 
     # ── debug surface (loopback HTTP) ──────────────────────────────────────
     def _debug_get(self, path: str, params: Optional[dict[str, str]] = None,
-                   *, timeout: float = 10.0) -> str:
+                   *, timeout: float = 10.0, retries: int = 0,
+                   retry_delay_s: float = 0.3) -> str:
         """Synchronous GET to the in-app DebugControlServer. Raises if the
-        request fails (server not running, wrong build, etc.)."""
+        request fails (server not running, wrong build, etc.).
+
+        `retries` extra attempts are made on a transient `URLError` (a busy
+        server during a fast pump), sleeping `retry_delay_s` between them, then
+        the last error is re-raised. Default 0 leaves `ping_debug_server`'s own
+        retry loop as the single waiter."""
         url = f"http://{DEBUG_SERVER_HOST}:{DEBUG_SERVER_PORT}{path}"
         if params:
             url += "?" + urllib.parse.urlencode(params)
-        with urllib.request.urlopen(url, timeout=timeout) as r:
-            return r.read().decode("utf-8", errors="replace")
+        attempt = 0
+        while True:
+            try:
+                with urllib.request.urlopen(url, timeout=timeout) as r:
+                    return r.read().decode("utf-8", errors="replace")
+            except urllib.error.URLError:
+                if attempt >= retries:
+                    raise
+                attempt += 1
+                time.sleep(retry_delay_s)
 
     def ping_debug_server(self, *, retries: int = 20, delay_s: float = 0.5) -> None:
         """Wait until the in-app debug server answers /ping. Called by
@@ -216,7 +231,7 @@ class IosDevice(Device):
         )
 
     def set_setting(self, key: str, value: str) -> None:
-        self._debug_get("/setting", {"key": key, "value": value})
+        self._debug_get("/setting", {"key": key, "value": value}, retries=2)
 
     def set_zoom_override(self, zoom: float | None) -> None:
         self.set_setting("map_zoom_override", "" if zoom is None else f"{zoom}")

@@ -90,7 +90,7 @@ class TtsSuppressed(Event):
 class SyncResult(Event):
     """DebugSyncReceiver result. `action` is SYNC_MAP or SYNC_ZONES.
 
-    `outcome` is one of: Updated, UpToDate, Failed.
+    `outcome` is one of: Updated, UpToDate, Failed, Skipped.
     """
     action: str
     outcome: str

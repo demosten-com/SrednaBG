@@ -24,7 +24,6 @@ struct SettingsStoreTests {
     @Test
     func defaultsMatchAndroid() {
         let store = SettingsStore(defaults: freshDefaults())
-        #expect(store.alertThresholdKmh == 5)
         #expect(store.voiceEnabled == true)
         #expect(store.periodicVoiceUpdates == true)
         #expect(store.announceOnlyWhenOver == true)
@@ -40,7 +39,6 @@ struct SettingsStoreTests {
     func mutationsPersistToUserDefaults() {
         let defaults = freshDefaults()
         let store = SettingsStore(defaults: defaults)
-        store.alertThresholdKmh = 12
         store.voiceEnabled = false
         store.appLanguage = .bg
         store.vehicleType = .truck
@@ -50,7 +48,6 @@ struct SettingsStoreTests {
 
         // Hydrate a second instance from the same defaults — should see the writes.
         let reloaded = SettingsStore(defaults: defaults)
-        #expect(reloaded.alertThresholdKmh == 12)
         #expect(reloaded.voiceEnabled == false)
         #expect(reloaded.appLanguage == .bg)
         #expect(reloaded.vehicleType == .truck)
@@ -63,7 +60,6 @@ struct SettingsStoreTests {
     func keyNamesMatchAndroidByteForByte() {
         // QA harness control surface and screenshots assume the same key names
         // across Android and iOS. Don't rename without a coordinated change.
-        #expect(SettingsKey.alertThresholdKmh == "alert_threshold_kmh")
         #expect(SettingsKey.voiceEnabled == "voice_enabled")
         #expect(SettingsKey.periodicVoiceUpdates == "periodic_voice_updates")
         #expect(SettingsKey.announceOnlyWhenOver == "announce_only_when_over")

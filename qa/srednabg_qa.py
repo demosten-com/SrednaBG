@@ -68,11 +68,18 @@ EDGE_SCENARIOS = [
     "noisy_fix_rejected",
 ]
 # Edge scenarios that exercise an Android-only code path and would never pass on
-# iOS. `noisy_fix_rejected` tests the Android service's MAX_ACCURACY_M gate; iOS
-# has no equivalent (CoreLocation pre-filters), so it's skipped under
-# `--platform ios` rather than failed (same philosophy as the location-source
-# flavor tripwire prefix).
-_ANDROID_ONLY_EDGE = {"noisy_fix_rejected"}
+# iOS, so they're skipped under `--platform ios` rather than failed (same
+# philosophy as the location-source flavor tripwire prefix):
+#   - `noisy_fix_rejected` tests the Android service's MAX_ACCURACY_M gate; iOS
+#     has no equivalent (CoreLocation pre-filters).
+#   - `cold_start_spike` reproduces an Android `LocationTrackingService.kt`
+#     speed-inference bug (`lastInferredSpeedKmh` reset on sub-`MIN_SPEED_INFER_M`
+#     stationary samples) seeded via `geo_fix`; iOS has a separate
+#     `SpeedInference` with its own unit tests, and `simctl location set` doesn't
+#     reproduce the Android FLP cached-last-known cold start. The scenario's own
+#     anti-vacuous guard (`assert_signal_observed`) flags the missing diagnostic
+#     stream on iOS instead of passing vacuously.
+_ANDROID_ONLY_EDGE = {"noisy_fix_rejected", "cold_start_spike"}
 SYNC_SCENARIOS = [
     "zones_happy",
     # Keep network-dependent scenarios before `zones_offline` — it toggles
@@ -148,15 +155,32 @@ def _representative_suite() -> list[Scenario]:
 
 
 def load_representative() -> list[Scenario]:
-    """Load the 6 representative-tier YAML scenarios."""
+    """Load the representative-tier matrix: 6 hand-picked zones × 4 settings
+    combos = 24 scenarios.
+
+    Prefers the committed YAMLs in `scenarios/representative/` (regenerate with
+    `python -m qa.scenarios.representative._generate`). If they're absent (fresh
+    checkout before generation), falls back to synthesizing the same 24 from the
+    `representative_zones.yaml` fixture × `ALL_COMBOS` — so the suite is never
+    silently reduced to a smaller set."""
     if not REPRESENTATIVE_DIR.exists() or not list(REPRESENTATIVE_DIR.glob("*.yaml")):
-        # First-run fallback: synthesize from a hand-picked list.
+        import yaml
+        from qa import settings as settings_mod
         from qa.scenarios.bulk_loader import BulkScenarioSpec, build_scenario as build_bulk
-        ids = [
-            "trakiya-01-east", "hemus-01-east", "europa-01-east",
-        ]
-        return [build_bulk(BulkScenarioSpec(name=f"rep.{i}", zone_id=i, settings="S1"))
-                for i in ids]
+
+        fixture_path = _HERE / "fixtures" / "representative_zones.yaml"
+        zones = yaml.safe_load(fixture_path.read_text(encoding="utf-8"))["zones"]
+        out: list[Scenario] = []
+        for z in zones:
+            speed = float(z.get("speed_kmh", 130))
+            for combo in settings_mod.ALL_COMBOS:
+                out.append(build_bulk(BulkScenarioSpec(
+                    name=f"rep.{z['id']}__{combo.id}",
+                    zone_id=z["id"],
+                    speed_kmh=speed,
+                    settings=combo.id,
+                )))
+        return out
     specs = load_specs_from_dir(REPRESENTATIVE_DIR)
     return [build_scenario(s) for s in specs]
 
@@ -182,7 +206,17 @@ def _sync_suite() -> list[Scenario]:
 
 
 def _ui_suite() -> list[Scenario]:
-    """UI smoke is a degenerate scenario list — wraps the smoke_walk."""
+    """UI smoke is a degenerate scenario list — wraps the smoke_walk.
+
+    Android-only: `smoke_walk` drives the phone UI via `adb shell input tap`
+    with hardcoded Pixel-8a bottom-nav coordinates (`qa/ui.py`), which has no
+    iOS analog (there's no adb device, and the coords are device-specific). Skip
+    it on iOS rather than crash — same philosophy as `_location_source_prefix`
+    and the `_ANDROID_ONLY_EDGE` skip. A genuine iOS UI walk would route through
+    `IosDevice.select_tab` (cf. `srednabg_screenshots.navigate_tab`); a future
+    enhancement, not wired here."""
+    if device_mod.current().platform == "ios":
+        return []
     from qa.scenarios.ui import smoke_walk_scenario  # added below
     return [smoke_walk_scenario.build()]
 
@@ -261,6 +295,7 @@ def main(argv: list[str] | None = None) -> int:
 
     REPORTS_ROOT.mkdir(parents=True, exist_ok=True)
     print(f"Running suite '{args.suite}' — {len(scenarios)} scenarios")
+    runner = None
     try:
         with SuiteRunner(args.suite, REPORTS_ROOT) as runner:
             for sc in scenarios:
@@ -277,6 +312,14 @@ def main(argv: list[str] | None = None) -> int:
             return 0 if n_fail == 0 else 1
     except KeyboardInterrupt:
         print("\nInterrupted — app stopped, foreground service killed.", file=sys.stderr)
+        # Don't lose hours of a long run: persist whatever scenarios finished
+        # before the interrupt, flagged as a partial report so it isn't mistaken
+        # for a full pass. (write_reports only ran post-loop until now.)
+        if runner is not None and runner.results:
+            junit, md = write_reports(args.suite, runner.report_dir, runner.results,
+                                      interrupted=True)
+            print(f"Partial report ({len(runner.results)} scenarios): {md}", file=sys.stderr)
+            print(f"JUnit:  {junit}", file=sys.stderr)
         return 130
 
 

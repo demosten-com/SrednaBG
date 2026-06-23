@@ -17,8 +17,9 @@ from pathlib import Path
 from typing import Any
 
 from ... import settings as settings_mod
-from ...assertions import expect_crash_free
+from ...assertions import AssertionFailure, expect_crash_free
 from ...drive import DrivePlan, parse_gpx
+from ...events import Event
 from ...runner import RunContext
 from ..bulk_loader import _ensure_gpx, BulkScenarioSpec
 
@@ -65,3 +66,27 @@ def scenario_setup(ctx: RunContext, *, settings_id: str = "S1") -> None:
 def scenario_teardown(ctx: RunContext) -> None:
     settings_mod.stop_tracking()
     expect_crash_free(ctx.obs)
+
+
+def assert_signal_observed(
+    ctx: RunContext, event_type: type[Event], *, since: int, label: str
+) -> None:
+    """Fail loudly if no `event_type` events were parsed since the `since`
+    snapshot of `obs.type_counts[event_type.__name__]`.
+
+    Anti-vacuous guard for `expect_never`-style assertions: if the underlying
+    diagnostic log line isn't emitted on the running platform, `expect_never`
+    drains an empty queue and returns green without testing anything. Snapshot
+    the count before the observation window, then call this before the
+    `expect_never` so an absent signal is a hard failure instead of a false
+    pass. `type_counts` is incremented by the observer thread (survives
+    `clear()`); the delta is therefore scenario-scoped even though the counter
+    accumulates suite-wide."""
+    seen = ctx.obs.type_counts[event_type.__name__] - since
+    if seen <= 0:
+        raise AssertionFailure(
+            f"no {event_type.__name__} events observed during {label} — the "
+            f"diagnostic log line is missing on this platform, so the following "
+            f"assertion would pass vacuously",
+            ctx.obs,
+        )

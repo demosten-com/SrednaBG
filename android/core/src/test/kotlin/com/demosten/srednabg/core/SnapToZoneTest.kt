@@ -50,7 +50,6 @@ class SnapToZoneTest {
             zone = TRAKIYA_T10,
             entryTime = nearStartRaw.timestamp,
             distanceTraveled = 0.0,
-            avgSpeed = null,
             speedStatus = SpeedStatus(
                 avgSpeed = null,
                 maxSpeedForRemainder = 140.0,
@@ -88,7 +87,6 @@ class SnapToZoneTest {
             zone = degenerateZone,
             entryTime = rawPoint.timestamp,
             distanceTraveled = 0.0,
-            avgSpeed = null,
             speedStatus = SpeedStatus(null, 140.0, 0.0, 0.0, false),
             distanceRemaining = 0.0,
         )

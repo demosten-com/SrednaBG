@@ -34,7 +34,7 @@ import shutil
 import sys
 import time
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -73,7 +73,7 @@ class CueChannel:
     def emit(self, kind: str, args: dict) -> int:
         self.seq += 1
         payload = {"seq": self.seq, "kind": kind, **args,
-                   "ts": datetime.utcnow().isoformat() + "Z"}
+                   "ts": datetime.now(timezone.utc).isoformat()}
         cue_path = self.dir / f"cue-{self.seq:04d}.json"
         cue_path.write_text(json.dumps(payload), encoding="utf-8")
         return self.seq
@@ -222,8 +222,7 @@ def wait_locale_applied(device) -> None:
     time.sleep(2.0 if device.platform == "android" else 0.5)
 
 
-def drive_band_for_shot(seq: sequencer.ZoneSequencer, shot: shots_loader.Shot,
-                        warmup: Optional[sequencer.Walker]) -> Optional[sequencer.Walker]:
+def drive_band_for_shot(seq: sequencer.ZoneSequencer, shot: shots_loader.Shot) -> None:
     """Drive the GPS sequence required by `shot.band`.
 
     Every in-zone shot is driven from a fresh tracking session: we
@@ -237,8 +236,7 @@ def drive_band_for_shot(seq: sequencer.ZoneSequencer, shot: shots_loader.Shot,
     then dragged the in-zone running average above the limit and turned
     every "green" shot red.
 
-    `warmup` is retained in the signature for backward compatibility but
-    no longer carried across shots — each in-zone shot owns its sequence.
+    Each in-zone shot owns its own sequence — nothing is carried across shots.
     """
     band = shot.band
     if not shot.tracking_active:
@@ -270,14 +268,14 @@ def drive_band_for_shot(seq: sequencer.ZoneSequencer, shot: shots_loader.Shot,
             # RED needs running avg > limit. The detector integrates the
             # in-zone history, so we lift the avg by driving the preamble
             # already above the limit — a short tail at +35 then crosses.
-            warmup = seq.drive_into_zone(
+            walker = seq.drive_into_zone(
                 preamble_speed_kmh=seq.zone.speed_limit_kmh + 25.0,
                 preamble_s=10.0,
             )
         else:
-            warmup = seq.drive_into_zone()
-        seq.drive_band_tail(warmup, band)
-        return None
+            walker = seq.drive_into_zone()
+        seq.drive_band_tail(walker, band)
+        return
     raise ValueError(f"unhandled band: {band!r}")
 
 
@@ -359,7 +357,6 @@ def main(argv: list[str]) -> int:
     seq = sequencer.ZoneSequencer(zone=zone)
 
     preflight(device, theme=args.theme)
-    warmup: Optional[sequencer.Walker] = None
     produced: list[Path] = []
 
     try:
@@ -373,7 +370,7 @@ def main(argv: list[str]) -> int:
                 navigate_tab(shot.tab, channel,
                              allow_adb_fallback=args.allow_adb_fallback)
                 time.sleep(0.5)  # UI settle
-                warmup = drive_band_for_shot(seq, shot, warmup)
+                drive_band_for_shot(seq, shot)
                 settle_for_screenshot()
                 dest = out_root / (
                     f"{shot.nn:02d}-{args.platform}-{args.theme}-{lang}.png"

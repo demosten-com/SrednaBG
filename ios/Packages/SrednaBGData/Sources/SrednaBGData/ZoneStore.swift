@@ -14,6 +14,12 @@ import SrednaBGCore
 /// dimension, and SwiftData's `ModelContext` isolation rules are ergonomically
 /// awkward when the read site is a 1 Hz GPS loop. A plain `[Zone]` cached in
 /// this actor is faster, simpler, and unit-testable on macOS.
+///
+/// On-disk shape: this store persists and decodes a **bare `[Zone]` array**,
+/// NOT the `ZonesResponse` wrapper that `BundledZonesLoader` reads from the
+/// bundled `bundled-zones.json`. The two files happen to share the
+/// "zones.json" base name but are not interchangeable — pointing this store at
+/// the bundled asset would decode-fail and silently yield `zones = []`.
 public actor ZoneStore {
     private let url: URL
     private(set) var zones: [Zone] = []

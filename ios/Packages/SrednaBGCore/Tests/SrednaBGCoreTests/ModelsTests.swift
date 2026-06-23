@@ -38,7 +38,6 @@ struct ModelsTests {
             zone: TRAKIYA_T10,
             entryTime: epochBase,
             distanceTraveled: 9160.0,
-            avgSpeed: 130.0,
             speedStatus: status,
             distanceRemaining: 10000.0
         )
@@ -54,7 +53,6 @@ struct ModelsTests {
                 zone: TRAKIYA_T10,
                 entryTime: epochBase,
                 distanceTraveled: 0,
-                avgSpeed: 0,
                 speedStatus: SpeedStatus(
                     avgSpeed: 0,
                     maxSpeedForRemainder: 140,

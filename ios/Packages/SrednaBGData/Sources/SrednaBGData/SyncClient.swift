@@ -65,12 +65,17 @@ public actor SyncClient {
             try? FileManager.default.removeItem(at: tempURL)
             throw SyncClientError.httpStatus(code, url: url)
         }
-        // Move atomically into the caller-controlled destination.
+        // Swap into the caller-controlled destination atomically. A manual
+        // remove-then-move leaves an instant where `destination` doesn't
+        // exist (a concurrent reader could catch the gap); `replaceItemAt`
+        // does the temp-rename dance in one step. When the destination is
+        // absent it falls back to a plain move.
         let fm = FileManager.default
         if fm.fileExists(atPath: destination.path) {
-            try fm.removeItem(at: destination)
+            _ = try fm.replaceItemAt(destination, withItemAt: tempURL)
+        } else {
+            try fm.moveItem(at: tempURL, to: destination)
         }
-        try fm.moveItem(at: tempURL, to: destination)
         return destination
     }
 

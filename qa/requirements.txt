@@ -2,8 +2,9 @@
 #
 # Install with: pip install -r qa/requirements.txt
 #
-# PyYAML is used by every script under qa/ that parses shots.yaml,
-# scenario fixtures, or tts_phrases.yaml.
+# PyYAML is used by qa/screenshots/loader.py (shots.yaml) and the screenshot
+# tooling. The flat bulk/representative scenario fixtures are read by the
+# in-tree bulk_loader._load_yaml parser, not PyYAML.
 #
 # Pillow is only needed by qa/srednabg_frame_screenshots.py (the
 # /frame-screenshots store-asset compositor). Pillow 10 is required for

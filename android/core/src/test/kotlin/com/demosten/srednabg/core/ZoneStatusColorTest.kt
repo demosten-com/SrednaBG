@@ -15,7 +15,6 @@ class ZoneStatusColorTest {
             zone = TRAKIYA_T10,
             entryTime = 0L,
             distanceTraveled = 0.0,
-            avgSpeed = null,
             speedStatus = SpeedStatus(
                 avgSpeed = null,
                 maxSpeedForRemainder = 140.0,
@@ -53,5 +52,18 @@ class ZoneStatusColorTest {
         assertEquals(ZONE_COLOR_RED, zoneStatusColor(state, currentSpeedKmh = 130.0))
         assertEquals(ZONE_COLOR_RED, zoneStatusColor(state, currentSpeedKmh = 200.0))
         assertEquals(ZONE_COLOR_RED, zoneStatusColor(state, currentSpeedKmh = null))
+    }
+
+    @Test
+    fun `amber tier stays car-relative for a truck-limit zone`() {
+        // Locks ISSUE-002: the amber threshold is keyed to zone.speedLimits.car
+        // (140 on Trakiya), NOT the vehicle-resolved limit (truck = 90). A truck
+        // doing 120 km/h with a still-recoverable average is GREEN — 120 is under
+        // the car limit even though it's over the truck limit — and only crosses
+        // to amber above 140. If anyone "fixes" the colour to the per-vehicle
+        // limit, the 120 case flips to amber and this test fails.
+        val state = inZone(isOverLimit = false)
+        assertEquals(ZONE_COLOR_GREEN, zoneStatusColor(state, currentSpeedKmh = 120.0))
+        assertEquals(ZONE_COLOR_YELLOW, zoneStatusColor(state, currentSpeedKmh = 160.0))
     }
 }

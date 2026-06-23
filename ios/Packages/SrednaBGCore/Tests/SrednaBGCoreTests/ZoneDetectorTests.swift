@@ -526,5 +526,40 @@ struct ZoneDetectorTests {
             Issue.record("Sustained off-road (>= offRoadExitGraceFixes) must exit")
         }
     }
+
+    @Test
+    func emptyZoneListNeverEntersAZone() {
+        var detector = ZoneDetector(zones: [])
+        let point = GpsPoint(
+            lat: TRAKIYA_T10.start.lat, lng: TRAKIYA_T10.start.lng,
+            speed: 130.0, timestamp: epochBase, bearing: 300.0
+        )
+        // No zones to match — stays Outside across repeated fixes, no crash.
+        if case .outside = detector.update(point) {} else {
+            Issue.record("Empty zone list must stay Outside")
+        }
+        let next = GpsPoint(
+            lat: TRAKIYA_T10.start.lat, lng: TRAKIYA_T10.start.lng,
+            speed: 130.0, timestamp: epochBase + 1000, bearing: 300.0
+        )
+        if case .outside = detector.update(next) {} else {
+            Issue.record("Empty zone list must stay Outside")
+        }
+    }
+
+    @Test
+    func degenerateSinglePointCenterlineNeverMatches() {
+        // A single-point centerline can't yield a bearing or a distance band, so it
+        // must never be entered (matchDirection / isOnRoad both require >= 2 points)
+        // and must not crash construction.
+        let degenerate = TRAKIYA_T10.with(centerline: [[42.427, 23.855]])
+        var detector = ZoneDetector(zones: [degenerate])
+        let onPoint = GpsPoint(
+            lat: 42.427, lng: 23.855, speed: 130.0, timestamp: epochBase, bearing: 300.0
+        )
+        if case .outside = detector.update(onPoint) {} else {
+            Issue.record("Degenerate single-point centerline must never match")
+        }
+    }
 }
 // swiftlint:enable type_body_length

@@ -56,7 +56,7 @@ public struct StatusChip: View {
             LimitBadge(limit: limitKmh)
             Spacer(minLength: 12)
             VStack(alignment: .center, spacing: 2) {
-                Text(String(format: "%.1f km", inZone.distanceRemaining / 1000))
+                Text(String(format: "%.1f km", locale: Locale(identifier: "en_US_POSIX"), inZone.distanceRemaining / 1000))
                     .font(.callout.weight(.bold))
                     .monospacedDigit()
                     .lineLimit(1)

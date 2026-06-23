@@ -7,8 +7,8 @@ import SwiftUI
 import SrednaBGCore
 import SrednaBGData
 
-/// Mirrors `SettingsScreen.kt`: alert threshold slider, voice toggles,
-/// language + vehicle pickers, sync button. Bound to `SettingsStore`
+/// Mirrors `SettingsScreen.kt`: voice toggles, language + vehicle pickers,
+/// sync button. Bound to `SettingsStore`
 /// (`@Observable @MainActor`) so flips persist to UserDefaults immediately.
 public struct SettingsScreen: View {
 
@@ -30,7 +30,6 @@ public struct SettingsScreen: View {
 
     public var body: some View {
         Form {
-            alertThresholdSection
             voiceSection
             languageSection
             vehicleSection
@@ -56,22 +55,6 @@ public struct SettingsScreen: View {
     }
 
     // MARK: sections
-
-    private var alertThresholdSection: some View {
-        Section(L10n.settingAlertThreshold) {
-            Text(String(format: L10n.settingAlertThresholdDesc, settings.alertThresholdKmh))
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-            Slider(
-                value: Binding(
-                    get: { Double(settings.alertThresholdKmh) },
-                    set: { settings.alertThresholdKmh = Int($0.rounded()) }
-                ),
-                in: 0...20,
-                step: 1
-            )
-        }
-    }
 
     private var voiceSection: some View {
         Section(L10n.settingVoiceAlerts) {

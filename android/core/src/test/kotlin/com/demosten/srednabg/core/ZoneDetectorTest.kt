@@ -658,4 +658,33 @@ class ZoneDetectorTest {
         val onNationalRoad = RoadMatcher.isOnRoad(nearNationalPoint, NATIONAL_ROAD_ZONE)
         assertFalse(onNationalRoad, "120m from national road centerline should NOT be on road (100m threshold)")
     }
+
+    @Test
+    fun `empty zone list never enters a zone`() {
+        val empty = ZoneDetector(emptyList())
+        val point = GpsPoint(
+            lat = TRAKIYA_T10.start.lat, lng = TRAKIYA_T10.start.lng,
+            speed = 130.0, timestamp = EPOCH_BASE, bearing = polylineBearing(TRAKIYA_T10.centerline),
+        )
+        // No zones to match — stays Outside across repeated fixes, no crash.
+        assertTrue(empty.update(point) is ZoneState.Outside)
+        assertTrue(empty.update(point.copy(timestamp = EPOCH_BASE + 1000L)) is ZoneState.Outside)
+    }
+
+    @Test
+    fun `degenerate single-point centerline never matches`() {
+        // A zone whose centerline has a single point can't yield a bearing or a
+        // meaningful distance band, so it must never be entered (matchDirection /
+        // isOnRoad both require >= 2 points) — and must not crash construction.
+        val degenerate = TRAKIYA_T10.copy(
+            id = "degenerate-01",
+            centerline = listOf(listOf(42.427, 23.855)),
+        )
+        val detector = ZoneDetector(listOf(degenerate))
+        val onPoint = GpsPoint(
+            lat = 42.427, lng = 23.855, speed = 130.0,
+            timestamp = EPOCH_BASE, bearing = 300.0,
+        )
+        assertTrue(detector.update(onPoint) is ZoneState.Outside)
+    }
 }

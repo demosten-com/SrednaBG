@@ -31,7 +31,6 @@ struct AdaptiveLocationCadenceTests {
             zone: Self.trakiya,
             entryTime: 0,
             distanceTraveled: 0,
-            avgSpeed: nil,
             speedStatus: SpeedStatus(avgSpeed: nil, maxSpeedForRemainder: 140, distanceRemaining: 0, timeRemaining: 0, isOverLimit: false),
             distanceRemaining: 0
         ))

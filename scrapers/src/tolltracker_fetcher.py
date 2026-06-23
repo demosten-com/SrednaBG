@@ -40,7 +40,9 @@ def extract_segments(html: str) -> list[dict]:
 
     TollTracker uses Next.js App Router with React Server Components. The zone
     data is embedded in the server-rendered HTML as RSC flight payload inside
-    self.__next_f.push([1,"<json-encoded-string>"]) script tags.
+    self.__next_f.push([1,"<json-encoded-string>"]) script tags. This format is
+    an undocumented Next.js internal; last verified working against Next.js 14
+    App Router (2026-06). A framework upgrade can change it.
     """
     soup = BeautifulSoup(html, "html.parser")
     scripts = soup.find_all("script")
@@ -67,20 +69,13 @@ def extract_segments(html: str) -> list[dict]:
         idx = decoded.find(key)
         if idx == -1:
             continue
+        # Let the stdlib JSON parser find the array end — it is string-aware,
+        # so a stray ``]`` inside a settlement name or segment id can't
+        # prematurely close the array (a hand-rolled bracket counter would).
         start = idx + len(key)
-        depth = 0
-        end = start
-        for j, c in enumerate(decoded[start:], start):
-            if c == "[":
-                depth += 1
-            elif c == "]":
-                depth -= 1
-                if depth == 0:
-                    end = j + 1
-                    break
-
+        start += len(decoded[start:]) - len(decoded[start:].lstrip())
         try:
-            segments = json.loads(decoded[start:end])
+            segments, _end = json.JSONDecoder().raw_decode(decoded, start)
         except json.JSONDecodeError as e:
             raise ValueError(
                 "Failed to parse speedEnforcementSegments array"
@@ -92,7 +87,11 @@ def extract_segments(html: str) -> list[dict]:
         logger.info("Found %d TollTracker segments", len(segments))
         return segments
 
-    raise ValueError("speedEnforcementSegments not found in RSC payload")
+    raise ValueError(
+        "speedEnforcementSegments not found in RSC payload "
+        f"(examined {len(scripts)} <script> tags) — the Next.js flight format "
+        "may have changed"
+    )
 
 
 def _swap_coords(geojson_coords: list[list[float]]) -> list[list[float]]:
@@ -120,6 +119,8 @@ def parse_segment(feature: dict) -> tuple[Zone, Zone]:
 
     seg_id = props["id"]
     road = props["majorRoadName"]
+    # Source-provided motorway flag — the TollTracker equivalent of
+    # roads.is_motorway() used by the BG TOLL / KML scrapers.
     road_type = props.get("roadType")  # "motorway" or "road"
     length = int(props["length"])
 

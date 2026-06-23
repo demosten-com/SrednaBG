@@ -104,6 +104,13 @@ public struct Zone: Sendable, Equatable, Hashable, Codable, Identifiable {
     }
 }
 
+/// A single GPS fix fed into the engine.
+///
+/// - `lat`/`lng`: decimal degrees (WGS84).
+/// - `speed`: ground speed in **km/h** (divide by 3.6 for m/s — never assume m/s).
+/// - `timestamp`: fix time as epoch **milliseconds**.
+/// - `bearing`: course over ground in **degrees** clockwise from true north, `[0, 360)`.
+/// - `accuracy`: horizontal accuracy radius in **metres**, or nil when unreported.
 public struct GpsPoint: Sendable, Equatable, Hashable {
     public let lat: Double
     public let lng: Double
@@ -147,6 +154,16 @@ public struct GpsPoint: Sendable, Equatable, Hashable {
     }
 }
 
+/// Derived running-average speed status for the active zone.
+///
+/// - `avgSpeed`: running average so far in **km/h**, or nil until enough active
+///   tracking has accumulated.
+/// - `maxSpeedForRemainder`: highest sustainable average for the rest of the zone
+///   that still finishes legal, in **km/h**.
+/// - `distanceRemaining`: road left to the zone end in **metres**.
+/// - `timeRemaining`: legal time budget left for the remainder in **seconds**
+///   (may be negative once exhausted).
+/// - `isOverLimit`: true when `avgSpeed` already exceeds the effective limit.
 public struct SpeedStatus: Sendable, Equatable, Hashable {
     public let avgSpeed: Double?
     public let maxSpeedForRemainder: Double
@@ -178,22 +195,23 @@ public enum ZoneState: Sendable, Equatable, Hashable {
         public let zone: Zone
         public let entryTime: Int64
         public let distanceTraveled: Double
-        public let avgSpeed: Double?
         public let speedStatus: SpeedStatus
         public let distanceRemaining: Double
+
+        /// Convenience alias — the running average always lives in `speedStatus`.
+        /// Derived so the two can never disagree (matches Android).
+        public var avgSpeed: Double? { speedStatus.avgSpeed }
 
         public init(
             zone: Zone,
             entryTime: Int64,
             distanceTraveled: Double,
-            avgSpeed: Double?,
             speedStatus: SpeedStatus,
             distanceRemaining: Double
         ) {
             self.zone = zone
             self.entryTime = entryTime
             self.distanceTraveled = distanceTraveled
-            self.avgSpeed = avgSpeed
             self.speedStatus = speedStatus
             self.distanceRemaining = distanceRemaining
         }

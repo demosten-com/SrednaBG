@@ -32,7 +32,6 @@ struct AnnouncementPolicyTests {
             zone: Self.zone,
             entryTime: 0,
             distanceTraveled: 0,
-            avgSpeed: avgSpeed,
             speedStatus: SpeedStatus(
                 avgSpeed: avgSpeed,
                 maxSpeedForRemainder: 140,
@@ -72,7 +71,6 @@ struct AnnouncementPolicyTests {
             zone: zone,
             entryTime: 0,
             distanceTraveled: 0,
-            avgSpeed: 130,
             speedStatus: SpeedStatus(
                 avgSpeed: 130,
                 maxSpeedForRemainder: 140,

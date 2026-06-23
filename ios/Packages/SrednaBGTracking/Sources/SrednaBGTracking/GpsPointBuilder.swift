@@ -140,7 +140,12 @@ public struct GpsPointBuilder: Sendable {
             timestampMs: raw.timestampMs,
             freshFix: raw.freshFix
         )
-        let bearing = bearingFallback.bearing(rawBearing: raw.course, lat: raw.lat, lng: raw.lng)
+        let bearing = bearingFallback.bearing(
+            rawBearing: raw.course,
+            lat: raw.lat,
+            lng: raw.lng,
+            freshFix: raw.freshFix
+        )
         let rawPoint = GpsPoint(
             lat: raw.lat,
             lng: raw.lng,

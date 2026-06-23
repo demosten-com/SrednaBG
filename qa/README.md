@@ -30,8 +30,8 @@ python qa/srednabg_qa.py --suite smoke
 # (one-time) generate per-zone YAMLs for the full bulk pass
 python -m qa.scenarios.bulk._generate
 
-# (one-time) extract TTS phrases into a fixture for substring assertions
-python -m qa.fixtures._extract_tts > qa/fixtures/tts_phrases.yaml
+# headless harness unit tests (parsers / geo / drive / speech-number + TTS parity)
+python -m unittest discover qa/tests
 ```
 
 ## Suites
@@ -41,7 +41,7 @@ python -m qa.fixtures._extract_tts > qa/fixtures/tts_phrases.yaml
 | `smoke` | ~5 min | 1 zone, 1 settings combo, 1 sync, parser self-test |
 | `representative` | ~30 min | 6 hand-picked zones × 4 settings combos + sync set |
 | `full-zones` | ~75 min @ 4× | All 72 zones × constant-speed pass × 4 minimal asserts |
-| `scenarios` | ~20 min | 12 edge cases (stop, dropout, off-ramp, U-turn, swap, auto-stop, dense-centerline, stop-silences-TTS, etc.) |
+| `scenarios` | ~20 min | 14 edge cases (stop, dropout, off-ramp, U-turn, swap, auto-stop, dense-centerline, stop-silences-TTS, etc.) |
 | `sync` | ~5 min | Zones happy + offline; map happy + integrity |
 | `ui` | <1 min | Phone UI walk via mobile-mcp / adb input |
 | `nightly` | ~2 hr | representative + full-zones + scenarios + ui |
@@ -131,9 +131,11 @@ For driving a zone by hand on an iOS device/Simulator (Xcode reads only
 
 ## Updating after app changes
 
-When `AudioAlertManager.kt` (or the iOS `AudioAlertManager.swift`) phrases
-change, regenerate `tts_phrases.yaml`. When zones.json changes, re-run
-`python -m qa.scenarios.bulk._generate` and commit the diff. When the log
+When `AudioAlertManager.kt` (or the iOS `TtsPhrases.swift`) phrases change, the
+`qa/tests/` phrase-parity test (`python -m unittest discover qa/tests`) fails if
+the two platforms drift apart — update both and keep them matched. When
+zones.json changes, re-run `python -m qa.scenarios.bulk._generate` and commit
+the diff. When the log
 format changes — Kotlin `LocationTrackingService.kt` / `AudioAlertManager.kt`
 on Android, `QALog` + `ZoneTrackingService.swift` / `CLLocationTracker.swift`
 / `AudioAlertManager.swift` on iOS — the smoke suite's parser self-test

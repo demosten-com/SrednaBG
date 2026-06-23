@@ -37,7 +37,7 @@
 #                     Same title applies to light + dark themes (the phone
 #                     thumbnail itself carries the theme difference).
 
-# Canonical zone for all in-zone shots. Must exist in scrapers/data/zones.json.
+# Canonical zone for all in-zone shots. Must exist in backend/data/zones.json.
 zone_id: i1-01-south
 
 # Per-platform output naming gets the language code appended.

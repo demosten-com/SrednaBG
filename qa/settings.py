@@ -13,6 +13,7 @@ event so callers can assume the value has been persisted before they continue.
 
 from __future__ import annotations
 
+import queue
 import time
 from dataclasses import dataclass
 from typing import Optional
@@ -34,7 +35,7 @@ def set_setting(key: str, value: str | int | bool, *, obs: Optional[LogObserver]
     while time.monotonic() < deadline:
         try:
             ev = obs.queue.get(timeout=0.2)
-        except Exception:
+        except queue.Empty:
             continue
         if isinstance(ev, SettingChanged) and ev.key == key:
             return
@@ -51,7 +52,6 @@ class SettingsCombo:
     announce_only_when_over: bool
     app_language: str
     vehicle_type: str
-    alert_threshold_kmh: int = 5
     map_heading_up: bool = False
 
     def apply(self, obs: Optional[LogObserver] = None) -> None:
@@ -62,7 +62,6 @@ class SettingsCombo:
         set_setting("announce_only_when_over", self.announce_only_when_over, obs=obs)
         set_setting("app_language", self.app_language, obs=obs)
         set_setting("vehicle_type", self.vehicle_type, obs=obs)
-        set_setting("alert_threshold_kmh", self.alert_threshold_kmh, obs=obs)
         set_setting("map_heading_up", self.map_heading_up, obs=obs)
 
 

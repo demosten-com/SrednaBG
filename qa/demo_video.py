@@ -62,7 +62,7 @@ from qa.devices.android import AndroidDevice  # noqa: E402
 from qa.drive import parse_gpx, pump  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-ZONES_JSON = REPO_ROOT / "scrapers" / "data" / "zones.json"
+ZONES_JSON = REPO_ROOT / "backend" / "data" / "zones.json"
 MAKE_TEST_ROUTE = REPO_ROOT / "scrapers" / "scripts" / "make_test_route.py"
 OUT_DIR = REPO_ROOT / "qa" / "out" / "video"
 FIXTURES_DIR = REPO_ROOT / "qa" / "fixtures" / "gpx"

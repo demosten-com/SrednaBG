@@ -31,8 +31,6 @@
 "permissionTryAgain" = "Try again";
 
 /* SettingsScreen */
-"settingAlertThreshold" = "Alert threshold";
-"settingAlertThresholdDesc" = "Warn me when current speed is within %d km/h of the limit.";
 "settingVoiceAlerts" = "Voice alerts";
 "settingVoiceAlertsDesc" = "Spoken announcements through the car's audio.";
 "settingPeriodicUpdates" = "Periodic updates";
@@ -45,7 +43,7 @@
 "languageBg" = "Български";
 "languageEn" = "English";
 "settingVehicleType" = "Vehicle type";
-"vehicleCar" = "Car";
+"vehicleCar" = "Car/Motorcycle";
 "vehicleTruck" = "Truck";
 "vehicleBus" = "Bus";
 "settingAutoStop" = "Automatic stop";

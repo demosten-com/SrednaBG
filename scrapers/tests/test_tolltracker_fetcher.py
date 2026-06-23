@@ -5,6 +5,7 @@
 
 """Tests for the TollTracker.eu fetcher."""
 
+import json
 
 import pytest
 
@@ -24,6 +25,25 @@ class TestExtractSegments:
     def test_raises_on_missing(self):
         with pytest.raises(ValueError, match="speedEnforcementSegments"):
             extract_segments("<html><body></body></html>")
+
+    def test_bracket_inside_string_value_does_not_truncate(self):
+        # A stray ``]`` inside a string value (segment id / settlement name)
+        # must not prematurely close the array. The old hand-rolled bracket
+        # counter truncated mid-string here; the JSON parser is string-aware.
+        payload = (
+            '{"speedEnforcementSegments":'
+            '[{"properties":{"id":"t]1"},"geometry":null},'
+            '{"properties":{"id":"t2"},"geometry":null}],'
+            '"unrelated":99}'
+        )
+        escaped = json.dumps(payload)  # wraps + escapes -> "...\"...\"..."
+        html = (
+            "<html><body><script>"
+            f"self.__next_f.push([1,{escaped}])"
+            "</script></body></html>"
+        )
+        segments = extract_segments(html)
+        assert [s["properties"]["id"] for s in segments] == ["t]1", "t2"]
 
 
 class TestParseSegment:

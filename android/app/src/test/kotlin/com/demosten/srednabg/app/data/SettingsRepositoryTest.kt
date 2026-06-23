@@ -41,13 +41,6 @@ class SettingsRepositoryTest {
     }
 
     @Test
-    fun `default alertThreshold is 5`() = runTest {
-        repository.alertThreshold.test {
-            assertEquals(SettingsRepository.DEFAULT_ALERT_THRESHOLD, awaitItem())
-        }
-    }
-
-    @Test
     fun `default voiceEnabled is true`() = runTest {
         repository.voiceEnabled.test {
             assertEquals(true, awaitItem())
@@ -109,15 +102,6 @@ class SettingsRepositoryTest {
     fun `default vehicleType is car`() = runTest {
         repository.vehicleType.test {
             assertEquals("car", awaitItem())
-        }
-    }
-
-    @Test
-    fun `setAlertThreshold persists and emits new value`() = runTest {
-        repository.alertThreshold.test {
-            assertEquals(5, awaitItem())
-            repository.setAlertThreshold(10)
-            assertEquals(10, awaitItem())
         }
     }
 

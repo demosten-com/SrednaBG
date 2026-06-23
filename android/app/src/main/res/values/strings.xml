@@ -42,8 +42,6 @@
     <string name="retry_sync">Опитай отново</string>
 
     <!-- Settings screen -->
-    <string name="setting_alert_threshold">Праг за предупреждение</string>
-    <string name="setting_alert_threshold_desc">Предупреждение при %d km/h от ограничението</string>
     <string name="setting_voice_alerts">Гласови предупреждения</string>
     <string name="setting_voice_alerts_desc">Обявяване при влизане, излизане и актуализации на скоростта</string>
     <string name="setting_periodic_updates">Периодични гласови актуализации</string>
@@ -56,7 +54,7 @@
     <string name="language_bg">Български</string>
     <string name="language_en">English</string>
     <string name="setting_vehicle_type">Тип превозно средство</string>
-    <string name="vehicle_car">Кола</string>
+    <string name="vehicle_car">Кола/Мотоциклет</string>
     <string name="vehicle_truck">Камион</string>
     <string name="vehicle_bus">Автобус</string>
     <string name="setting_auto_stop">Автоматично спиране</string>

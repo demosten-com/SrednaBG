@@ -39,7 +39,7 @@ from ... import device as device_mod
 from ...assertions import expect_never
 from ...events import DisplaySpeed
 from ...runner import RunContext, Scenario, step_lambda
-from ._helpers import scenario_setup, scenario_teardown
+from ._helpers import assert_signal_observed, scenario_setup, scenario_teardown
 
 # Two stationary positions ~500m apart in central Bulgaria, deliberately
 # away from any zone polyline so we never trigger zone-state changes.
@@ -75,11 +75,19 @@ def build() -> Scenario:
         # in the fixed build.
         time.sleep(SETTLE_AFTER_JUMP_S)
         ctx.obs.clear()
+        # Snapshot the DisplaySpeed count so the assert step can confirm the
+        # signal actually arrived during the window (anti-vacuous guard — see
+        # assert_signal_observed). type_counts survives clear().
+        ctx.data["ds_before"] = ctx.obs.type_counts["DisplaySpeed"]
         # Observe the steady-state stationary period. All DisplaySpeed
         # events from this point onward should report kmh near 0.
         time.sleep(STATIONARY_OBSERVE_S)
 
     def asserts(ctx: RunContext) -> None:
+        assert_signal_observed(
+            ctx, DisplaySpeed, since=ctx.data["ds_before"],
+            label="the stationary observation window",
+        )
         expect_never(
             ctx.obs,
             DisplaySpeed,

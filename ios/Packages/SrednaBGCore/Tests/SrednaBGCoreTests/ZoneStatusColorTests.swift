@@ -14,7 +14,6 @@ struct ZoneStatusColorTests {
             zone: TRAKIYA_T10,
             entryTime: 0,
             distanceTraveled: 0,
-            avgSpeed: nil,
             speedStatus: SpeedStatus(
                 avgSpeed: nil,
                 maxSpeedForRemainder: 140.0,
@@ -51,5 +50,18 @@ struct ZoneStatusColorTests {
         #expect(zoneStatusColor(state: state, currentSpeedKmh: 130.0) == zoneColorRed)
         #expect(zoneStatusColor(state: state, currentSpeedKmh: 200.0) == zoneColorRed)
         #expect(zoneStatusColor(state: state, currentSpeedKmh: nil) == zoneColorRed)
+    }
+
+    @Test
+    func amberTierStaysCarRelativeForATruckLimitZone() {
+        // Locks ISSUE-002: the amber threshold is keyed to zone.speedLimits.car
+        // (140 on Trakiya), NOT the vehicle-resolved limit (truck = 90). A truck
+        // doing 120 km/h with a still-recoverable average is GREEN — 120 is under
+        // the car limit even though it's over the truck limit — and only crosses
+        // to amber above 140. If anyone "fixes" the colour to the per-vehicle
+        // limit, the 120 case flips to amber and this test fails.
+        let state = inZone(isOverLimit: false)
+        #expect(zoneStatusColor(state: state, currentSpeedKmh: 120.0) == zoneColorGreen)
+        #expect(zoneStatusColor(state: state, currentSpeedKmh: 160.0) == zoneColorYellow)
     }
 }

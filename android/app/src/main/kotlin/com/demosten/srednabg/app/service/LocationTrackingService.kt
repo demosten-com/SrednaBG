@@ -145,6 +145,15 @@ class LocationTrackingService : LifecycleService() {
     @Volatile
     private var currentVehicleType: VehicleType = VehicleType.CAR
 
+    // onStartCommand can fire more than once per service instance (START_STICKY
+    // null-intent redelivery after a kill, a repeated START_TRACKING broadcast,
+    // a re-tapped start). The auto-stop timer and the zone collector below are
+    // one-time setup — relaunching them stacks duplicate timers / detectors /
+    // startLocationUpdates. Guard them so they launch only on the first call;
+    // the per-call work (startForeground, isTracking, lastActivityMs) still runs
+    // every time.
+    private var setupStarted = false
+
     private val locationListener = LocationUpdateListener { location ->
         val fromDebug = location.provider == DEBUG_PROVIDER
         if (fromDebug) {
@@ -307,6 +316,9 @@ class LocationTrackingService : LifecycleService() {
         _isTracking.value = true
         lastActivityMs = android.os.SystemClock.elapsedRealtime()
 
+        if (setupStarted) return START_STICKY
+        setupStarted = true
+
         lifecycleScope.launch {
             while (isActive) {
                 val debugSeconds = settingsRepository.debugAutoStopSeconds.first()
@@ -444,7 +456,7 @@ class LocationTrackingService : LifecycleService() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.notification_tracking_title))
             .setContentText(getString(R.string.notification_tracking_text))
-            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .build()

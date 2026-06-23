@@ -79,23 +79,23 @@ class GeoUtilsTest {
     }
 
     @Test
-    fun `project onto polyline at start`() {
-        val proj = projectOntoPolyline(42.427, 23.855, TRAKIYA_T10.centerline)
+    fun `arc length on polyline at start`() {
+        val proj = arcLengthOnPolyline(42.427, 23.855, TRAKIYA_T10.centerline)
         assertTrue(proj < 100) // Should be near 0 (start of polyline)
     }
 
     @Test
-    fun `project onto polyline at end`() {
-        val proj = projectOntoPolyline(42.550, 23.703, TRAKIYA_T10.centerline)
+    fun `arc length on polyline at end`() {
+        val proj = arcLengthOnPolyline(42.550, 23.703, TRAKIYA_T10.centerline)
         val totalLength = computePolylineLength(TRAKIYA_T10.centerline)
         assertEquals(totalLength, proj, totalLength * 0.05) // Within 5% of total length
     }
 
     @Test
-    fun `project onto polyline at midpoint`() {
+    fun `arc length on polyline at midpoint`() {
         // Use the middle point of the centerline
         val mid = TRAKIYA_T10.centerline[3] // [42.510, 23.770]
-        val proj = projectOntoPolyline(mid[0], mid[1], TRAKIYA_T10.centerline)
+        val proj = arcLengthOnPolyline(mid[0], mid[1], TRAKIYA_T10.centerline)
         val totalLength = computePolylineLength(TRAKIYA_T10.centerline)
         assertTrue(proj > totalLength * 0.3)
         assertTrue(proj < totalLength * 0.7)
@@ -232,6 +232,29 @@ class GeoUtilsTest {
     @Test
     fun `polyline bearing too short throws`() {
         assertThrows<IllegalArgumentException> { polylineBearing(listOf(listOf(42.0, 23.0))) }
+    }
+
+    @Test
+    fun `orient centerline already start-first is unchanged`() {
+        val centerline = listOf(listOf(42.0, 23.0), listOf(42.1, 23.1), listOf(42.2, 23.2))
+        val start = ZoneEndpoint(lat = 42.0, lng = 23.0)
+        assertEquals(centerline, orientCenterlineToStart(centerline, start))
+    }
+
+    @Test
+    fun `orient centerline end-first is reversed`() {
+        val centerline = listOf(listOf(42.0, 23.0), listOf(42.1, 23.1), listOf(42.2, 23.2))
+        // start endpoint sits at the LAST point -> centerline runs end-first -> reverse
+        val start = ZoneEndpoint(lat = 42.2, lng = 23.2)
+        assertEquals(centerline.reversed(), orientCenterlineToStart(centerline, start))
+    }
+
+    @Test
+    fun `orient centerline with fewer than two points is unchanged`() {
+        val single = listOf(listOf(42.0, 23.0))
+        val start = ZoneEndpoint(lat = 99.0, lng = 99.0)
+        assertEquals(single, orientCenterlineToStart(single, start))
+        assertEquals(emptyList<List<Double>>(), orientCenterlineToStart(emptyList(), start))
     }
 
     private fun computePolylineLength(polyline: List<List<Double>>): Double {

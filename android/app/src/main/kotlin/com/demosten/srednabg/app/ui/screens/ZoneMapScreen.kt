@@ -39,16 +39,15 @@ import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,7 +59,6 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
@@ -166,8 +164,6 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
         hasRestoredFollowOnEnter = true
     }
 
-    MapLibre.getInstance(context)
-
     val mapTheme by viewModel.mapTheme.collectAsStateWithLifecycle()
     val activity = remember(context) { context.findActivity() }
     if (activity != null) {
@@ -200,6 +196,10 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
     val initialCameraSnapshot = remember { viewModel.cameraSnapshot.value }
     val initialZoomOverride = remember { viewModel.mapZoomOverride.value }
     val mapView = remember {
+        // getInstance must run once before any MapView is constructed; doing it
+        // here (rather than in the composable body) keeps it off the recomposition
+        // path and idempotent.
+        MapLibre.getInstance(context)
         val seedZoom = initialZoomOverride?.toDouble()
             ?: initialCameraSnapshot?.zoom
             ?: 7.0
@@ -275,17 +275,29 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
         mapView.getMapAsync { map -> map.addOnCameraIdleListener(idleListener) }
         onDispose {
             mapView.getMapAsync { map -> map.removeOnCameraIdleListener(idleListener) }
+            // Tie MapView teardown to composition disposal, NOT to the lifecycle
+            // observer below. Inside a NavHost, LocalLifecycleOwner is the
+            // NavBackStackEntry, which only reaches CREATED (stopped) — never
+            // DESTROYED — when another tab is selected under the
+            // saveState/restoreState pattern, so an ON_DESTROY branch would never
+            // fire and the native GL renderer + map handle would leak on every
+            // Map→tab→Map round-trip. onDispose runs exactly when this composable
+            // leaves the composition, which is the correct teardown point.
+            mapView.onDestroy()
         }
     }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
+                Lifecycle.Event.ON_CREATE -> mapView.onCreate(null)
                 Lifecycle.Event.ON_START -> mapView.onStart()
                 Lifecycle.Event.ON_RESUME -> mapView.onResume()
                 Lifecycle.Event.ON_PAUSE -> mapView.onPause()
                 Lifecycle.Event.ON_STOP -> mapView.onStop()
-                Lifecycle.Event.ON_DESTROY -> mapView.onDestroy()
+                // ON_DESTROY intentionally omitted: the NavBackStackEntry never
+                // reaches DESTROYED on a tab switch, so MapView teardown is
+                // driven from the DisposableEffect(mapView) onDispose above.
                 else -> {}
             }
         }
@@ -295,27 +307,29 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
         }
     }
 
-    DisposableEffect(zones, styleEpoch) {
+    // These map-state pushes are fire-and-forget (no resource to release on
+    // dispose), so LaunchedEffect is the right tool — DisposableEffect with an
+    // empty onDispose just obscures that. They re-fire on styleEpoch because
+    // setStyle wipes all sources/layers.
+    LaunchedEffect(zones, styleEpoch) {
         mapView.getMapAsync { map ->
             map.getStyle { style ->
                 rebuildZoneLayers(style, zones, activeZoneId)
             }
         }
-        onDispose {}
     }
 
-    DisposableEffect(activeZoneId, styleEpoch) {
+    LaunchedEffect(activeZoneId, styleEpoch) {
         mapView.getMapAsync { map ->
             map.getStyle { style ->
                 updateActiveZoneFilter(style, activeZoneId)
             }
         }
-        onDispose {}
     }
 
     val zonesById = remember(zones) { zones.associateBy { it.id } }
 
-    DisposableEffect(activeZoneId, zones, styleEpoch) {
+    LaunchedEffect(activeZoneId, zones, styleEpoch) {
         val activeZone = activeZoneId?.let { zonesById[it] }
         mapView.getMapAsync { map ->
             map.getStyle { style ->
@@ -323,25 +337,30 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
                     ?.setGeoJson(endpointsGeoJson(activeZone))
             }
         }
-        onDispose {}
     }
 
-    DisposableEffect(zoneState, currentPosition?.speed, styleEpoch) {
-        mapView.getMapAsync { map ->
-            map.getStyle { style ->
-                val color = when (val s = zoneState) {
-                    is ZoneState.InZone -> zoneStatusColor(s, currentPosition?.speed)
-                    is ZoneState.Exiting -> ZONE_COLOR_RED
-                    ZoneState.Outside -> ZONE_COLOR_RED
-                }
-                style.getLayerAs<LineLayer>(ZONES_ACTIVE_LAYER_ID)
-                    ?.setProperties(PropertyFactory.lineColor(color))
+    // The active-zone line color only changes on over/under-limit transitions,
+    // not on every 1 Hz fix. Derive it so the style update below re-fires when
+    // the color actually changes — not once per GPS update.
+    val zoneLineColor by remember {
+        derivedStateOf {
+            when (val s = zoneState) {
+                is ZoneState.InZone -> zoneStatusColor(s, currentPosition?.speed)
+                is ZoneState.Exiting -> ZONE_COLOR_RED
+                ZoneState.Outside -> ZONE_COLOR_RED
             }
         }
-        onDispose {}
+    }
+    LaunchedEffect(zoneLineColor, styleEpoch) {
+        mapView.getMapAsync { map ->
+            map.getStyle { style ->
+                style.getLayerAs<LineLayer>(ZONES_ACTIVE_LAYER_ID)
+                    ?.setProperties(PropertyFactory.lineColor(zoneLineColor))
+            }
+        }
     }
 
-    DisposableEffect(displayPosition, effectiveBearing, styleEpoch) {
+    LaunchedEffect(displayPosition, effectiveBearing, styleEpoch) {
         mapView.getMapAsync { map ->
             map.getStyle { style ->
                 style.getSourceAs<GeoJsonSource>(USER_SOURCE_ID)
@@ -350,7 +369,6 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
                     ?.setProperties(PropertyFactory.iconRotate(effectiveBearing.toFloat()))
             }
         }
-        onDispose {}
     }
 
     // Treat the current zone as already-fitted on re-entry if we restored a
@@ -429,38 +447,35 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
             modifier = Modifier.fillMaxSize(),
         )
 
-        // SmallFloatingActionButton applies Material's 48dp min-interactive
-        // padding around its 40dp visual; the left-side custom FABs don't,
-        // so without this opt-out the +/- column is 16dp taller than the
-        // compass/recenter column and the visual gap between + and - is
-        // doubled. Disable enforcement here to match the left side.
-        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+        // SmallFloatingActionButton keeps Material's 48dp min-interactive touch
+        // target around its 40dp visual (a11y: 40dp alone is below the minimum
+        // and hard to hit on a bumpy road). The left-side custom FABs match it
+        // via their own 48dp clickable box, so the two columns stay aligned.
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            SmallFloatingActionButton(
+                onClick = {
+                    mapView.getMapAsync { it.animateCamera(CameraUpdateFactory.zoomIn()) }
+                },
             ) {
-                SmallFloatingActionButton(
-                    onClick = {
-                        mapView.getMapAsync { it.animateCamera(CameraUpdateFactory.zoomIn()) }
-                    },
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Add,
-                        contentDescription = stringResource(R.string.map_zoom_in),
-                    )
-                }
-                SmallFloatingActionButton(
-                    onClick = {
-                        mapView.getMapAsync { it.animateCamera(CameraUpdateFactory.zoomOut()) }
-                    },
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Remove,
-                        contentDescription = stringResource(R.string.map_zoom_out),
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = stringResource(R.string.map_zoom_in),
+                )
+            }
+            SmallFloatingActionButton(
+                onClick = {
+                    mapView.getMapAsync { it.animateCamera(CameraUpdateFactory.zoomOut()) }
+                },
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Remove,
+                    contentDescription = stringResource(R.string.map_zoom_out),
+                )
             }
         }
 
@@ -785,18 +800,27 @@ private fun MapOrientationFab(
     val description = stringResource(
         if (isHeadingUp) R.string.map_orientation_heading_up else R.string.map_orientation_north_up,
     )
-    Surface(
+    // 40dp visual inside a 48dp clickable box so the touch target meets the
+    // accessibility minimum while the column stays aligned with the +/- FABs.
+    Box(
         modifier = modifier
-            .size(40.dp)
-            .shadow(6.dp, CircleShape)
+            .size(48.dp)
             .clip(CircleShape)
             .clickable(onClick = onTap),
-        shape = CircleShape,
-        color = containerColor,
-        contentColor = contentColor,
+        contentAlignment = Alignment.Center,
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(imageVector = icon, contentDescription = description)
+        Surface(
+            modifier = Modifier
+                .size(40.dp)
+                .shadow(6.dp, CircleShape)
+                .clip(CircleShape),
+            shape = CircleShape,
+            color = containerColor,
+            contentColor = contentColor,
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(imageVector = icon, contentDescription = description)
+            }
         }
     }
 }
@@ -823,18 +847,27 @@ private fun RecenterFollowFab(
     val description = stringResource(
         if (isFollowing) R.string.map_follow_user_on else R.string.map_follow_user_off,
     )
-    Surface(
+    // 40dp visual inside a 48dp clickable box so the touch target meets the
+    // accessibility minimum while the column stays aligned with the +/- FABs.
+    Box(
         modifier = modifier
-            .size(40.dp)
-            .shadow(6.dp, CircleShape)
+            .size(48.dp)
             .clip(CircleShape)
             .combinedClickable(onClick = onTap, onLongClick = onLongPress),
-        shape = CircleShape,
-        color = containerColor,
-        contentColor = contentColor,
+        contentAlignment = Alignment.Center,
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(imageVector = icon, contentDescription = description)
+        Surface(
+            modifier = Modifier
+                .size(40.dp)
+                .shadow(6.dp, CircleShape)
+                .clip(CircleShape),
+            shape = CircleShape,
+            color = containerColor,
+            contentColor = contentColor,
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(imageVector = icon, contentDescription = description)
+            }
         }
     }
 }

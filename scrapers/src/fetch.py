@@ -29,6 +29,13 @@ def _get(url: str, timeout: int, label: str) -> requests.Response:
             resp.raise_for_status()
             return resp
         except requests.RequestException as e:
+            # Fail fast on non-retryable client errors (4xx): a 404/410/451 won't
+            # heal on retry, so spending 3 attempts × backoff is pure latency.
+            # Connection/timeout errors and 5xx are transient — keep retrying.
+            status = getattr(getattr(e, "response", None), "status_code", None)
+            if status is not None and 400 <= status < 500:
+                logger.warning("%s fetch got %d (non-retryable): %s", label, status, e)
+                raise
             last_exc = e
             logger.warning("%s fetch attempt %d failed: %s", label, attempt + 1, e)
             if attempt < ATTEMPTS - 1:

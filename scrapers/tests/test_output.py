@@ -154,12 +154,10 @@ class TestPipelineHashStability:
     def test_write_target_dir_no_snapshot_when_only_date_changed(
         self, bgtoll_html, tolltracker_html, tmp_path
     ):
-        """write_target_dir snapshots zones.json only on content change.
-        Content change is decided by byte-comparing the file; with the hash
-        fix alone, last_verified still flips a byte and triggers a spurious
-        snapshot. This test currently documents that gap — the hash on
-        /api/version is stable (the user-visible fix) but on-disk snapshot
-        churn would need a separate fix.
+        """write_target_dir snapshots zones.json only on a genuine content
+        change. The trigger is gated on ``db.hash`` (which excludes
+        ``last_verified``), so a run that only re-stamps last_verified — the
+        common cron case — must NOT rotate a snapshot.
         """
         db1 = self._run_pipeline_on_date(
             bgtoll_html, tolltracker_html, "2026-05-11"
@@ -175,6 +173,52 @@ class TestPipelineHashStability:
 
         # The hash served to clients is stable across dates.
         assert version1["hash"] == version2["hash"]
+        # ...and no spurious snapshot was rotated despite last_verified moving.
+        assert list(tmp_path.glob("zones-*.json")) == []
+
+    def test_write_target_dir_snapshots_on_content_change(
+        self, bgtoll_html, tolltracker_html, tmp_path
+    ):
+        """A genuine data change (different hash) DOES rotate a snapshot."""
+        db1 = self._run_pipeline_on_date(
+            bgtoll_html, tolltracker_html, "2026-05-11"
+        )
+        output.write_target_dir(db1, tmp_path)
+
+        z0 = db1.zones[0]
+        changed = z0.model_copy(
+            update={
+                "speed_limits": z0.speed_limits.model_copy(
+                    update={"car": z0.speed_limits.car + 1}
+                )
+            }
+        )
+        db2 = ZoneDatabase(version="v2", zones=[changed, *db1.zones[1:]]).with_hash()
+        assert db2.hash != db1.hash
+
+        output.write_target_dir(db2, tmp_path)
+        assert len(list(tmp_path.glob("zones-*.json"))) == 1
+
+    def test_write_target_dir_prunes_old_snapshots(self, tmp_path):
+        """The snapshot ring keeps only the newest SNAPSHOT_RETENTION files."""
+        retain = output.SNAPSHOT_RETENTION
+        seeded = retain + 4
+        # Seed more snapshots than the ring holds, with sortable timestamp names.
+        for i in range(seeded):
+            (tmp_path / f"zones-2026{i:04d}T000000Z.json").write_text("{}")
+
+        # A first-time write here (no prior zones.json) makes no new snapshot,
+        # but the prune still runs over the seeded files.
+        db = ZoneDatabase(version="v1", zones=[_sample_zone()]).with_hash()
+        output.write_target_dir(db, tmp_path)
+
+        remaining = sorted(p.name for p in tmp_path.glob("zones-*.json"))
+        assert len(remaining) == retain
+        # The newest `retain` survive; the 4 oldest are pruned.
+        expected = sorted(
+            f"zones-2026{i:04d}T000000Z.json" for i in range(seeded)
+        )[-retain:]
+        assert remaining == expected
 
 
 class TestPublishGuard:

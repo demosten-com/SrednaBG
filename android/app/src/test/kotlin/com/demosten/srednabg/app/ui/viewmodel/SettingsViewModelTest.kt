@@ -40,7 +40,6 @@ class SettingsViewModelTest {
         zoneRepository = mockk(relaxed = true)
         zoneSyncScheduler = mockk(relaxed = true)
 
-        every { settingsRepository.alertThreshold } returns flowOf(5)
         every { settingsRepository.voiceEnabled } returns flowOf(true)
         every { settingsRepository.periodicVoiceUpdates } returns flowOf(true)
         every { settingsRepository.announceOnlyWhenOver } returns flowOf(true)
@@ -57,18 +56,11 @@ class SettingsViewModelTest {
 
     @Test
     fun `initial state reflects repository defaults`() {
-        assertEquals(5, viewModel.alertThreshold.value)
         assertEquals(true, viewModel.voiceEnabled.value)
         assertEquals(true, viewModel.periodicVoiceUpdates.value)
         assertEquals(true, viewModel.announceOnlyWhenOver.value)
         assertEquals("system", viewModel.appLanguage.value)
         assertEquals("car", viewModel.vehicleType.value)
-    }
-
-    @Test
-    fun `setAlertThreshold delegates to repository`() = runTest {
-        viewModel.setAlertThreshold(10)
-        coVerify { settingsRepository.setAlertThreshold(10) }
     }
 
     @Test

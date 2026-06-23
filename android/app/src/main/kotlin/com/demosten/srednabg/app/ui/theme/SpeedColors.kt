@@ -11,7 +11,7 @@ import androidx.compose.ui.graphics.Color
 
 /** Yellow/warning shade tuned for the current system theme.
  *
- * Light theme uses [SpeedAmberDeep] (#E65100) for high contrast against
+ * Light theme uses [SpeedAmberDeep] (#B8860B) for high contrast against
  * pale amber-tinted cards; dark theme keeps [SpeedAmber] (#F9A825), which
  * already reads cleanly against the dark tinted surfaces HomeScreen uses.
  *

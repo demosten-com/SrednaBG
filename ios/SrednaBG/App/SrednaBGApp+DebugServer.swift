@@ -94,9 +94,6 @@ private func applyDebugSetting(_ settings: SettingsStore, key: String, value: St
     case "vehicle_type":
         guard let v = VehicleType(rawValue: value) else { return false }
         settings.vehicleType = v
-    case "alert_threshold_kmh":
-        guard let n = Int(value) else { return false }
-        settings.alertThresholdKmh = n
     case "map_heading_up":
         settings.mapHeadingUp = asBool
     case "map_theme_mode":

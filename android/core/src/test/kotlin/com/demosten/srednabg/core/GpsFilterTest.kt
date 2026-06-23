@@ -132,6 +132,41 @@ class GpsFilterTest {
     }
 
     @Test
+    fun `same-timestamp fix blends instead of resetting`() {
+        // Converge the filter on a steady position so its variance settles.
+        var converged = GpsPoint(42.700, 23.300, 100.0, EPOCH_BASE, 90.0, 10.0)
+        for (i in 0 until 15) {
+            converged = filter.filter(
+                GpsPoint(42.700, 23.300, 100.0, EPOCH_BASE + i * 1000L, 90.0, 10.0),
+            )
+        }
+        val lastTs = EPOCH_BASE + 14 * 1000L
+
+        // A second fix sharing the previous timestamp (dt == 0 — FLP batching or a
+        // QA feed with an overridden time_ms) must be a no-prediction measurement
+        // blend, NOT a hard reset to the raw measurement.
+        val raw = GpsPoint(42.710, 23.310, 200.0, lastTs, 90.0, 10.0)
+        val result = filter.filter(raw)
+
+        // Not a reset: the result is pulled toward the new fix but stays anchored
+        // to the converged estimate, so it differs from the raw measurement.
+        assertTrue(
+            abs(result.lat - raw.lat) > 1e-6,
+            "dt==0 should blend, not reset to raw lat (${result.lat} vs ${raw.lat})",
+        )
+        assertTrue(
+            abs(result.lat - converged.lat) < abs(result.lat - raw.lat),
+            "blended lat should stay closer to the converged estimate than to raw",
+        )
+        // The speed channel is unit-consistent, so the blend is a clean partial
+        // step toward the raw 200 km/h rather than a jump to it.
+        assertTrue(
+            result.speed < raw.speed,
+            "dt==0 should blend speed, not reset to raw 200 km/h (was ${result.speed})",
+        )
+    }
+
+    @Test
     fun `filtered speed is never negative`() {
         val point1 = GpsPoint(42.700, 23.300, 5.0, EPOCH_BASE, 90.0, 10.0)
         filter.filter(point1)

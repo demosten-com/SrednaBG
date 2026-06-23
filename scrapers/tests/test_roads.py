@@ -10,11 +10,14 @@ increasing = east). Regression suite for the inverted lat-axis entries
 that shipped opposite-carriageway labels on I-1, I-3, I-5 and II-55.
 """
 
+import pytest
+
 from src.roads import (
     ROAD_AXIS,
     ROAD_DIRECTIONS,
     infer_direction_from_coords,
     infer_direction_from_km,
+    is_motorway,
     normalize_road,
     opposite_direction,
     road_slug,
@@ -125,3 +128,23 @@ class TestNames:
     def test_opposite_direction(self):
         assert opposite_direction("north") == "south"
         assert opposite_direction("east") == "west"
+
+    def test_opposite_direction_rejects_unknown(self):
+        with pytest.raises(ValueError, match="unknown direction"):
+            opposite_direction("East")
+
+
+class TestIsMotorway:
+    def test_bgtoll_canonical_names(self):
+        assert is_motorway("АМ Тракия") is True
+        assert is_motorway("АМ Струма") is True
+
+    def test_kml_and_bare_road_codes(self):
+        # KML uses "A-1"; some sources use the bare "A1" form.
+        assert is_motorway("A-1") is True
+        assert is_motorway("A2") is True
+
+    def test_national_roads_are_not_motorways(self):
+        assert is_motorway("Път I-5") is False
+        assert is_motorway("I-5") is False
+        assert is_motorway("II-55") is False

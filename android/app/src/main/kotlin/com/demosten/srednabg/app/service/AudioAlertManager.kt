@@ -9,6 +9,8 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
+import android.os.Handler
+import android.os.Looper
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
@@ -39,7 +41,9 @@ class AudioAlertManager @Inject constructor(
         const val PERIODIC_INTERVAL_MS = 30_000L
     }
 
-    private var tts: TextToSpeech? = null
+    // Written on Main, read in the TTS init binder callback; @Volatile gives the
+    // happens-before that callback relies on to see a non-null engine.
+    @Volatile private var tts: TextToSpeech? = null
     private var isInitialized = false
     private var lastAnnouncementTime = 0L
     private var lastEntryTime = 0L
@@ -48,7 +52,13 @@ class AudioAlertManager @Inject constructor(
     // next-zone entry at co-located cameras) shares one audio-focus session;
     // focus is only abandoned when the queue drains, so QUEUE_ADD speech isn't
     // cut off by an early onDone from the first utterance.
+    //
+    // Only ever touched on the Main thread: speak() runs on the Main scope and
+    // the UtteranceProgressListener's onDone/onError (which arrive on a TTS
+    // binder thread) bounce onUtteranceFinished() back to Main via mainHandler.
+    // That serialization is the whole thread-safety story — no atomics needed.
     private var pendingUtterances = 0
+    private val mainHandler = Handler(Looper.getMainLooper())
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     private val audioManager by lazy { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
@@ -72,10 +82,12 @@ class AudioAlertManager @Inject constructor(
                 // focus that no utterance callback ever releases.
                 if (tts == null) return@TextToSpeech
                 tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                    // These callbacks arrive on a TTS binder thread; hop to Main
+                    // so pendingUtterances is only ever mutated on one thread.
                     override fun onStart(utteranceId: String?) {}
-                    override fun onDone(utteranceId: String?) = onUtteranceFinished()
+                    override fun onDone(utteranceId: String?) = postUtteranceFinished()
                     @Deprecated("Deprecated in Java")
-                    override fun onError(utteranceId: String?) = onUtteranceFinished()
+                    override fun onError(utteranceId: String?) = postUtteranceFinished()
                 })
                 languageJob?.cancel()
                 languageJob = scope.launch {
@@ -104,6 +116,15 @@ class AudioAlertManager @Inject constructor(
         tts?.shutdown()
         tts = null
         isInitialized = false
+        // stop() does not deliver onDone for the flushed in-flight utterance
+        // (no onStop override), so the counter would never drain and audio focus
+        // would stay held until process death — other apps stuck ducked. Reset
+        // and abandon explicitly. Drop any queued onUtteranceFinished bounce so
+        // it can't resurrect the counter after this reset. Idempotent: abandoning
+        // focus we never requested is a no-op.
+        mainHandler.removeCallbacksAndMessages(null)
+        pendingUtterances = 0
+        audioManager.abandonAudioFocusRequest(audioFocusRequest)
     }
 
     fun onZoneStateChanged(
@@ -267,6 +288,17 @@ class AudioAlertManager @Inject constructor(
         }
     }
 
+    // Bounce a binder-thread utterance callback onto Main. On Main already
+    // (the enqueue-failed path in speak()), run inline to keep ordering tight.
+    private fun postUtteranceFinished() {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            onUtteranceFinished()
+        } else {
+            mainHandler.post(::onUtteranceFinished)
+        }
+    }
+
+    // Main-thread only.
     private fun onUtteranceFinished() {
         pendingUtterances = (pendingUtterances - 1).coerceAtLeast(0)
         if (pendingUtterances == 0) {

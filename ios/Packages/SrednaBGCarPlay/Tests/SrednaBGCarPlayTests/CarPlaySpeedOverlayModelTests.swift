@@ -115,7 +115,6 @@ struct CarPlaySpeedOverlayModelTests {
             zone: zone,
             entryTime: 0,
             distanceTraveled: 5_000,
-            avgSpeed: 110,
             speedStatus: status,
             distanceRemaining: 5_000
         )
@@ -153,7 +152,6 @@ struct CarPlaySpeedOverlayModelTests {
             zone: zone,
             entryTime: 0,
             distanceTraveled: 7_000,
-            avgSpeed: 130,
             speedStatus: status,
             distanceRemaining: 3_000
         )
@@ -183,7 +181,6 @@ struct CarPlaySpeedOverlayModelTests {
             zone: zone,
             entryTime: 0,
             distanceTraveled: 8_000,
-            avgSpeed: 90,
             speedStatus: status,
             distanceRemaining: 2_000
         )
@@ -219,7 +216,6 @@ struct CarPlaySpeedOverlayModelTests {
             zone: zone,
             entryTime: 0,
             distanceTraveled: 9_000,
-            avgSpeed: nil,
             speedStatus: status,
             distanceRemaining: 1_000
         )

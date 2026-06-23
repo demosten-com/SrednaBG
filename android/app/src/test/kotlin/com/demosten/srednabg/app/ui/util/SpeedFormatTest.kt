@@ -45,4 +45,16 @@ class SpeedFormatTest {
     fun `custom float format preserves decimals`() {
         assertEquals("87.6", 87.6.orDash("%.1f"))
     }
+
+    @Test
+    fun `float format with a literal d in trailing text keeps decimals`() {
+        // Guards the integer-specifier detection: a bare 'd' elsewhere in the
+        // string must not force toInt() (the old contains("d") heuristic did).
+        assertEquals("87.6 done", 87.6.orDash("%.1f done"))
+    }
+
+    @Test
+    fun `explicit integer format truncates`() {
+        assertEquals("88 km", 88.9.orDash("%d km"))
+    }
 }

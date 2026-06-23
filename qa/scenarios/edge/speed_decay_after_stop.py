@@ -32,6 +32,16 @@ Android uses `LocationRequest.Builder(PRIORITY_HIGH_ACCURACY, intervalMs)`
 which is time-based and unaffected — this scenario keeps it as a regression
 gate so a future change to the Android location request can't reintroduce
 the freeze-on-stop class of bug.
+
+Stationary feed: the hold dithers the coordinates by a sub-metre each fix
+(`_hold_stationary` / STATIONARY_JITTER_DEG) rather than repeating one exact
+point. That mirrors a real receiver (GPS never freezes its coordinates) and,
+crucially, keeps the iOS Simulator delivering: `simctl location set` only
+re-emits `didUpdateLocations` when the coordinate *changes*, so identical
+repeats would starve the post-stop stream (`adb emu geo fix` re-delivers
+regardless). The dither stays well under the 10 km/h decay assertion, so it
+exercises the real CoreLocation `distanceFilter` delivery path on iOS without
+masking a stuck speed.
 """
 
 from __future__ import annotations
@@ -43,7 +53,7 @@ from ...assertions import expect_never
 from ...drive import pump, synthetic_drive
 from ...events import DisplaySpeed
 from ...runner import RunContext, Scenario, step_lambda
-from ._helpers import scenario_setup, scenario_teardown
+from ._helpers import assert_signal_observed, scenario_setup, scenario_teardown
 
 # Stationary segment outside any zone (near Stara Zagora, same patch
 # cold_start_spike uses) so the assertions aren't entangled with zone
@@ -62,6 +72,34 @@ CRUISE_HZ = 1.0
 STOP_SETTLE_S = 8.0
 STOP_OBSERVE_S = 12.0
 
+# A stationary GPS receiver never reports the *exact* same fix twice — it
+# dithers by a fraction of a metre every second. We reproduce that by flipping
+# the latitude by ±STATIONARY_JITTER_DEG each fix. Two reasons:
+#   1. Realism — "perfectly frozen coordinates" is not a real-world input.
+#   2. It's REQUIRED on the iOS Simulator: `simctl location set` only re-emits
+#      `didUpdateLocations` when the coordinate *changes*, so identical repeats
+#      starve the fix stream and the post-stop window goes silent (`adb emu geo
+#      fix` re-delivers regardless, which is why Android tolerated repeats).
+# 0.000003° ≈ 0.33 m, so consecutive fixes are ~0.67 m apart → an apparent
+# ~2.4 km/h at the 1 Hz feed before filtering — comfortably under the 10 km/h
+# decay assertion, and the Kalman/small-speed filter pulls the displayed value
+# lower still.
+STATIONARY_JITTER_DEG = 0.000003
+
+
+def _hold_stationary(seconds: float, counter: list[int]) -> None:
+    """Feed jittered stationary fixes at ~1 Hz for `seconds`.
+
+    `counter` is a single-element list used as a mutable cross-call index so the
+    ± dither keeps alternating across the settle and observe windows.
+    """
+    end = time.monotonic() + seconds
+    while time.monotonic() < end:
+        dlat = STATIONARY_JITTER_DEG if counter[0] % 2 == 0 else -STATIONARY_JITTER_DEG
+        counter[0] += 1
+        device_mod.current().geo_fix(STOP_LNG, STOP_LAT + dlat)
+        time.sleep(1.0)
+
 
 def build() -> Scenario:
     cruise_plan = synthetic_drive(
@@ -76,21 +114,24 @@ def build() -> Scenario:
 
     def drive(ctx: RunContext) -> None:
         pump(cruise_plan)
-        # Switch to stationary. Keep re-sending the same fix at the
-        # cruise cadence so the GPS provider keeps delivering location
-        # updates (CoreLocation in particular won't emit duplicates on
-        # its own — the QA harness has to push them).
-        end_settle = time.monotonic() + STOP_SETTLE_S
-        while time.monotonic() < end_settle:
-            device_mod.current().geo_fix(STOP_LNG, STOP_LAT)
-            time.sleep(1.0)
+        # Switch to stationary, dithering by a sub-metre each fix (see
+        # `_hold_stationary` / STATIONARY_JITTER_DEG) so the GPS provider keeps
+        # delivering — CoreLocation on the Simulator won't re-emit an unchanged
+        # fix, and a real receiver never freezes its coordinates anyway.
+        fix_counter = [0]
+        _hold_stationary(STOP_SETTLE_S, fix_counter)
         ctx.obs.clear()
-        end_observe = time.monotonic() + STOP_OBSERVE_S
-        while time.monotonic() < end_observe:
-            device_mod.current().geo_fix(STOP_LNG, STOP_LAT)
-            time.sleep(1.0)
+        # Snapshot before the assertion window so asserts() can confirm the
+        # speed signal actually arrived (anti-vacuous guard). type_counts
+        # survives clear().
+        ctx.data["ds_before"] = ctx.obs.type_counts["DisplaySpeed"]
+        _hold_stationary(STOP_OBSERVE_S, fix_counter)
 
     def asserts(ctx: RunContext) -> None:
+        assert_signal_observed(
+            ctx, DisplaySpeed, since=ctx.data["ds_before"],
+            label="the post-stop observation window",
+        )
         expect_never(
             ctx.obs,
             DisplaySpeed,

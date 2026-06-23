@@ -11,6 +11,11 @@ import SrednaBGTracking
 /// Top-level tab view. The app shell wires this up after constructing the
 /// `ZoneTrackingService` + `SettingsStore` + sync callback. Pure SwiftUI;
 /// no platform-specific dependencies.
+///
+/// Owns the persistent UI state (`mapSession`, `selectedTab`) and hosts the
+/// localized `RootTabs` subtree keyed by `settings.appLanguage`. The `.id`
+/// recreates `RootTabs` on every language change while this view's `@State`
+/// survives the rebuild, so the Map camera + selected tab don't reset.
 public struct RootView: View {
 
     public let tracking: ZoneTrackingService
@@ -45,12 +50,61 @@ public struct RootView: View {
     }
 
     public var body: some View {
-        // Sync L10n's sub-bundle selector before the subtree reads it. Computed
-        // during body evaluation so every re-render (including the .id() forced
-        // rebuild below) picks up the current language.
-        _ = { L10n.currentLanguage = settings.appLanguage }()
+        // `RootTabs.init` syncs `L10n.currentLanguage` synchronously before its
+        // body (and descendants) resolve any `Text(L10n.xxx)`. The `.id` forces
+        // a full subtree rebuild on language change, which re-runs that init —
+        // keeping the L10n side effect out of a `body` and correctly ordered.
+        RootTabs(
+            tracking: tracking,
+            settings: settings,
+            onSyncTap: onSyncTap,
+            onZoneSyncToggle: onZoneSyncToggle,
+            mapStyleURLProvider: mapStyleURLProvider,
+            mapSession: mapSession,
+            selectedTab: $selectedTab
+        )
+        .id(settings.appLanguage)
+    }
+}
 
-        return TabView(selection: $selectedTab) {
+/// The localized tab subtree. Recreated by `RootView`'s `.id(appLanguage)` on
+/// every language change; its `init` is the synchronous hook that points
+/// `L10n` at the right sub-bundle before the subtree renders.
+private struct RootTabs: View {
+
+    let tracking: ZoneTrackingService
+    let settings: SettingsStore
+    let onSyncTap: () async -> SyncResult
+    let onZoneSyncToggle: (Bool) -> Void
+    let mapStyleURLProvider: (MapTheme) async -> URL?
+    let mapSession: MapSessionStore
+    @Binding var selectedTab: String
+
+    init(
+        tracking: ZoneTrackingService,
+        settings: SettingsStore,
+        onSyncTap: @escaping () async -> SyncResult,
+        onZoneSyncToggle: @escaping (Bool) -> Void,
+        mapStyleURLProvider: @escaping (MapTheme) async -> URL?,
+        mapSession: MapSessionStore,
+        selectedTab: Binding<String>
+    ) {
+        self.tracking = tracking
+        self.settings = settings
+        self.onSyncTap = onSyncTap
+        self.onZoneSyncToggle = onZoneSyncToggle
+        self.mapStyleURLProvider = mapStyleURLProvider
+        self.mapSession = mapSession
+        self._selectedTab = selectedTab
+        // Sync L10n's sub-bundle selector before the subtree reads it. Done in
+        // init (not body) so it's an ordered pre-render step, not a side effect
+        // during view evaluation; `RootView`'s `.id(appLanguage)` re-runs this
+        // init whenever the language flips.
+        L10n.currentLanguage = settings.appLanguage
+    }
+
+    var body: some View {
+        TabView(selection: $selectedTab) {
             NavigationStack {
                 HomeScreen(tracking: tracking, settings: settings)
                     .navigationTitle(L10n.navHome)
@@ -120,10 +174,5 @@ public struct RootView: View {
         // mutate Bundle.main or Locale.current, so AudioAlertManager's TTS
         // voice selection stays on its own path.
         .environment(\.locale, L10n.locale(for: settings.appLanguage) ?? .current)
-        // Force a full subtree rebuild on language change. Needed because
-        // `Text(L10n.xxx)` resolves its string at body-evaluation time, and
-        // child views that don't read `appLanguage` wouldn't otherwise
-        // re-evaluate their bodies when the setting flips.
-        .id(settings.appLanguage)
     }
 }

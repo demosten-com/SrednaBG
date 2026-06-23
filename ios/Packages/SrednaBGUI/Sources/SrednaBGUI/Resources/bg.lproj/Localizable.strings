@@ -31,8 +31,6 @@
 "permissionTryAgain" = "Опитай отново";
 
 /* SettingsScreen */
-"settingAlertThreshold" = "Праг за предупреждение";
-"settingAlertThresholdDesc" = "Предупреждение при %d km/h от ограничението.";
 "settingVoiceAlerts" = "Гласови предупреждения";
 "settingVoiceAlertsDesc" = "Гласови съобщения през звука на колата.";
 "settingPeriodicUpdates" = "Периодични актуализации";
@@ -45,7 +43,7 @@
 "languageBg" = "Български";
 "languageEn" = "English";
 "settingVehicleType" = "Тип превозно средство";
-"vehicleCar" = "Кола";
+"vehicleCar" = "Кола/Мотоциклет";
 "vehicleTruck" = "Камион";
 "vehicleBus" = "Автобус";
 "settingAutoStop" = "Автоматично спиране";

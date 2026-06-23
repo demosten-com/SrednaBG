@@ -39,21 +39,15 @@ class TestShippedData:
     def test_hash_matches_content(self, db):
         assert db.hash == db.compute_hash()
 
-    def test_no_validation_warnings_about_consistency(self, db):
-        """No crossed Latin/Cyrillic names, no km markers running against
-        the zone's direction, no description/endpoint disagreement, no
-        drifted junction seams, no reversed centerlines."""
+    def test_no_validation_warnings(self, db):
+        """The shipped data produces zero validate() warnings — no crossed
+        Latin/Cyrillic names, no km markers running against the zone's
+        direction, no description/endpoint disagreement, no drifted junction
+        seams, no reversed centerlines. Asserting on the full list (rather than
+        a substring allow-list) means a reworded or newly-added warning can't
+        slip through unnoticed."""
         _, warnings = validate(db.zones)
-        relevant = [
-            w
-            for w in warnings
-            if "Latin name" in w
-            or "implies" in w
-            or "description" in w
-            or "junction gap" in w
-            or "reversed" in w
-        ]
-        assert relevant == []
+        assert warnings == []
 
     def test_centerlines_start_first(self, db):
         for z in db.zones:

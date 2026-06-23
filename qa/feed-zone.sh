@@ -61,6 +61,19 @@ fi
 ROUTE="$(python3 "$HELPER" route "$ZONES_JSON" "$SELECTOR" "$STEP_M" "$SPEED_MS")"
 
 if [[ "$NO_START" != "1" ]]; then
+    # Foreground the app first. START_TRACKING starts a foreground service from a
+    # background broadcast receiver, which Android 12+ denies unless the app is in
+    # an allowed state (a visible activity → PROC_STATE_TOP). Without this the FGS
+    # start is silently denied and no fixes are ever processed.
+    echo "Foregrounding the app…"
+    adb shell am start -W -a android.intent.action.MAIN \
+        -c android.intent.category.LAUNCHER \
+        -n "$PKG/.app.ui.MainActivity" >/dev/null 2>&1
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+        adb shell dumpsys activity activities 2>/dev/null \
+            | grep -q "ResumedActivity.*$PKG" && break
+        sleep 0.5
+    done
     echo "Starting tracking…"
     adb shell am broadcast -n "$RC" -a com.demosten.srednabg.debug.START_TRACKING >/dev/null 2>&1
     sleep 2

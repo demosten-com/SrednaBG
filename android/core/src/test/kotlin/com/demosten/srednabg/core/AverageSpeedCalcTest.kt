@@ -166,6 +166,31 @@ class AverageSpeedCalcTest {
     }
 
     @Test
+    fun `distance remaining override drives remainder instead of integrator`() {
+        // The speed×time integrator has over-counted — distanceTraveled (20_000)
+        // exceeds the zone (19_160), so the fallback `zoneDistance - distanceTraveled`
+        // is negative → clamped to 0 → a collapsed 0 km/h remainder (see the
+        // `distance already exceeded` test). The polyline-projection override says
+        // 3_000 m of road actually remains.
+        val status = AverageSpeedCalc.calculate(
+            entryTime = 0L,
+            currentTime = 300_000L,
+            stopDurationMs = 0L,
+            distanceTraveled = 20_000.0,
+            zoneDistance = 19_160.0,
+            speedLimitKmh = 140,
+            distanceRemainingOverride = 3_000.0,
+        )
+
+        // Remainder follows the override, not the drifted integrator's clamped 0.
+        assertEquals(3_000.0, status.distanceRemaining, 0.01)
+        // With real road left and legal time still on the clock, max-for-remainder
+        // is a usable positive number rather than the collapsed 0.
+        assertTrue(status.timeRemaining > 0)
+        assertTrue(status.maxSpeedForRemainder > 0)
+    }
+
+    @Test
     fun `national road lower speed limit`() {
         // I-4 zone with 90 km/h limit
         val status = AverageSpeedCalc.calculate(

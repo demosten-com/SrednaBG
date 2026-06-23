@@ -18,7 +18,14 @@ from datetime import UTC, datetime
 from bs4 import BeautifulSoup
 
 from src.fetch import fetch_text
-from src.roads import infer_direction_from_km, normalize_road, road_slug
+from src.roads import (
+    infer_direction_from_km,
+    normalize_road,
+    road_slug,
+)
+from src.roads import (
+    is_motorway as road_is_motorway,
+)
 from src.zone_schema import SpeedLimits, Zone, ZoneEndpoint
 
 logger = logging.getLogger(__name__)
@@ -55,7 +62,10 @@ def parse_html(html: str) -> list[RawSection]:
     if scroll_div:
         table = scroll_div.find("table")
     if not table:
-        # Fallback: find any table containing motorway names
+        # Fallback: find any table containing motorway names. Log it — if the
+        # primary div#scroll-hint anchor stops matching (CMS redesign) this is
+        # the trail to follow before the publish guard trips.
+        logger.info("BG TOLL: div#scroll-hint missing, using motorway-name fallback")
         for t in soup.find_all("table"):
             if t.find(string=re.compile(r"АМ\s")):
                 table = t
@@ -160,7 +170,7 @@ def to_zones(sections: list[RawSection]) -> list[Zone]:
             slug = road_slug(road)
 
             # Use motorway or national road speed limits
-            is_motorway = road.startswith("АМ")
+            is_motorway = road_is_motorway(road)
             speed_limits = (
                 MOTORWAY_SPEED_LIMITS if is_motorway else NATIONAL_ROAD_SPEED_LIMITS
             )

@@ -10,8 +10,16 @@
 #          and a one-line summary on stderr. Selector is an index, an exact id,
 #          or an unambiguous substring of the id/road.
 import json
-import math
 import sys
+from pathlib import Path
+
+# Allow `python3 qa/feed_zone.py …` (run from feed-zone.sh) to import the qa
+# package, matching srednabg_qa.py's bootstrap.
+_HERE = Path(__file__).resolve().parent
+if str(_HERE.parent) not in sys.path:
+    sys.path.insert(0, str(_HERE.parent))
+
+from qa import geo  # noqa: E402
 
 
 def car_limit(z):
@@ -22,33 +30,22 @@ def road_label(z):
     return z.get("road_latin") or z.get("road", "")
 
 
+# (lat, lng)-tuple adapters over the canonical scalar API in `qa.geo`.
 def hav(a, b):
-    R = 6371000.0
-    la1, lo1, la2, lo2 = map(math.radians, (a[0], a[1], b[0], b[1]))
-    h = math.sin((la2 - la1) / 2) ** 2 + math.cos(la1) * math.cos(la2) * math.sin((lo2 - lo1) / 2) ** 2
-    return 2 * R * math.asin(math.sqrt(h))
+    return geo.haversine_m(a[0], a[1], b[0], b[1])
 
 
 def brng(a, b):
-    la1, lo1, la2, lo2 = map(math.radians, (a[0], a[1], b[0], b[1]))
-    dlo = lo2 - lo1
-    y = math.sin(dlo) * math.cos(la2)
-    x = math.cos(la1) * math.sin(la2) - math.sin(la1) * math.cos(la2) * math.cos(dlo)
-    return (math.degrees(math.atan2(y, x)) + 360) % 360
+    return geo.bearing_deg(a[0], a[1], b[0], b[1])
 
 
 def offset(p, bearing, dist):
-    R = 6371000.0
-    br, dr = math.radians(bearing), dist / R
-    la1, lo1 = math.radians(p[0]), math.radians(p[1])
-    la2 = math.asin(math.sin(la1) * math.cos(dr) + math.cos(la1) * math.sin(dr) * math.cos(br))
-    lo2 = lo1 + math.atan2(math.sin(br) * math.sin(dr) * math.cos(la1),
-                           math.cos(dr) - math.sin(la1) * math.sin(la2))
-    return (math.degrees(la2), math.degrees(lo2))
+    return geo.destination_point(p[0], p[1], bearing, dist)
 
 
 def load_zones(path):
-    d = json.load(open(path))
+    with open(path) as f:
+        d = json.load(f)
     return d["zones"] if isinstance(d, dict) and "zones" in d else d
 
 

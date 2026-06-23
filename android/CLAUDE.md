@@ -108,7 +108,7 @@ adb shell am broadcast -n com.demosten.srednabg/com.demosten.srednabg.app.debug.
     -a com.demosten.srednabg.debug.STOP_TRACKING
 ```
 
-Settable keys: `vehicle_type`, `app_language`, `voice_enabled`, `periodic_voice_updates`, `announce_only_when_over`, `alert_threshold_kmh`, `map_heading_up`, `map_theme_mode`, `auto_stop_hours`, `zone_sync_enabled`, `overlay_enabled`, `cached_zone_hash`, `cached_zone_version`, `cached_map_hash`, and the DEBUG-only `debug_auto_stop_seconds` / `debug_max_speed_override` overrides used by the QA harness.
+Settable keys: `vehicle_type`, `app_language`, `voice_enabled`, `periodic_voice_updates`, `announce_only_when_over`, `map_heading_up`, `map_theme_mode`, `auto_stop_hours`, `zone_sync_enabled`, `overlay_enabled`, `cached_zone_hash`, `cached_zone_version`, `cached_map_hash`, and the DEBUG-only `debug_auto_stop_seconds` / `debug_max_speed_override` overrides used by the QA harness.
 
 `DebugControlReceiver` also accepts `FEED_POINT` (`--es lat/lng/speed_ms/bearing`), which injects one `Location` straight into `LocationTrackingService.debugInjector` — the GPS-feed path the `qa/feed-zone.sh` + `qa/validate-zones.sh` tools use (see `qa/CLAUDE.md`). Optional `--es accuracy <m>` overrides the fix's reported accuracy (default 5 m) so a QA scenario can exercise the `MAX_ACCURACY_M` gate (`qa/scenarios/edge/noisy_fix_rejected.py`). Optional `--es time_ms <epoch-ms>` overrides the fix timestamp so a QA harness can inject hundreds of fixes far faster than wall-clock while still presenting a realistic ~1 s cadence to the Kalman filter / speed inference (a near-zero `dt` zeroes the filter's process noise → the smoothed dot lags off the road on bends → spurious off-road exits).
 

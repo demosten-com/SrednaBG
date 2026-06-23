@@ -32,73 +32,95 @@ import argparse
 import os
 import subprocess
 import sys
+import tempfile
 import time
+from pathlib import Path
 
-import feed_zone
+# Allow `python3 qa/validate_zones.py …` (run from validate-zones.sh) to import
+# the qa package, matching srednabg_qa.py's bootstrap.
+_HERE = Path(__file__).resolve().parent
+if str(_HERE.parent) not in sys.path:
+    sys.path.insert(0, str(_HERE.parent))
 
-PKG = os.environ.get("PKG", "com.demosten.srednabg")
-RC = f"{PKG}/{PKG}.app.debug.DebugControlReceiver"
+from qa import adb, feed_zone, parsers  # noqa: E402
+from qa.events import ZoneStateChange  # noqa: E402
+
+PKG = adb.PACKAGE
+RC = adb.DEBUG_CONTROL_RECEIVER
 TTS_TAG = "SrednaBG.TTS"
 
 ACT_START = "com.demosten.srednabg.debug.START_TRACKING"
 ACT_STOP = "com.demosten.srednabg.debug.STOP_TRACKING"
 ACT_FEED = "com.demosten.srednabg.debug.FEED_POINT"
-ACT_SET = "com.demosten.srednabg.debug.SET_SETTING"
-
-PERMS = [
-    "android.permission.ACCESS_FINE_LOCATION",
-    "android.permission.ACCESS_COARSE_LOCATION",
-    "android.permission.ACCESS_BACKGROUND_LOCATION",
-    "android.permission.POST_NOTIFICATIONS",
-]
-
-
-def adb(*args, check=False, capture=True):
-    return subprocess.run(["adb", *args], check=check,
-                          capture_output=capture, text=True)
-
-
-def broadcast(action, extras=None):
-    cmd = ["shell", "am", "broadcast", "-n", RC, "-a", action]
-    for k, v in (extras or {}).items():
-        cmd += ["--es", k, str(v)]
-    return adb(*cmd)
 
 
 # --- device setup ---------------------------------------------------------
 
+def launch_app():
+    """Bring the app to the foreground and confirm it actually got there.
+
+    START_TRACKING starts a foreground service from a background broadcast
+    receiver. On Android 12+ (the app targets SDK 35) that is denied unless the
+    app is in an allowed state — `dumpsys activity services` shows the start as
+    `uidState: RCVR … code:DENIED`, the service never runs onStartCommand, and
+    every zone reads "no states". A visible activity puts the app in
+    PROC_STATE_TOP, which IS an allowed FGS-start state. We poll until the
+    activity is the resumed one so a launch failure surfaces loudly instead of
+    silently feeding a dead service."""
+    adb.shell("am start -W -a android.intent.action.MAIN "
+              f"-c android.intent.category.LAUNCHER -n {adb.MAIN_ACTIVITY}")
+    deadline = time.monotonic() + 10.0
+    while time.monotonic() < deadline:
+        out = adb.shell("dumpsys activity activities")
+        for line in out.splitlines():
+            if "ResumedActivity" in line and PKG in line:
+                return True
+        time.sleep(0.5)
+    print(f"  WARNING: {PKG} did not reach the foreground within 10s. "
+          f"START_TRACKING will likely be denied (background FGS start) and "
+          f"every zone will read 'no states'. Unlock the emulator / check the "
+          f"install, then retry.")
+    return False
+
+
 def set_network(enabled):
-    state = "disable" if not enabled else "enable"
-    adb("shell", "svc", "wifi", state)
-    adb("shell", "svc", "data", state)
-    adb("shell", "cmd", "connectivity", "airplane-mode",
-        "enable" if not enabled else "disable")
+    adb.set_wifi_enabled(enabled)
+    adb.set_data_enabled(enabled)
+    adb.shell(f"cmd connectivity airplane-mode {'disable' if enabled else 'enable'}")
 
 
 def setup_device(keep_online):
     print("Setup: muting audio…")
-    for s in range(1, 11):
-        adb("shell", "media", "volume", "--stream", str(s), "--set", "0")
+    adb.mute_audio()
     if keep_online:
         print("Setup: --keep-online — testing the device's CURRENT zone data "
               "(may be server-synced, not the bundle).")
-        return
-    print("Setup: forcing device offline so the bundled zones load "
-          "(zone sync would overwrite them with the live server's data)…")
-    set_network(False)
-    time.sleep(1.0)
-    print("Setup: clearing app data + re-granting permissions…")
-    adb("shell", "pm", "clear", PKG)
-    for p in PERMS:
-        adb("shell", "pm", "grant", PKG, p)
-    time.sleep(0.5)
+    else:
+        print("Setup: forcing device offline so the bundled zones load "
+              "(zone sync would overwrite them with the live server's data)…")
+        set_network(False)
+        time.sleep(1.0)
+        print("Setup: clearing app data + re-granting permissions…")
+        adb.shell(f"pm clear {PKG}")
+        adb.grant_runtime_permissions()
+        time.sleep(0.5)
+    # Foreground the app LAST (after any pm clear, which would have killed it) so
+    # the per-zone START_TRACKING foreground-service start is permitted.
+    print("Setup: foregrounding the app (required for the FGS start)…")
+    launch_app()
 
 
 def restore_device(keep_online):
-    if keep_online:
-        return
-    print("Teardown: restoring network…")
-    set_network(True)
+    # setup_device always mutes, so always unmute on the way out — leave audio
+    # the way we found it instead of muted for the next manual run.
+    print("Teardown: restoring audio…")
+    adb.unmute_audio()
+    if not keep_online:
+        print("Teardown: restoring network…")
+        set_network(True)
+        print("Note: app data was cleared (pm clear) so the bundle would load — "
+              "the app starts fresh on the next manual use (pass --keep-online "
+              "or --no-setup to avoid the wipe).")
 
 
 def loaded_data_matches_bundle(zones):
@@ -106,14 +128,15 @@ def loaded_data_matches_bundle(zones):
     oriented the same way as the bundle we are about to feed. Guards against a
     false PASS where the app is silently running stale/server data."""
     import json
-    import tempfile
     z = zones[0]
     bundle_cl0 = z["centerline"][0]
     db = os.path.join(tempfile.gettempdir(), "srednabg_validate.db")
+    # Binary sqlite pull — stays a direct adb call (text mode would corrupt it);
+    # add a timeout so a wedged adb can't hang the run forever.
     with open(db, "wb") as f:
         out = subprocess.run(
             ["adb", "shell", "run-as", PKG, "cat", "databases/srednabg.db"],
-            capture_output=True)
+            capture_output=True, timeout=30.0)
         f.write(out.stdout)
     try:
         import sqlite3
@@ -140,10 +163,10 @@ def loaded_data_matches_bundle(zones):
 
 def feed_zone_route(zone, step, speed, max_fixes, sim_dt_ms):
     full = feed_zone.build_route(zone, step)
-    broadcast(ACT_STOP)            # ensure clean detector state
+    adb.broadcast(ACT_STOP, RC)    # ensure clean detector state
     time.sleep(0.8)
-    adb("logcat", "-c")            # fresh log buffer for this zone
-    broadcast(ACT_START)
+    adb.clear_logcat()             # fresh log buffer for this zone
+    adb.broadcast(ACT_START, RC)
     time.sleep(2.0)               # let the service init + detector load
 
     # Batch the whole route into ONE on-device shell loop: `am broadcast` blocks
@@ -152,7 +175,7 @@ def feed_zone_route(zone, step, speed, max_fixes, sim_dt_ms):
     # per fix. Each fix is stamped `sim_dt_ms` apart in *simulated* time (see the
     # time_ms note in DebugControlReceiver) so the GPS filter / speed math see a
     # realistic cadence regardless of how fast we actually inject.
-    base_ms = int(time.time() * 1000)
+    base_ms = int(time.time() * 1000)   # epoch fix stamp — time.time() is correct here
     lines = []
     n = 0
     for i in range(1, len(full)):
@@ -167,37 +190,37 @@ def feed_zone_route(zone, step, speed, max_fixes, sim_dt_ms):
         if max_fixes and n >= max_fixes:
             break
 
-    import tempfile
-    script = os.path.join(tempfile.gettempdir(), "srednabg_feed.sh")
+    # PID-stamped temp name so concurrent runs don't clobber each other; removed
+    # from the device after the batch so /data/local/tmp doesn't accumulate.
+    name = f"srednabg_feed_{os.getpid()}.sh"
+    script = os.path.join(tempfile.gettempdir(), name)
     with open(script, "w") as f:
         f.write("\n".join(lines) + "\n")
-    remote = "/data/local/tmp/srednabg_feed.sh"
-    adb("push", script, remote)
-    adb("shell", "sh", remote)     # runs all fixes in order, blocking per fix
+    remote = f"/data/local/tmp/{name}"
+    adb.push(script, remote)
+    # Each of n broadcasts blocks until its receiver returns; give the batch a
+    # generous ceiling that scales with the fix count.
+    adb.shell(f"sh {remote}", timeout=max(180.0, n * 0.5))
+    adb.shell(f"rm -f {remote}")
+    os.remove(script)
 
     time.sleep(1.0)
-    broadcast(ACT_STOP)
+    adb.broadcast(ACT_STOP, RC)
     time.sleep(0.6)
     return n
 
 
 def parse_states(dump):
-    """Parse every onZoneStateChanged line into a per-fix [(state, zone)] list."""
+    """Parse every onZoneStateChanged line into a per-fix [(state, zone)] list.
+
+    Uses the shared `qa.parsers` regex set (STATE_RE) so a log-format change is
+    fixed in one place instead of diverging from the main harness."""
     seq = []
     for line in dump.splitlines():
-        idx = line.find("onZoneStateChanged ")
-        if idx < 0:
-            continue
-        fields = {}
-        for tok in line[idx:].split():
-            if "=" in tok:
-                k, _, v = tok.partition("=")
-                fields[k] = v
-        new = fields.get("new")
-        if new is None:
-            continue
-        zone = fields.get("zone")
-        seq.append((new, zone if zone not in (None, "-") else None))
+        ev = parsers.parse_threadtime_line(line)
+        if isinstance(ev, ZoneStateChange):
+            zone = ev.zone if ev.zone not in (None, "-") else None
+            seq.append((ev.new, zone))
     return seq
 
 
@@ -297,7 +320,7 @@ def main():
                     help="don't force offline/clear (use device's current data)")
     args = ap.parse_args()
 
-    if adb("get-state").returncode != 0:
+    if adb.get_state() is None:
         sys.exit("no adb device — boot the Pixel_8a emulator first")
 
     zones = feed_zone.load_zones(args.zones)
@@ -316,7 +339,7 @@ def main():
         zid = zone.get("id", f"#{idx}")
         print(f"[{n}/{len(selected)}] zone {idx} {zid} … ", end="", flush=True)
         feed_zone_route(zone, args.step, args.speed, max_fixes, args.sim_dt_ms)
-        dump = adb("logcat", "-d", "-s", f"{TTS_TAG}:D").stdout
+        dump = adb.logcat_dump("-s", f"{TTS_TAG}:D")
         seq = parse_states(dump)
         ok, reasons, summary = evaluate(zid, seq)
         # In quick mode the drive stops mid-zone, so a clean exit isn't expected.

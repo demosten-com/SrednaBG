@@ -21,18 +21,32 @@ struct GpsFilterTests {
     }
 
     @Test
-    func identicalTimestampResetsToMeasurement() {
-        // dt == 0 (e.g. an injected/simulated trace replaying a fix) must take
-        // the "large gap" reset path, not divide into a degenerate prediction.
+    func sameTimestampFixBlendsInsteadOfResetting() {
+        // A second fix sharing the previous timestamp (dt == 0 — FLP batching or a
+        // QA feed with an overridden time_ms) must be a no-prediction measurement
+        // blend, NOT a hard reset to the raw measurement. Converge first so the
+        // position variance settles, then probe with an offset same-timestamp fix.
         var filter = GpsFilter()
-        let first = GpsPoint(lat: 42.7, lng: 23.3, speed: 100.0, timestamp: epochBase, bearing: 90.0, accuracy: 5.0)
-        _ = filter.filter(first)
+        var converged = GpsPoint(lat: 42.700, lng: 23.300, speed: 100.0, timestamp: epochBase, bearing: 90.0, accuracy: 10.0)
+        for i in 0..<15 {
+            converged = filter.filter(
+                GpsPoint(lat: 42.700, lng: 23.300, speed: 100.0, timestamp: epochBase + Int64(i) * 1000, bearing: 90.0, accuracy: 10.0)
+            )
+        }
+        let lastTs = epochBase + 14 * 1000
 
-        let second = GpsPoint(lat: 42.8, lng: 23.4, speed: 150.0, timestamp: epochBase, bearing: 90.0, accuracy: 5.0)
-        let result = filter.filter(second)
-        #expect(result.lat == second.lat)
-        #expect(result.lng == second.lng)
-        #expect(result.speed == second.speed)
+        let raw = GpsPoint(lat: 42.710, lng: 23.310, speed: 200.0, timestamp: lastTs, bearing: 90.0, accuracy: 10.0)
+        let result = filter.filter(raw)
+
+        // Not a reset: pulled toward the new fix but anchored to the converged
+        // estimate, so it differs from the raw measurement.
+        #expect(abs(result.lat - raw.lat) > 1e-6, "dt==0 should blend, not reset to raw lat (\(result.lat) vs \(raw.lat))")
+        #expect(
+            abs(result.lat - converged.lat) < abs(result.lat - raw.lat),
+            "blended lat should stay closer to the converged estimate than to raw"
+        )
+        // The speed channel is unit-consistent, so it's a clean partial step.
+        #expect(result.speed < raw.speed, "dt==0 should blend speed, not reset to raw 200 km/h (was \(result.speed))")
     }
 
     @Test

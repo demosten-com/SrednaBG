@@ -5,7 +5,7 @@
 
 """Drive synthetic GPS sequences to land the app in a specific zone-state band.
 
-The sequencer reads a zone's centerline from scrapers/data/zones.json and
+The sequencer reads a zone's centerline from backend/data/zones.json and
 walks it forward, pushing fixed-speed `feed_point` calls into the app's
 debug back-channel (Android FEED_POINT broadcast / iOS /inject HTTP).
 
@@ -25,47 +25,30 @@ from __future__ import annotations
 import json
 import time
 from dataclasses import dataclass
-from math import asin, atan2, cos, degrees, radians, sin, sqrt
 from pathlib import Path
 from typing import Optional
 
 from qa import device as device_mod
+from qa import geo
 
 ZONES_JSON = (
-    Path(__file__).resolve().parents[2] / "scrapers" / "data" / "zones.json"
+    Path(__file__).resolve().parents[2] / "backend" / "data" / "zones.json"
 )
 
-EARTH_M = 6_371_000.0
-
-
 # ─────────────────────────── geo math ───────────────────────────
+# Thin (lat, lng)-tuple adapters over the canonical scalar API in `qa.geo`.
 
 
 def _haversine_m(a: tuple[float, float], b: tuple[float, float]) -> float:
-    phi1, phi2 = radians(a[0]), radians(b[0])
-    dphi = radians(b[0] - a[0])
-    dl = radians(b[1] - a[1])
-    h = sin(dphi / 2) ** 2 + cos(phi1) * cos(phi2) * sin(dl / 2) ** 2
-    return 2 * EARTH_M * asin(sqrt(h))
+    return geo.haversine_m(a[0], a[1], b[0], b[1])
 
 
 def _bearing_deg(a: tuple[float, float], b: tuple[float, float]) -> float:
-    phi1, phi2 = radians(a[0]), radians(b[0])
-    dl = radians(b[1] - a[1])
-    y = sin(dl) * cos(phi2)
-    x = cos(phi1) * sin(phi2) - sin(phi1) * cos(phi2) * cos(dl)
-    return (degrees(atan2(y, x)) + 360) % 360
+    return geo.bearing_deg(a[0], a[1], b[0], b[1])
 
 
 def _step(p: tuple[float, float], brg_deg: float, d_m: float) -> tuple[float, float]:
-    ang = d_m / EARTH_M
-    theta = radians(brg_deg)
-    phi1 = radians(p[0])
-    l1 = radians(p[1])
-    phi2 = asin(sin(phi1) * cos(ang) + cos(phi1) * sin(ang) * cos(theta))
-    l2 = l1 + atan2(sin(theta) * sin(ang) * cos(phi1),
-                    cos(ang) - sin(phi1) * sin(phi2))
-    return degrees(phi2), ((degrees(l2) + 540) % 360) - 180
+    return geo.destination_point(p[0], p[1], brg_deg, d_m)
 
 
 # ─────────────────────────── zone loading ───────────────────────────

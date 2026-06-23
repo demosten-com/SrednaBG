@@ -24,8 +24,18 @@ jobs:
         run: |
           cd scrapers
           pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Lint
+        run: |
+          cd scrapers
+          python -m ruff check .
 
       - name: Run scraper pipeline
+        # Non-blocking: a flaky upstream must not fail PRs that don't touch scraper
+        # logic. pytest (fixtures) is the real gate; the committed zones.json is a
+        # manually-refreshed snapshot, so the live scrape is only a smoke signal.
+        continue-on-error: true
         run: |
           cd scrapers
           python -m src.output --verbose
@@ -33,5 +43,4 @@ jobs:
       - name: Run tests
         run: |
           cd scrapers
-          pip install -r requirements-dev.txt
           python -m pytest

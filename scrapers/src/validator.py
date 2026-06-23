@@ -28,7 +28,7 @@ from src.roads import (
     opposite_direction,
     road_slug,
 )
-from src.zone_schema import Zone, ZoneEndpoint
+from src.zone_schema import SpeedLimits, Zone, ZoneEndpoint
 
 logger = logging.getLogger(__name__)
 
@@ -292,7 +292,7 @@ def match_zones(
             )
 
     logger.info(
-        "Matched %d zone pairs (%d BG TOLL, %d TollTracker, %d OSM, %d KML)",
+        "Matched %d zone groups (%d BG TOLL, %d TollTracker, %d OSM, %d KML)",
         len(matches),
         len(bgtoll),
         len(tolltracker),
@@ -444,8 +444,24 @@ def merge_match(m: ZoneMatch) -> Zone:
             end_latin = src.end.settlement_latin
             break
 
-    # Speed limits: prefer KML (official per-category) > TollTracker > BG TOLL
-    speed_limits = (kml or tt or bg or osm).speed_limits
+    # Speed limits: per-field priority KML (official per-category) > TollTracker
+    # > BG TOLL > OSM. Merged independently so e.g. a missing motorcycle limit on
+    # the top source falls back to a lower one instead of taking the whole object
+    # all-or-nothing (which would drop a populated field from a lower source).
+    def _pick_limit(field: str) -> int | None:
+        for src in [kml, tt, bg, osm]:
+            if src is not None:
+                val = getattr(src.speed_limits, field)
+                if val is not None:
+                    return val
+        return None
+
+    speed_limits = SpeedLimits(
+        car=_pick_limit("car"),
+        truck=_pick_limit("truck"),
+        bus=_pick_limit("bus"),
+        motorcycle=_pick_limit("motorcycle"),
+    )
 
     # Distance: prefer KML > TollTracker > BG TOLL
     distance_m = (kml or tt or bg or osm).distance_m
@@ -476,8 +492,14 @@ def merge_match(m: ZoneMatch) -> Zone:
         sources.append("osm")
     source = "+".join(sources)
 
-    # Description
-    description = f"{start_settlement} – {end_settlement}" if start_settlement and end_settlement else primary.description
+    # Description: build from the merged settlements. When either is missing,
+    # use an explicit "unknown – unknown" instead of borrowing
+    # primary.description (which may describe the opposite carriageway). The
+    # validate() description check then surfaces it as a warning.
+    if start_settlement and end_settlement:
+        description = f"{start_settlement} – {end_settlement}"
+    else:
+        description = "unknown – unknown"
 
     # Road latin name from TollTracker or KML
     road_latin = None
@@ -541,8 +563,17 @@ def assign_ids(zones: list[Zone]) -> list[Zone]:
 
         road_zones.sort(key=sort_key)
 
-        # Pair forward/reverse directions and assign sequence numbers
+        # Pair forward/reverse directions and assign sequence numbers.
         seen_sections: dict[str, int] = {}
+        # Count occurrences of each (base_key, direction). A real forward/reverse
+        # pair contributes exactly one zone per direction to a section's km band,
+        # so a *second* same-direction zone in the same band is a genuinely
+        # distinct (e.g. short, adjacent) section — it must get its own sequence
+        # number, not collapse to a duplicate ID that validate() would silently
+        # drop. The base key stays coarse (100 m) so it still absorbs the few-metre
+        # km-marker offset between a section's east/west gantries (keeps the pair
+        # under one sequence number).
+        dir_occurrence: dict[tuple[str, str], int] = {}
         seq_counter = 0
 
         for z in road_zones:
@@ -550,7 +581,7 @@ def assign_ids(zones: list[Zone]) -> list[Zone]:
             start_km = _parse_km(z.start.km_marker)
             end_km = _parse_km(z.end.km_marker)
             if start_km is not None and end_km is not None:
-                section_key = f"{min(start_km, end_km):.1f}-{max(start_km, end_km):.1f}"
+                base_key = f"{min(start_km, end_km):.1f}-{max(start_km, end_km):.1f}"
             else:
                 # Use settlements
                 names = sorted(
@@ -559,7 +590,11 @@ def assign_ids(zones: list[Zone]) -> list[Zone]:
                         _normalize_settlement(z.end.settlement),
                     ]
                 )
-                section_key = f"{names[0]}-{names[1]}"
+                base_key = f"{names[0]}-{names[1]}"
+
+            occ = dir_occurrence.get((base_key, z.direction), 0)
+            dir_occurrence[(base_key, z.direction)] = occ + 1
+            section_key = base_key if occ == 0 else f"{base_key}#{occ}"
 
             if section_key not in seen_sections:
                 seq_counter += 1

@@ -8,6 +8,7 @@ package com.demosten.srednabg.app.overlay
 import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
+import android.os.Build
 import android.util.Log
 import android.view.Gravity
 import android.view.WindowManager
@@ -61,9 +62,41 @@ class OverlayController(
     private var owner: OverlayOwner? = null
     private val layoutParams = defaultLayoutParams()
     private var positionLoaded = false
+    // Desired visibility, so a hide() that arrives while the first show() is still
+    // reading the persisted position (below) doesn't get overtaken by the deferred
+    // attach() and strand the window.
+    private var wantVisible = false
 
     fun show() {
+        wantVisible = true
         if (composeView != null) return
+        if (positionLoaded) {
+            attach()
+            return
+        }
+        // First show: read the saved position *before* attaching so the window
+        // appears at its persisted spot instead of flashing at the default
+        // (DEFAULT_X, DEFAULT_Y) and visibly jumping once the async DataStore read
+        // returns. `scope` is main-dispatched (it also drives updateViewLayout on
+        // drag), so attach()'s addView stays on the main thread.
+        scope.launch {
+            val x = settingsRepository.overlayPosX.first()
+            val y = settingsRepository.overlayPosY.first()
+            if (x != SettingsRepository.OVERLAY_POS_UNSET) {
+                layoutParams.x = x
+                layoutParams.y = y
+                // Guard against an off-screen value persisted by an older build
+                // that didn't clamp on drag.
+                clampToScreen(layoutParams)
+            }
+            positionLoaded = true
+            // hide() may have fired while we were reading — only attach if the
+            // overlay is still wanted and not already attached.
+            if (wantVisible && composeView == null) attach()
+        }
+    }
+
+    private fun attach() {
         val lifecycleOwner = OverlayOwner().also { it.onCreate() }
         val view = ComposeView(context).apply {
             setViewTreeLifecycleOwner(lifecycleOwner)
@@ -102,16 +135,19 @@ class OverlayController(
             lifecycleOwner.onResume()
         } catch (e: Exception) {
             // Permission revoked between the gate check and addView, or an OEM
-            // quirk — fail soft rather than crash the tracking service.
+            // quirk — fail soft rather than crash the tracking service. If the
+            // throw came *after* addView succeeded (e.g. onResume()), the window
+            // is already attached, so try to remove it before we drop our handle
+            // — otherwise hide() can never reach it and it's stranded on screen.
             Log.w(TAG, "addView failed; overlay not shown", e)
+            runCatching { windowManager.removeViewImmediate(view) }
             composeView = null
             owner = null
-            return
         }
-        loadPersistedPosition()
     }
 
     fun hide() {
+        wantVisible = false
         val view = composeView ?: return
         try {
             windowManager.removeViewImmediate(view)
@@ -121,23 +157,6 @@ class OverlayController(
         owner?.onDestroy()
         composeView = null
         owner = null
-    }
-
-    private fun loadPersistedPosition() {
-        if (positionLoaded) {
-            composeView?.let { windowManager.updateViewLayout(it, layoutParams) }
-            return
-        }
-        scope.launch {
-            val x = settingsRepository.overlayPosX.first()
-            val y = settingsRepository.overlayPosY.first()
-            positionLoaded = true
-            if (x != SettingsRepository.OVERLAY_POS_UNSET) {
-                layoutParams.x = x
-                layoutParams.y = y
-                composeView?.let { windowManager.updateViewLayout(it, layoutParams) }
-            }
-        }
     }
 
     /**
@@ -155,8 +174,35 @@ class OverlayController(
         val params = layoutParams
         params.x += dx.roundToInt()
         params.y += dy.roundToInt()
+        clampToScreen(params)
         composeView?.let { windowManager.updateViewLayout(it, params) }
     }
+
+    /**
+     * Keep the whole badge on-screen. `FLAG_LAYOUT_NO_LIMITS` lets the window be
+     * positioned outside the display, so without this a vigorous drag could fling
+     * the overlay fully off-screen — and [persistPosition] would save it there,
+     * restoring it invisibly next session. Clamps to the same coordinate space as
+     * `gravity = TOP|START` (pixels from the top-left). The view may be unmeasured
+     * (width/height 0) on the first restore; clamping to `[0, screen]` is still safe.
+     */
+    private fun clampToScreen(params: WindowManager.LayoutParams) {
+        val (screenW, screenH) = screenSize()
+        val viewW = composeView?.width ?: 0
+        val viewH = composeView?.height ?: 0
+        params.x = params.x.coerceIn(0, (screenW - viewW).coerceAtLeast(0))
+        params.y = params.y.coerceIn(0, (screenH - viewH).coerceAtLeast(0))
+    }
+
+    private fun screenSize(): Pair<Int, Int> =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val bounds = windowManager.currentWindowMetrics.bounds
+            bounds.width() to bounds.height()
+        } else {
+            @Suppress("DEPRECATION")
+            val metrics = context.resources.displayMetrics
+            metrics.widthPixels to metrics.heightPixels
+        }
 
     private fun persistPosition() {
         val x = layoutParams.x

@@ -80,7 +80,12 @@ class Zone(BaseModel):
 
     @model_validator(mode="after")
     def check_coordinates_in_bulgaria(self) -> "Zone":
-        """Warn if coordinates are outside Bulgaria (allow 0,0 for unknown)."""
+        """Reject coordinates outside Bulgaria (allow 0,0 for unknown).
+
+        Raises ``ValueError`` so a scraper that produced out-of-bbox coords
+        (e.g. a bug placing a zone in Serbia/Greece) drops *that zone* via the
+        per-zone ``try/except`` in each scraper, rather than shipping it.
+        """
         for endpoint in [self.start, self.end]:
             if endpoint.lat == 0.0 and endpoint.lng == 0.0:
                 continue  # Placeholder for unknown coordinates

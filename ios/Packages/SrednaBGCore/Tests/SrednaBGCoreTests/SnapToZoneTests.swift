@@ -44,7 +44,6 @@ struct SnapToZoneTests {
             zone: TRAKIYA_T10,
             entryTime: nearStartRaw.timestamp,
             distanceTraveled: 0.0,
-            avgSpeed: nil,
             speedStatus: SpeedStatus(
                 avgSpeed: nil,
                 maxSpeedForRemainder: 140.0,
@@ -90,7 +89,6 @@ struct SnapToZoneTests {
             zone: degenerateZone,
             entryTime: rawPoint.timestamp,
             distanceTraveled: 0.0,
-            avgSpeed: nil,
             speedStatus: SpeedStatus(
                 avgSpeed: nil,
                 maxSpeedForRemainder: 140.0,

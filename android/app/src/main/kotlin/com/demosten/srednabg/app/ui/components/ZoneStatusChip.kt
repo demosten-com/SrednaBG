@@ -42,6 +42,7 @@ import com.demosten.srednabg.core.ZONE_COLOR_GREEN
 import com.demosten.srednabg.core.ZONE_COLOR_RED
 import com.demosten.srednabg.core.ZoneState
 import com.demosten.srednabg.core.zoneStatusColor
+import java.util.Locale
 
 /**
  * Exit verdict shown on the Exiting surfaces: did the final average exceed the
@@ -94,9 +95,11 @@ private fun InZoneChip(
     val statusLabel = stringResource(
         if (state.speedStatus.isOverLimit) R.string.status_over_limit else R.string.status_within_limit,
     )
-    val nowText = stringResource(R.string.status_now_speed).format(currentSpeedKmh.orDash())
-    val maxText = stringResource(R.string.max_for_remainder_format)
-        .format(debugMaxSpeedOverride ?: state.speedStatus.maxSpeedForRemainder.toInt())
+    val nowText = stringResource(R.string.status_now_speed, currentSpeedKmh.orDash())
+    val maxText = stringResource(
+        R.string.max_for_remainder_format,
+        debugMaxSpeedOverride ?: state.speedStatus.maxSpeedForRemainder.toInt(),
+    )
     val distanceKm = state.distanceRemaining / 1000.0
     val totalDist = state.zone.distanceM.toDouble().coerceAtLeast(1.0)
     val progress = ((totalDist - state.distanceRemaining) / totalDist).coerceIn(0.0, 1.0).toFloat()
@@ -173,7 +176,7 @@ private fun InZoneChip(
                 modifier = Modifier.weight(1f),
             ) {
                 Text(
-                    text = "%.1f km".format(distanceKm),
+                    text = String.format(Locale.US, "%.1f km", distanceKm),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Spacer(modifier = Modifier.height(2.dp))
@@ -238,7 +241,7 @@ private fun ExitingChip(
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = stringResource(R.string.final_avg_speed).format(finalAvg.orDash()),
+                text = stringResource(R.string.final_avg_speed, finalAvg.orDash()),
                 color = color,
                 fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.titleMedium,

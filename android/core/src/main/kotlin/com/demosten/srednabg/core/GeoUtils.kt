@@ -24,12 +24,25 @@ fun haversineDistance(lat1: Double, lng1: Double, lat2: Double, lng2: Double): D
     return EARTH_RADIUS_M * 2 * atan2(sqrt(a), sqrt(1 - a))
 }
 
-fun pointToSegmentDistance(
+// The projection of a point onto one polyline segment: the clamped parameter
+// [t] in [0, 1], the projected lat/lng, and the haversine distance from the
+// point to that projection. Shared by the three callers below so the flat-earth
+// projection math lives in exactly one place.
+private data class SegmentProjection(
+    val t: Double,
+    val projLat: Double,
+    val projLng: Double,
+    val distanceM: Double,
+)
+
+// Flat-earth projection of P onto segment A→B with cos(lat) correction for
+// longitude, clamped to the segment. A degenerate segment (A == B) yields t = 0,
+// i.e. the projection collapses to A — so the returned distance is haversine(P, A).
+private fun projectPointOntoSegment(
     pLat: Double, pLng: Double,
     aLat: Double, aLng: Double,
     bLat: Double, bLng: Double,
-): Double {
-    // Flat-earth projection with cos(lat) correction for longitude
+): SegmentProjection {
     val midLat = Math.toRadians((aLat + bLat) / 2)
     val cosLat = cos(midLat)
     val metersPerDegLat = 111_320.0
@@ -41,17 +54,19 @@ fun pointToSegmentDistance(
     val py = (pLat - aLat) * metersPerDegLat
 
     val abLenSq = bx * bx + by * by
-    if (abLenSq < 1e-10) {
-        // Degenerate segment (A == B)
-        return haversineDistance(pLat, pLng, aLat, aLng)
-    }
+    val t = if (abLenSq < 1e-10) 0.0 else ((px * bx + py * by) / abLenSq).coerceIn(0.0, 1.0)
 
-    // Project P onto line A-B, clamped to [0, 1]
-    val t = ((px * bx + py * by) / abLenSq).coerceIn(0.0, 1.0)
-    val projLng = aLng + t * (bLng - aLng)
     val projLat = aLat + t * (bLat - aLat)
+    val projLng = aLng + t * (bLng - aLng)
+    return SegmentProjection(t, projLat, projLng, haversineDistance(pLat, pLng, projLat, projLng))
+}
 
-    return haversineDistance(pLat, pLng, projLat, projLng)
+fun pointToSegmentDistance(
+    pLat: Double, pLng: Double,
+    aLat: Double, aLng: Double,
+    bLat: Double, bLng: Double,
+): Double {
+    return projectPointOntoSegment(pLat, pLng, aLat, aLng, bLat, bLng).distanceM
 }
 
 fun pointToPolylineDistance(lat: Double, lng: Double, polyline: List<List<Double>>): Double {
@@ -98,32 +113,16 @@ fun projectPointOntoPolyline(
     var bestSegB: List<Double> = polyline[1]
 
     for (i in 0 until polyline.size - 1) {
-        val aLat = polyline[i][0]
-        val aLng = polyline[i][1]
-        val bLat = polyline[i + 1][0]
-        val bLng = polyline[i + 1][1]
+        val proj = projectPointOntoSegment(
+            lat, lng,
+            polyline[i][0], polyline[i][1],
+            polyline[i + 1][0], polyline[i + 1][1],
+        )
 
-        val midLat = Math.toRadians((aLat + bLat) / 2)
-        val cosLat = cos(midLat)
-        val mLat = 111_320.0
-        val mLng = 111_320.0 * cosLat
-
-        val bx = (bLng - aLng) * mLng
-        val by = (bLat - aLat) * mLat
-        val px = (lng - aLng) * mLng
-        val py = (lat - aLat) * mLat
-
-        val abLenSq = bx * bx + by * by
-        val t = if (abLenSq < 1e-10) 0.0 else ((px * bx + py * by) / abLenSq).coerceIn(0.0, 1.0)
-
-        val projLat = aLat + t * (bLat - aLat)
-        val projLng = aLng + t * (bLng - aLng)
-        val d = haversineDistance(lat, lng, projLat, projLng)
-
-        if (d < bestDist) {
-            bestDist = d
-            bestLat = projLat
-            bestLng = projLng
+        if (proj.distanceM < bestDist) {
+            bestDist = proj.distanceM
+            bestLat = proj.projLat
+            bestLng = proj.projLng
             bestSegA = polyline[i]
             bestSegB = polyline[i + 1]
         }
@@ -146,7 +145,13 @@ fun polylineLengthMeters(polyline: List<List<Double>>): Double {
     return total
 }
 
-fun projectOntoPolyline(lat: Double, lng: Double, polyline: List<List<Double>>): Double {
+/**
+ * Arc length (metres) from the polyline start to the projection of (lat, lng)
+ * onto the polyline — i.e. how far along the line the point sits. Returns a
+ * scalar; contrast [projectPointOntoPolyline], which returns the projected
+ * point's coordinates/bearing/offset as a [PolylineProjection].
+ */
+fun arcLengthOnPolyline(lat: Double, lng: Double, polyline: List<List<Double>>): Double {
     if (polyline.size < 2) return 0.0
 
     var bestDist = Double.MAX_VALUE
@@ -160,28 +165,11 @@ fun projectOntoPolyline(lat: Double, lng: Double, polyline: List<List<Double>>):
         val bLng = polyline[i + 1][1]
 
         val segLen = haversineDistance(aLat, aLng, bLat, bLng)
+        val proj = projectPointOntoSegment(lat, lng, aLat, aLng, bLat, bLng)
 
-        // Compute projection parameter t
-        val midLat = Math.toRadians((aLat + bLat) / 2)
-        val cosLat = cos(midLat)
-        val mLat = 111_320.0
-        val mLng = 111_320.0 * cosLat
-
-        val bx = (bLng - aLng) * mLng
-        val by = (bLat - aLat) * mLat
-        val px = (lng - aLng) * mLng
-        val py = (lat - aLat) * mLat
-
-        val abLenSq = bx * bx + by * by
-        val t = if (abLenSq < 1e-10) 0.0 else ((px * bx + py * by) / abLenSq).coerceIn(0.0, 1.0)
-
-        val projLat = aLat + t * (bLat - aLat)
-        val projLng = aLng + t * (bLng - aLng)
-        val d = haversineDistance(lat, lng, projLat, projLng)
-
-        if (d < bestDist) {
-            bestDist = d
-            bestCumulative = cumulative + t * segLen
+        if (proj.distanceM < bestDist) {
+            bestDist = proj.distanceM
+            bestCumulative = cumulative + proj.t * segLen
         }
 
         cumulative += segLen

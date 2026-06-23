@@ -42,11 +42,11 @@ class ModelsTest {
             zone = TRAKIYA_T10,
             entryTime = EPOCH_BASE,
             distanceTraveled = 9160.0,
-            avgSpeed = 130.0,
             speedStatus = status,
             distanceRemaining = 10000.0,
         )
         assertEquals(TRAKIYA_T10, state.zone)
+        // avgSpeed is a derived alias of speedStatus.avgSpeed.
         assertEquals(130.0, state.avgSpeed)
     }
 
@@ -54,7 +54,7 @@ class ModelsTest {
     fun `zone state sealed class pattern matching`() {
         val states: List<ZoneState> = listOf(
             ZoneState.Outside,
-            ZoneState.InZone(TRAKIYA_T10, EPOCH_BASE, 0.0, 0.0,
+            ZoneState.InZone(TRAKIYA_T10, EPOCH_BASE, 0.0,
                 SpeedStatus(0.0, 140.0, 19160.0, 492.0, false), 19160.0),
             ZoneState.Exiting(TRAKIYA_T10, 135.0),
         )

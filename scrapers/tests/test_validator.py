@@ -229,6 +229,31 @@ class TestMergeMatch:
         merged = merge_match(m)
         assert merged.source == "bgtoll+tolltracker"
 
+    def test_speed_limits_merged_per_field(self):
+        from src.validator import ZoneMatch
+
+        # KML absent -> TollTracker is the top source but lacks a motorcycle
+        # limit; BG TOLL (lower priority) supplies it. Per-field merge must take
+        # car from TollTracker yet fill motorcycle from BG TOLL — not drop it by
+        # taking TollTracker's SpeedLimits object all-or-nothing.
+        tt = _make_zone(
+            source="tolltracker",
+            car=130,
+            start_lat=42.55,
+            start_lng=23.70,
+            end_lat=42.43,
+            end_lng=23.86,
+        )
+        assert tt.speed_limits.motorcycle is None
+        bg = _make_zone(source="bgtoll", car=140)
+        bg = bg.model_copy(
+            update={"speed_limits": bg.speed_limits.model_copy(update={"motorcycle": 100})}
+        )
+        m = ZoneMatch(bgtoll=bg, tolltracker=tt, confidence=0.5)
+        merged = merge_match(m)
+        assert merged.speed_limits.car == 130  # TollTracker (higher priority)
+        assert merged.speed_limits.motorcycle == 100  # filled from BG TOLL
+
 
 class TestAssignIds:
     def test_id_format(self):
@@ -268,6 +293,19 @@ class TestAssignIds:
         result = assign_ids(zones)
         ids = [z.id for z in result]
         assert len(ids) == len(set(ids))
+
+    def test_adjacent_sections_within_100m_get_distinct_ids(self):
+        # Two distinct same-direction sections whose km ranges round to the same
+        # 100 m band collided under the old ``:.1f`` section key (duplicate ID →
+        # the second zone was silently dropped by validate()). Metre precision
+        # (``:.3f``) must keep them apart.
+        zones = [
+            _make_zone(direction="east", start_km="24+288", end_km="24+350"),
+            _make_zone(direction="east", start_km="24+320", end_km="24+400"),
+        ]
+        result = assign_ids(zones)
+        ids = [z.id for z in result]
+        assert len(ids) == len(set(ids)), f"expected distinct IDs, got {ids}"
 
     def test_national_road_slug(self):
         zones = [

@@ -22,7 +22,6 @@ struct L10nTests {
         "statusNowSpeed", "avgSpeedLabel", "currentSpeedLabel", "speedLimit",
         "maxForRemainder", "remaining", "finalAvgSpeed", "zonesLoaded",
         "startTracking", "stopTracking",
-        "settingAlertThreshold", "settingAlertThresholdDesc",
         "settingVoiceAlerts", "settingVoiceAlertsDesc",
         "settingPeriodicUpdates", "settingPeriodicUpdatesDesc",
         "settingOverspeedOnly", "settingOverspeedOnlyDesc",
@@ -44,7 +43,6 @@ struct L10nTests {
             L10n.statusNotTracking,
             L10n.startTracking,
             L10n.stopTracking,
-            L10n.settingAlertThreshold,
             L10n.settingVoiceAlerts,
             L10n.settingPeriodicUpdates,
             L10n.settingOverspeedOnly,
@@ -68,7 +66,6 @@ struct L10nTests {
         #expect(L10n.statusNowSpeed.contains("%@"))
         #expect(L10n.finalAvgSpeed.contains("%@"))
         #expect(L10n.zonesLoaded.contains("%d"))
-        #expect(L10n.settingAlertThresholdDesc.contains("%d"))
         #expect(L10n.aboutVersion.contains("%@"))
     }
 

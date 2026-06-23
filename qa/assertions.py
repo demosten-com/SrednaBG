@@ -13,6 +13,7 @@ recent log lines + a screenshot to the report.
 
 from __future__ import annotations
 
+import queue
 import time
 from dataclasses import dataclass
 from typing import Callable, Optional, Type, TypeVar
@@ -50,7 +51,7 @@ def expect(
     while time.monotonic() < deadline:
         try:
             ev = obs.queue.get(timeout=0.2)
-        except Exception:
+        except queue.Empty:
             continue
         if isinstance(ev, Crash):
             raise AssertionFailure(f"crash detected during expect({event_type.__name__}): {ev.raw}", obs)
@@ -89,12 +90,20 @@ def expect_never(
     description: str = "",
 ) -> None:
     """Verify an event does NOT occur within the window. Useful for
-    'no false re-entry' style assertions during a known-good drive."""
+    'no false re-entry' style assertions during a known-good drive.
+
+    WARNING — lossy: this consumes-and-discards every event it drains
+    during the window without re-queueing. Events seen here are gone for
+    good, so a *later* `expect(...)` in the same scenario will not see
+    them. Use `expect_never` only as the **last** assertion in a scenario
+    (all current call sites do). Don't insert an `expect_never` mid-scenario
+    expecting subsequent assertions to still observe the drained events.
+    """
     deadline = time.monotonic() + within_s
     while time.monotonic() < deadline:
         try:
             ev = obs.queue.get(timeout=0.2)
-        except Exception:
+        except queue.Empty:
             continue
         if isinstance(ev, Crash):
             raise AssertionFailure(f"crash detected during expect_never: {ev.raw}", obs)

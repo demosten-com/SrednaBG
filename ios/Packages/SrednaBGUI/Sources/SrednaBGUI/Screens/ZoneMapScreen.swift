@@ -37,7 +37,11 @@ public struct ZoneMapScreen: View {
     /// Wakes the auto-theme resolver every minute so the map flips into dark
     /// (or back to light) within ~60s of crossing civil twilight at the
     /// user's location. Cheap — the resolver is sub-millisecond.
-    private let themeTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
+    ///
+    /// `@State` so SwiftUI owns the autoconnected publisher's lifecycle: a
+    /// plain `let` is rebuilt every time this View struct is re-evaluated,
+    /// spinning up (and tearing down) a fresh timer on each render.
+    @State private var themeTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
     public init(
         tracking: ZoneTrackingService,

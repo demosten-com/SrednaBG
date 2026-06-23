@@ -12,7 +12,6 @@ to Exiting before the natural end of the zone.
 
 from __future__ import annotations
 
-from ... import sync  # for completeness; not used directly
 from ...assertions import expect, expect_in_order
 from ...drive import DrivePlan, TrackPoint, pump
 from ...events import ZoneStateChange

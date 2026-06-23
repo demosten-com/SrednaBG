@@ -26,19 +26,21 @@ import argparse
 import json
 import math
 import sys
-from datetime import datetime, timedelta, timezone
+from collections.abc import Iterable
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Iterable
 
 EARTH_RADIUS_M = 6_371_000.0
 
 
 def haversine_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    # Mirrors src.geo.haversine_m (kept inline so this script stays stdlib-only).
+    # Use the same atan2 form so the two copies don't drift on tiny distances.
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
     dphi = math.radians(lat2 - lat1)
     dlambda = math.radians(lng2 - lng1)
     a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
-    return 2 * EARTH_RADIUS_M * math.asin(math.sqrt(a))
+    return EARTH_RADIUS_M * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
 def bearing_deg(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
@@ -110,7 +112,7 @@ def load_zone(zones_path: Path, zone_id: str) -> dict:
 
 def emit_gpx(points: list[tuple[float, float]], hz: float, out_path: Path, name: str) -> None:
     dt_step = timedelta(seconds=1.0 / hz)
-    t0 = datetime.now(timezone.utc).replace(microsecond=0)
+    t0 = datetime.now(UTC).replace(microsecond=0)
     with out_path.open("w") as f:
         f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
         f.write('<gpx version="1.1" creator="srednabg-make-test-route" ')

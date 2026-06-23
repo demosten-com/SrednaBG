@@ -40,7 +40,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -48,6 +47,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,7 +67,6 @@ import com.demosten.srednabg.core.MapThemeMode
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
-    val alertThreshold by viewModel.alertThreshold.collectAsStateWithLifecycle()
     val voiceEnabled by viewModel.voiceEnabled.collectAsStateWithLifecycle()
     val periodicVoiceUpdates by viewModel.periodicVoiceUpdates.collectAsStateWithLifecycle()
     val announceOnlyWhenOver by viewModel.announceOnlyWhenOver.collectAsStateWithLifecycle()
@@ -110,26 +109,6 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         )
 
         Spacer(modifier = Modifier.height(24.dp))
-
-        // Alert threshold
-        Text(
-            text = stringResource(R.string.setting_alert_threshold),
-            style = MaterialTheme.typography.titleMedium,
-        )
-        Text(
-            text = stringResource(R.string.setting_alert_threshold_desc, alertThreshold),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Slider(
-            value = alertThreshold.toFloat(),
-            onValueChange = { viewModel.setAlertThreshold(it.toInt()) },
-            valueRange = 0f..20f,
-            steps = 19,
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
         // Voice alerts
         Row(
@@ -217,7 +196,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         )
         Spacer(modifier = Modifier.height(8.dp))
 
-        var langExpanded by remember { mutableStateOf(false) }
+        var langExpanded by rememberSaveable { mutableStateOf(false) }
         val langOptions = listOf(
             "system" to stringResource(R.string.language_system),
             "bg" to stringResource(R.string.language_bg),
@@ -267,7 +246,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         )
         Spacer(modifier = Modifier.height(8.dp))
 
-        var typeExpanded by remember { mutableStateOf(false) }
+        var typeExpanded by rememberSaveable { mutableStateOf(false) }
         val typeOptions = listOf(
             "car" to stringResource(R.string.vehicle_car),
             "truck" to stringResource(R.string.vehicle_truck),
@@ -318,7 +297,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         )
         Spacer(modifier = Modifier.height(8.dp))
 
-        var autoStopExpanded by remember { mutableStateOf(false) }
+        var autoStopExpanded by rememberSaveable { mutableStateOf(false) }
         val autoStopOptions = listOf(
             3 to stringResource(R.string.auto_stop_3h),
             6 to stringResource(R.string.auto_stop_6h),
@@ -370,7 +349,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         )
         Spacer(modifier = Modifier.height(8.dp))
 
-        var themeExpanded by remember { mutableStateOf(false) }
+        var themeExpanded by rememberSaveable { mutableStateOf(false) }
         val themeOptions = listOf(
             MapThemeMode.AUTO to stringResource(R.string.map_theme_auto),
             MapThemeMode.LIGHT to stringResource(R.string.map_theme_light),

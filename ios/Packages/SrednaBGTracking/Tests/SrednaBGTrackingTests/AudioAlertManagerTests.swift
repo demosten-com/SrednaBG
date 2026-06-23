@@ -48,7 +48,6 @@ struct AudioAlertManagerTests {
             zone: zone,
             entryTime: 0,
             distanceTraveled: 0,
-            avgSpeed: avg,
             speedStatus: SpeedStatus(avgSpeed: avg, maxSpeedForRemainder: 140, distanceRemaining: 0, timeRemaining: 0, isOverLimit: over),
             distanceRemaining: 0
         ))
@@ -175,7 +174,6 @@ struct AudioAlertManagerTests {
             zone: zoneB,
             entryTime: 0,
             distanceTraveled: 0,
-            avgSpeed: 130,
             speedStatus: SpeedStatus(avgSpeed: 130, maxSpeedForRemainder: 120, distanceRemaining: 0, timeRemaining: 0, isOverLimit: false),
             distanceRemaining: 0
         ))

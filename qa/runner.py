@@ -41,11 +41,10 @@ Step = Callable[["RunContext"], None]
 @dataclass
 class RunContext:
     """Lifetime: one Scenario. Steps read/write `data`; the runner sets
-    `obs`, `report_dir`, `tts_phrases`."""
+    `obs`, `report_dir`."""
 
     obs: LogObserver
     report_dir: Path
-    tts_phrases: dict[str, str] = field(default_factory=dict)
     data: dict[str, Any] = field(default_factory=dict)
 
 
@@ -67,17 +66,21 @@ class ScenarioResult:
     failure_step: int = -1
     recent_logs: list[str] = field(default_factory=list)
     screenshot_path: Optional[Path] = None
+    # True when the scenario died on an *unexpected* exception (a crash in the
+    # harness/app), as opposed to an AssertionFailure or a timeout. Reported as
+    # a JUnit <error> rather than a <failure> so suite health distinguishes
+    # "assertion didn't hold" from "something blew up".
+    errored: bool = False
 
 
 class SuiteRunner:
     """Owns the observer + report dir for a whole suite of scenarios."""
 
-    def __init__(self, suite_name: str, report_root: Path, *, tts_phrases: Optional[dict[str, str]] = None):
+    def __init__(self, suite_name: str, report_root: Path):
         self.suite_name = suite_name
         self.report_dir = report_root / time.strftime(f"{suite_name}-%Y%m%d-%H%M%S")
         self.report_dir.mkdir(parents=True, exist_ok=True)
         self.obs = for_current_device()
-        self.tts_phrases = tts_phrases or {}
         self.results: list[ScenarioResult] = []
 
     def __enter__(self) -> "SuiteRunner":
@@ -114,7 +117,7 @@ class SuiteRunner:
         # crashes that happened during THIS scenario. Otherwise an emulator-side
         # audio-HAL wobble on scenario N would fail scenarios N+1, N+2, …
         device_mod.current().clear_crash_buffer()
-        ctx = RunContext(obs=self.obs, report_dir=self.report_dir, tts_phrases=self.tts_phrases)
+        ctx = RunContext(obs=self.obs, report_dir=self.report_dir)
         t0 = time.monotonic()
 
         # Setup + steps run on a worker thread so `Scenario.timeout_s` is a
@@ -125,7 +128,7 @@ class SuiteRunner:
         # killable), in which case we record the timeout and move on — the
         # per-call subprocess timeouts in qa.adb / qa.devices bound how long
         # the orphan can linger.
-        outcome: dict[str, Any] = {"step": -1, "failure": ""}
+        outcome: dict[str, Any] = {"step": -1, "failure": "", "errored": False}
 
         def _work() -> None:
             try:
@@ -140,6 +143,7 @@ class SuiteRunner:
                 pass  # runner-initiated; the timeout message is recorded below
             except Exception as e:
                 outcome["failure"] = f"unexpected {type(e).__name__}: {e}\n{traceback.format_exc()}"
+                outcome["errored"] = True
 
         drive_mod.clear_abort()
         worker = threading.Thread(target=_work, daemon=True,
@@ -173,13 +177,17 @@ class SuiteRunner:
                 failure_msg = f"teardown failed: {e}"
 
         passed = not failure_msg
+        # A timeout is reported as a failure, not an error; only an unexpected
+        # exception from the worker counts as an error.
+        errored = bool(outcome["errored"]) and not timed_out
         result = ScenarioResult(
             name=scenario.name,
             passed=passed,
             duration_s=time.monotonic() - t0,
             failure_message=failure_msg,
             failure_step=int(outcome["step"]) if failure_msg else -1,
-            recent_logs=list(self.obs.recent_lines[-200:]),
+            recent_logs=self.obs.snapshot_recent(200),
+            errored=errored,
         )
         self.results.append(result)
         return result

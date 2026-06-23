@@ -21,10 +21,6 @@ public final class SettingsStore {
     @ObservationIgnored
     private let defaults: UserDefaults
 
-    public var alertThresholdKmh: Int {
-        didSet { defaults.set(alertThresholdKmh, forKey: SettingsKey.alertThresholdKmh) }
-    }
-
     public var voiceEnabled: Bool {
         didSet { defaults.set(voiceEnabled, forKey: SettingsKey.voiceEnabled) }
     }
@@ -108,8 +104,6 @@ public final class SettingsStore {
 
         // Initial reads bypass `didSet` (Swift does not invoke property observers
         // during `init`), so this hydration does not loop back into UserDefaults.
-        self.alertThresholdKmh = (defaults.object(forKey: SettingsKey.alertThresholdKmh) as? Int)
-            ?? SettingsDefaults.alertThresholdKmh
         self.voiceEnabled = (defaults.object(forKey: SettingsKey.voiceEnabled) as? Bool)
             ?? SettingsDefaults.voiceEnabled
         self.periodicVoiceUpdates = (defaults.object(forKey: SettingsKey.periodicVoiceUpdates) as? Bool)

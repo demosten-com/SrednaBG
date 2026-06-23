@@ -18,9 +18,6 @@ interface ZoneDao {
     @Query("SELECT * FROM zones")
     fun getAllZones(): Flow<List<ZoneEntity>>
 
-    @Query("SELECT * FROM zones WHERE road = :road")
-    fun getZonesByRoad(road: String): Flow<List<ZoneEntity>>
-
     @Query("SELECT * FROM zones WHERE id = :id")
     suspend fun getZoneById(id: String): ZoneEntity?
 

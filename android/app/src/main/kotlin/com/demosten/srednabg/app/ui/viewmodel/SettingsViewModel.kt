@@ -30,9 +30,6 @@ class SettingsViewModel @Inject constructor(
     private val zoneSyncScheduler: ZoneSyncScheduler,
 ) : ViewModel() {
 
-    val alertThreshold: StateFlow<Int> = settingsRepository.alertThreshold
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SettingsRepository.DEFAULT_ALERT_THRESHOLD)
-
     val voiceEnabled: StateFlow<Boolean> = settingsRepository.voiceEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
@@ -87,10 +84,6 @@ class SettingsViewModel @Inject constructor(
 
     private val _syncEvents = Channel<SyncResult>(Channel.BUFFERED)
     val syncEvents = _syncEvents.receiveAsFlow()
-
-    fun setAlertThreshold(value: Int) {
-        viewModelScope.launch { settingsRepository.setAlertThreshold(value) }
-    }
 
     fun setVoiceEnabled(value: Boolean) {
         viewModelScope.launch { settingsRepository.setVoiceEnabled(value) }

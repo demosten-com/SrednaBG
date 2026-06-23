@@ -108,6 +108,15 @@ def mute_audio() -> None:
         shell_check("input keyevent 25")  # KEYCODE_VOLUME_DOWN
 
 
+def unmute_audio() -> None:
+    """Walk STREAM_MUSIC back up after `mute_audio`. Idempotent — 20×
+    KEYCODE_VOLUME_UP overshoots to the max, which is the desired restore
+    point for a freshly-muted emulator (the inverse of `mute_audio`'s 20×
+    VOLUME_DOWN). Symmetric so a validation run leaves audio as it found it."""
+    for _ in range(20):
+        shell_check("input keyevent 24")  # KEYCODE_VOLUME_UP
+
+
 def grant_runtime_permissions(pkg: str = PACKAGE) -> None:
     """Pre-grant the runtime permissions the app needs so the harness
     doesn't have to dismiss permission dialogs in the middle of a run."""
@@ -209,6 +218,24 @@ def file_exists_in_app(pkg: str, relative_path: str) -> bool:
 
 def clear_logcat() -> None:
     _run(["logcat", "-c"])
+
+
+def logcat_dump(*filters: str, timeout: float = 30.0) -> str:
+    """Snapshot the main logcat buffer and return. `filters` are passed
+    straight through (e.g. "-s", "SrednaBG.TTS:D"). Never raises on a
+    non-zero exit (a stale filter just yields no lines)."""
+    return _run(["logcat", "-d", *filters], check=False, timeout=timeout).stdout
+
+
+def push(local: str, remote: str, *, timeout: float = 60.0) -> None:
+    _run(["push", local, remote], timeout=timeout)
+
+
+def get_state() -> Optional[str]:
+    """`adb get-state` — returns the state string (e.g. "device") or None
+    when no device is attached. Does not raise."""
+    p = _run(["get-state"], check=False, timeout=10.0)
+    return p.stdout.strip() if p.returncode == 0 else None
 
 
 def crash_buffer() -> str:

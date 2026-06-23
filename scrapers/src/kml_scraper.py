@@ -19,14 +19,19 @@ Each KML segment is bidirectional — we produce TWO Zone objects per segment
 import io
 import logging
 import re
-import zipfile
 import xml.etree.ElementTree as ET
+import zipfile
 from datetime import UTC, datetime
 
 from src.fetch import fetch_bytes
-from src.geo import haversine_m
-from src.roads import infer_direction_from_coords, opposite_direction
-
+from src.geo import haversine_m, point_to_polyline_m
+from src.roads import (
+    infer_direction_from_coords,
+    opposite_direction,
+)
+from src.roads import (
+    is_motorway as road_is_motorway,
+)
 from src.zone_schema import SpeedLimits, Zone, ZoneEndpoint
 
 logger = logging.getLogger(__name__)
@@ -81,7 +86,10 @@ def _parse_description(desc_text: str) -> dict:
     if dist_match:
         result["distance_m"] = int(dist_match.group(1))
 
-    # Speed limits by category
+    # Speed limits by category. These regexes match exact category-list strings;
+    # a KML edit that reorders/renames a category silently drops the limit and
+    # the caller falls back to a default. Warn on a miss so the gap is visible
+    # in the scrape logs instead of being swallowed.
     cat_a = re.search(r"Категория А,А2,В\s*-\s*(\d+)", desc_text)
     if cat_a:
         result["car_limit"] = int(cat_a.group(1))
@@ -99,6 +107,12 @@ def _parse_description(desc_text: str) -> dict:
     cat_truck = re.search(r"Категория C и CE\s*-\s*(\d+)", desc_text)
     if cat_truck:
         result["truck_limit"] = int(cat_truck.group(1))
+
+    if "Категория" in desc_text and not (cat_a or cat_b1 or cat_bus or cat_truck):
+        logger.warning(
+            "KML: zone description has 'Категория' text but no speed-limit "
+            "category regex matched — category format may have changed"
+        )
 
     return result
 
@@ -305,7 +319,7 @@ def segments_to_zones(
         try:
             road_id = seg.get("road_id", "")
             road = _parse_road_name(road_id)
-            is_motorway = road_id.startswith("A-")
+            is_motorway = road_is_motorway(road_id)
 
             name = seg.get("name", "")
             name_a, name_b = _parse_settlement_name(name)
@@ -343,12 +357,14 @@ def segments_to_zones(
                 motorcycle=motorcycle_limit,
             )
 
-            # Try to find matching cameras for km markers
+            # Try to find matching cameras for km markers. Pass this segment's
+            # centerline so a neighbouring section's camera in a shared junction
+            # cluster can't steal the marker.
             start_km = _find_camera_km(
-                start_lat, start_lng, camera_points, threshold_m=1500
+                start_lat, start_lng, centerline, camera_points
             )
             end_km = _find_camera_km(
-                end_lat, end_lng, camera_points, threshold_m=1500
+                end_lat, end_lng, centerline, camera_points
             )
 
             # Direction
@@ -430,20 +446,37 @@ def segments_to_zones(
 def _find_camera_km(
     lat: float,
     lng: float,
+    centerline: list[list[float]],
     cameras: list[tuple[float, float, str | None, str]],
+    on_segment_band_m: float = 60.0,
     threshold_m: float = 1500,
 ) -> str | None:
-    """Find the closest camera to a point and return its km marker."""
-    best_dist = threshold_m
-    best_km = None
+    """Find the km marker of the camera nearest this endpoint.
+
+    Prefers a camera that actually lies on THIS section's ``centerline`` (within
+    ``on_segment_band_m``), so a neighbouring section's camera in a shared
+    junction cluster can't steal the marker. Falls back to the plain
+    nearest-within-``threshold_m`` camera when none sit on the centerline
+    (sections with sparse camera data) — matching the historical behaviour, so
+    correct markers on existing data are preserved.
+    """
+    on_seg_km = None
+    on_seg_dist = threshold_m
+    nearest_km = None
+    nearest_dist = threshold_m
     for cam_lat, cam_lng, km_marker, _ in cameras:
         if km_marker is None:
             continue
         d = haversine_m(lat, lng, cam_lat, cam_lng)
-        if d < best_dist:
-            best_dist = d
-            best_km = km_marker
-    return best_km
+        if d < nearest_dist:
+            nearest_dist = d
+            nearest_km = km_marker
+        if d < on_seg_dist and (
+            point_to_polyline_m(cam_lat, cam_lng, centerline) <= on_segment_band_m
+        ):
+            on_seg_dist = d
+            on_seg_km = km_marker
+    return on_seg_km if on_seg_km is not None else nearest_km
 
 
 def scrape(kml_text: str | None = None) -> list[Zone]:

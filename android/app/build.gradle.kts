@@ -104,6 +104,20 @@ android {
         compose = true
         buildConfig = true
     }
+
+    testOptions {
+        // Return defaults (0/false/null) from un-stubbed android.* calls (e.g.
+        // android.util.Log) in JVM unit tests instead of throwing, so tests don't
+        // each have to mockkStatic(Log).
+        unitTests.isReturnDefaultValues = true
+    }
+
+    lint {
+        // CI runs `./gradlew lint`. Freeze the current state in a baseline so only
+        // newly-introduced issues fail the build, not the pre-existing backlog.
+        abortOnError = true
+        baseline = file("lint-baseline.xml")
+    }
 }
 
 dependencies {

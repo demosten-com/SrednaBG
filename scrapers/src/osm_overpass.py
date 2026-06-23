@@ -5,7 +5,7 @@
 
 """Query OSM Overpass API for average speed enforcement data in Bulgaria.
 
-As of 2026-04, OSM has zero enforcement=average_speed relations in Bulgaria.
+As of 2026-06, OSM has zero enforcement=average_speed relations in Bulgaria.
 This module exists for future-proofing — if the OSM community adds this data,
 the scraper will automatically pick it up.
 """
@@ -48,6 +48,12 @@ def query_average_speed_relations(api: overpy.Overpass | None = None) -> list:
     except overpy.exception.OverpassGatewayTimeout:
         logger.warning("Overpass API timeout, skipping")
         return []
+    except overpy.exception.OverpassUnknownHTTPStatusCode as e:
+        # Overpass intermittently answers with non-standard codes (e.g. 406)
+        # when the public endpoint is overloaded. There's no BG average_speed
+        # data to lose, so log a one-liner instead of a full traceback.
+        logger.warning("Overpass returned an unexpected HTTP status, skipping: %s", e)
+        return []
     except Exception:
         logger.warning("Overpass query failed", exc_info=True)
         return []
@@ -64,7 +70,7 @@ def scrape() -> list[Zone]:
         if not relations:
             logger.info(
                 "No OSM enforcement=average_speed data for Bulgaria. "
-                "This is expected as of 2026-04."
+                "This is expected as of 2026-06."
             )
             return []
 

@@ -42,3 +42,35 @@ def polyline_length_m(centerline: list[list[float]]) -> float:
                     centerline[i][0], centerline[i][1])
         for i in range(1, len(centerline))
     )
+
+
+def point_to_polyline_m(lat: float, lng: float,
+                        polyline: list[list[float]]) -> float:
+    """Minimum distance (m) from a point to a [[lat, lng], ...] polyline.
+
+    Uses a local equirectangular projection around the query point — accurate
+    for the short (sub-km) distances this is used for. Returns ``inf`` for a
+    polyline with fewer than two points.
+    """
+    if len(polyline) < 2:
+        return float("inf")
+
+    m_per_deg_lat = 111_320.0
+    m_per_deg_lng = 111_320.0 * math.cos(math.radians(lat))
+
+    def to_xy(plat: float, plng: float) -> tuple[float, float]:
+        return ((plng - lng) * m_per_deg_lng, (plat - lat) * m_per_deg_lat)
+
+    best = float("inf")
+    for i in range(1, len(polyline)):
+        ax, ay = to_xy(polyline[i - 1][0], polyline[i - 1][1])
+        bx, by = to_xy(polyline[i][0], polyline[i][1])
+        dx, dy = bx - ax, by - ay
+        seg_len2 = dx * dx + dy * dy
+        if seg_len2 == 0:
+            t = 0.0
+        else:
+            t = max(0.0, min(1.0, (-ax * dx + -ay * dy) / seg_len2))
+        cx, cy = ax + t * dx, ay + t * dy  # closest point on segment
+        best = min(best, math.hypot(cx, cy))  # query point is the origin (0, 0)
+    return best

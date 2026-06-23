@@ -234,8 +234,12 @@ def build_scenario(spec: BulkScenarioSpec) -> Scenario:
         # The drive step completed before this runs, so all events are already
         # buffered (modulo log-stream lag) — drain once, assert from the list.
         # A single pass lets the avg-speed check see the DisplaySpeed events
-        # that a chained expect() would have consumed and discarded.
-        events = _drain_buffered(ctx.obs)
+        # that a chained expect() would have consumed and discarded. When an
+        # exit is expected, wait for the terminal Exiting transition rather than
+        # a fixed cut-off, so a lagging log tail can't drop it.
+        terminal = ((lambda e: isinstance(e, ZoneStateChange) and e.new == "Exiting")
+                    if spec.expect_exit else None)
+        events = _drain_buffered(ctx.obs, until=terminal)
         changes = [e for e in events if isinstance(e, ZoneStateChange)]
 
         def transitions() -> str:
@@ -304,19 +308,34 @@ def build_scenario(spec: BulkScenarioSpec) -> Scenario:
 
 
 def _drain_buffered(obs: LogObserver, *, quiet_s: float = 1.0,
-                    max_wait_s: float = 5.0) -> list:
-    """Collect the events already buffered for a completed drive, allowing a
-    short quiet period for the log stream's tail to land. Stops after
-    `quiet_s` with no new event, or `max_wait_s` overall."""
+                    max_wait_s: float = 20.0, until=None) -> list:
+    """Collect the events buffered for a completed drive.
+
+    When `until` is given, keep draining past quiet periods until an event
+    satisfies it (then capture one final `quiet_s` tail) or `max_wait_s`
+    elapses — so a lagging log stream (slow iOS `log stream` attach, a busy
+    emulator, a GC pause) can't drop the terminal `Exiting` / trailing
+    `DisplaySpeed` events the assertion needs by hitting a fixed cut-off too
+    early. Without `until` it falls back to the original behaviour: stop after
+    `quiet_s` with no new event (the higher `max_wait_s` is just a safety
+    ceiling)."""
     out: list = []
     deadline = time.monotonic() + max_wait_s
     quiet_deadline = time.monotonic() + quiet_s
-    while time.monotonic() < min(deadline, quiet_deadline):
+    terminal_seen = until is None
+    while time.monotonic() < deadline:
         try:
-            out.append(obs.queue.get(timeout=0.2))
-            quiet_deadline = time.monotonic() + quiet_s
+            ev = obs.queue.get(timeout=0.2)
         except queue.Empty:
+            # Quiet slice: stop once the terminal is satisfied (or none was
+            # required) and the quiet window has elapsed.
+            if terminal_seen and time.monotonic() >= quiet_deadline:
+                break
             continue
+        out.append(ev)
+        quiet_deadline = time.monotonic() + quiet_s
+        if not terminal_seen and until(ev):
+            terminal_seen = True
     return out
 
 

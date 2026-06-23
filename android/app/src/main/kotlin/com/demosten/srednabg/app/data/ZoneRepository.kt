@@ -6,6 +6,7 @@
 package com.demosten.srednabg.app.data
 
 import android.content.Context
+import android.util.Log
 import com.demosten.srednabg.app.data.local.ZoneDao
 import com.demosten.srednabg.app.data.local.toEntity
 import com.demosten.srednabg.app.data.local.toCoreZone
@@ -15,6 +16,7 @@ import com.demosten.srednabg.core.Zone
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -61,6 +63,10 @@ class ZoneRepository @Inject constructor(
             settingsRepository.setCachedZoneHash(response.hash)
             settingsRepository.setCachedZoneVersion(response.version)
             SyncResult.Updated
+        } catch (e: CancellationException) {
+            // WorkManager cancellation — let the coroutine unwind rather than
+            // mis-reporting it as a sync failure (which would trigger a retry).
+            throw e
         } catch (e: Exception) {
             SyncResult.Failed(e)
         }
@@ -76,8 +82,15 @@ class ZoneRepository @Inject constructor(
                 settingsRepository.setCachedZoneHash(response.hash)
                 settingsRepository.setCachedZoneVersion(response.version)
             }
-        } catch (_: Exception) {
-            // Asset file may be empty or malformed — that's OK, sync will fetch later
+        } catch (e: Exception) {
+            // Asset file may be empty or malformed — recoverable (sync will fetch
+            // later), but log it: a malformed generated zones.json would otherwise
+            // leave the app with zero zones with no trace of why.
+            Log.w(TAG, "Failed to load bundled zones.json; will rely on server sync", e)
         }
+    }
+
+    private companion object {
+        const val TAG = "SrednaBG.ZoneRepo"
     }
 }

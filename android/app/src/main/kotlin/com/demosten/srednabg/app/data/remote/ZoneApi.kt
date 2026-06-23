@@ -42,19 +42,21 @@ class ZoneApi(
         val request = Request.Builder()
             .url("$BASE_URL/api/version")
             .build()
-        val response = client.newCall(request).execute()
-        if (!response.isSuccessful) throw IOException("Version API returned ${response.code}")
-        val body = response.body?.string() ?: throw IOException("Empty version response")
-        gson.fromJson(body, VersionResponse::class.java)
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw IOException("Version API returned ${response.code}")
+            val body = response.body?.string() ?: throw IOException("Empty version response")
+            gson.fromJson(body, VersionResponse::class.java)
+        }
     }
 
     suspend fun fetchZones(): ZonesResponse = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url("$BASE_URL/api/zones")
             .build()
-        val response = client.newCall(request).execute()
-        if (!response.isSuccessful) throw IOException("Zones API returned ${response.code}")
-        val body = response.body?.string() ?: throw IOException("Empty zones response")
-        gson.fromJson(body, object : TypeToken<ZonesResponse>() {}.type)
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw IOException("Zones API returned ${response.code}")
+            val body = response.body?.string() ?: throw IOException("Empty zones response")
+            gson.fromJson(body, object : TypeToken<ZonesResponse>() {}.type)
+        }
     }
 }

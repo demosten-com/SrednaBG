@@ -38,7 +38,6 @@ struct LiveActivityManagerContentStateTests {
             zone: Self.zone,
             entryTime: 0,
             distanceTraveled: traveled,
-            avgSpeed: avg,
             speedStatus: SpeedStatus(
                 avgSpeed: avg,
                 maxSpeedForRemainder: 140,
@@ -189,7 +188,6 @@ struct LiveActivityManagerContentStateTests {
             zone: degenerate,
             entryTime: 0,
             distanceTraveled: 0,
-            avgSpeed: nil,
             speedStatus: SpeedStatus(
                 avgSpeed: nil,
                 maxSpeedForRemainder: 90,

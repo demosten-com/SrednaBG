@@ -5,16 +5,16 @@
 
 """Tests for the KML/KMZ scraper."""
 
-import pytest
 
 from src.kml_scraper import (
+    _find_camera_km,
+    _parse_description,
+    _parse_road_name,
+    _parse_settlement_name,
     infer_direction,
     parse_kml,
     scrape,
     segments_to_zones,
-    _parse_description,
-    _parse_road_name,
-    _parse_settlement_name,
 )
 
 
@@ -175,3 +175,28 @@ class TestScrape:
         assert "АМ Тракия" in roads
         assert "АМ Струма" in roads
         assert "Път I-5" in roads
+
+
+class TestFindCameraKm:
+    # Endpoint at the west terminus; this section's centerline runs due east
+    # along lat 42.5000.
+    ENDPOINT = (42.5000, 23.8000)
+    CENTERLINE = [[42.5000, 23.8000], [42.5000, 23.8020]]
+
+    def test_prefers_camera_on_own_centerline(self):
+        # The neighbouring section's camera (70 m north, off this centerline) is
+        # CLOSER to the endpoint than this section's own on-line camera, but the
+        # on-segment preference must still attach the own camera's km marker.
+        cameras = [
+            (42.5000, 23.8010, "10+000", "own"),       # on centerline, ~82 m east
+            (42.50063, 23.8000, "99+999", "neighbour"),  # ~70 m north, off line
+        ]
+        km = _find_camera_km(*self.ENDPOINT, self.CENTERLINE, cameras)
+        assert km == "10+000"
+
+    def test_falls_back_to_nearest_when_none_on_centerline(self):
+        # Sparse data: no camera sits on this centerline, so the historical
+        # nearest-within-threshold behaviour is preserved.
+        cameras = [(42.50063, 23.8000, "99+999", "neighbour")]
+        km = _find_camera_km(*self.ENDPOINT, self.CENTERLINE, cameras)
+        assert km == "99+999"

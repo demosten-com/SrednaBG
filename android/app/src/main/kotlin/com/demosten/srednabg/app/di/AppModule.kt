@@ -48,6 +48,10 @@ object AppModule {
     @Singleton
     fun provideZoneDatabase(@ApplicationContext context: Context): ZoneDatabase =
         Room.databaseBuilder(context, ZoneDatabase::class.java, "srednabg.db")
+            // Zones are fully re-syncable (bundled asset + server sync), so a future
+            // schema bump can safely drop and rebuild the table instead of crashing
+            // on launch with "a migration from N to M must be provided".
+            .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
 
     @Provides

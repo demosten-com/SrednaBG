@@ -42,12 +42,13 @@ import androidx.compose.material.icons.filled.Stop
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -66,6 +67,12 @@ import com.demosten.srednabg.app.ui.components.exitVerdictOverLimit
 import com.demosten.srednabg.app.ui.viewmodel.HomeViewModel
 import com.demosten.srednabg.core.VehicleType
 import com.demosten.srednabg.core.ZoneState
+import java.util.Locale
+
+// Hero speed readout (Outside "now" speed, InZone running average). Oversized on
+// purpose for at-a-glance reading while driving; sp so it still honors the
+// system accessibility font scale.
+private val HeroSpeedFontSize = 128.sp
 
 @Composable
 fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
@@ -84,10 +91,18 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
     val notificationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { viewModel.refreshPermissions() }
-    val onRequestNotification: () -> Unit = onRequestNotification@{
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return@onRequestNotification
-        notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    // remember the action lambdas so StateContent gets stable identities and can
+    // skip recomposition (this screen recomposes ~1 Hz from the live GPS feed).
+    val onRequestNotification: () -> Unit = remember(notificationLauncher) {
+        {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
     }
+    val onOpenAppSettings: () -> Unit = remember(context) { { openAppSettings(context) } }
+    val onRequestBatteryOptOut: () -> Unit =
+        remember(context) { { requestIgnoreBatteryOptimizations(context) } }
 
     // Pick up changes the user made in app-Settings while we were
     // backgrounded — flipping a permission or whitelisting battery
@@ -120,9 +135,9 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                 permissionState = permissionState,
                 debugMaxSpeedOverride = debugMaxSpeedOverride,
                 vehicleType = vehicleType,
-                onOpenAppSettings = { openAppSettings(context) },
+                onOpenAppSettings = onOpenAppSettings,
                 onRequestNotification = onRequestNotification,
-                onRequestBatteryOptOut = { requestIgnoreBatteryOptimizations(context) },
+                onRequestBatteryOptOut = onRequestBatteryOptOut,
             )
 
             // Hide the Start button while the location-permission card is up —
@@ -418,7 +433,7 @@ private fun OutsideCard(modifier: Modifier, currentSpeedKmh: Double?, zoneCount:
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = currentSpeedKmh.orDash(),
-                        fontSize = 128.sp,
+                        fontSize = HeroSpeedFontSize,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,
                     )
@@ -469,7 +484,10 @@ private fun InZoneCard(
     )
 
     Card(
-        modifier = modifier.semantics { contentDescription = semanticDescription },
+        // clearAndSetSemantics (not semantics): the description is a full spoken
+        // summary of the card, so suppress the child Text nodes' own semantics to
+        // stop TalkBack reading the summary AND each value a second time.
+        modifier = modifier.clearAndSetSemantics { contentDescription = semanticDescription },
         colors = CardDefaults.cardColors(containerColor = statusColor.copy(alpha = 0.15f)),
     ) {
         Column(
@@ -487,7 +505,7 @@ private fun InZoneCard(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = state.avgSpeed.orDash(),
-                        fontSize = 128.sp,
+                        fontSize = HeroSpeedFontSize,
                         fontWeight = FontWeight.Bold,
                         color = statusColor,
                     )
@@ -519,7 +537,7 @@ private fun InZoneCard(
                 )
                 InfoItem(
                     label = stringResource(R.string.remaining),
-                    value = "%.1f km".format(state.distanceRemaining / 1000),
+                    value = String.format(Locale.US, "%.1f km", state.distanceRemaining / 1000.0),
                 )
             }
 
@@ -551,7 +569,8 @@ private fun ExitingCard(
     )
 
     Card(
-        modifier = modifier.semantics { contentDescription = semanticDescription },
+        // See InZoneCard: clear child semantics so the summary isn't double-read.
+        modifier = modifier.clearAndSetSemantics { contentDescription = semanticDescription },
         colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.15f)),
     ) {
         Column(

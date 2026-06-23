@@ -13,6 +13,7 @@ import com.demosten.srednabg.core.MapTheme
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -82,6 +83,10 @@ class MapRepository @Inject constructor(
                 zipFile.delete()
                 if (stagingDir.exists()) stagingDir.deleteRecursively()
             }
+        } catch (e: CancellationException) {
+            // WorkManager cancellation — let the coroutine unwind rather than
+            // mis-reporting it as a sync failure (which would trigger a retry).
+            throw e
         } catch (e: Exception) {
             SyncResult.Failed(e)
         }
@@ -166,6 +171,7 @@ class MapRepository @Inject constructor(
     }
 
     private fun unzip(zipFile: File, destDir: File) {
+        var totalExtracted = 0L
         ZipInputStream(zipFile.inputStream().buffered()).use { zis ->
             var entry = zis.nextEntry
             while (entry != null) {
@@ -180,7 +186,23 @@ class MapRepository @Inject constructor(
                     target.mkdirs()
                 } else {
                     target.parentFile?.mkdirs()
-                    target.outputStream().use { out -> zis.copyTo(out) }
+                    // Zip-bomb guard: copy in bounded chunks and abort the moment the
+                    // cumulative *uncompressed* size crosses the cap, so a small
+                    // archive can't decompress into a disk-filling payload.
+                    target.outputStream().use { out ->
+                        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                        var read = zis.read(buffer)
+                        while (read >= 0) {
+                            out.write(buffer, 0, read)
+                            totalExtracted += read
+                            if (totalExtracted > MAX_EXTRACTED_BYTES) {
+                                throw IOException(
+                                    "Map bundle exceeds extraction cap ($MAX_EXTRACTED_BYTES bytes)",
+                                )
+                            }
+                            read = zis.read(buffer)
+                        }
+                    }
                 }
                 zis.closeEntry()
                 entry = zis.nextEntry
@@ -211,6 +233,9 @@ class MapRepository @Inject constructor(
         private const val VERSION_FILE = "version.json"
         private const val FONTS_DIR = "fonts"
         private const val SPRITE_BASENAME = "sprite"
+        // Upper bound on the total uncompressed bundle size (mbtiles + styles +
+        // fonts run ~100–200 MB); generous headroom that still bounds a zip bomb.
+        private const val MAX_EXTRACTED_BYTES = 1024L * 1024 * 1024
         private const val MBTILES_PLACEHOLDER = "{MBTILES_URI}"
         private const val GLYPHS_PLACEHOLDER = "{GLYPHS_URI}"
         private const val SPRITE_PLACEHOLDER = "{SPRITE_URI}"

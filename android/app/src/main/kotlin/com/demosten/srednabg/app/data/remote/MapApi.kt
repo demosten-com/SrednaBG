@@ -20,6 +20,11 @@ class MapApi(
 ) {
     companion object {
         val BASE_URL: String = BuildConfig.ZONE_API_BASE_URL
+
+        // The real bundle is tens of MB. Reject a download advertising far more
+        // (mis-served or MITM'd) before streaming it to disk and exhausting
+        // storage. Extraction is separately capped in MapRepository.unzip.
+        private const val MAX_DOWNLOAD_BYTES = 512L * 1024 * 1024
     }
 
     suspend fun downloadBundle(destination: File): Unit = withContext(Dispatchers.IO) {
@@ -29,6 +34,12 @@ class MapApi(
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IOException("Map bundle API returned ${response.code}")
             val body = response.body ?: throw IOException("Empty map bundle response")
+            val declaredLength = response.header("Content-Length")?.toLongOrNull()
+            if (declaredLength != null && declaredLength > MAX_DOWNLOAD_BYTES) {
+                throw IOException(
+                    "Map bundle too large: $declaredLength bytes (max $MAX_DOWNLOAD_BYTES)",
+                )
+            }
             destination.sink().buffer().use { sink ->
                 sink.writeAll(body.source())
             }

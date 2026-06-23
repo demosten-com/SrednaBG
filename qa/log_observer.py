@@ -49,6 +49,11 @@ class LogObserver:
     recent_lines: list[str] = field(default_factory=list)
     max_recent: int = 400
     _stop: bool = False
+    # Guards `recent_lines`: the observer thread appends/trims it while the
+    # runner thread snapshots it for failure reports. A plain list slice during
+    # a concurrent `del` can read a torn state (and isn't atomic under a
+    # free-threaded interpreter), so both sides hold this lock.
+    _recent_lock: threading.Lock = field(default_factory=threading.Lock)
 
     # Suite-lifetime parse bookkeeping, read by the parser self-test scenario.
     # Unlike `queue`/`recent_lines`, these survive `clear()` — the self-test
@@ -122,9 +127,17 @@ class LogObserver:
             self.queue.put(ev)
 
     def _record_recent(self, raw: str) -> None:
-        self.recent_lines.append(raw)
-        if len(self.recent_lines) > self.max_recent:
-            del self.recent_lines[0 : len(self.recent_lines) - self.max_recent]
+        with self._recent_lock:
+            self.recent_lines.append(raw)
+            if len(self.recent_lines) > self.max_recent:
+                del self.recent_lines[0 : len(self.recent_lines) - self.max_recent]
+
+    def snapshot_recent(self, n: int) -> list[str]:
+        """Thread-safe copy of the last `n` raw lines for a failure report.
+        Held under `_recent_lock` because the observer thread mutates
+        `recent_lines` concurrently."""
+        with self._recent_lock:
+            return list(self.recent_lines[-n:])
 
     def _maybe_emit_crash(self, raw: str) -> None:
         # Android: "FATAL EXCEPTION", "ANR in <package>"
@@ -179,7 +192,8 @@ class LogObserver:
         those accumulate for the whole suite so the parser self-test
         (last scenario of the smoke suite) can judge the entire run."""
         list(self.drain())
-        self.recent_lines.clear()
+        with self._recent_lock:
+            self.recent_lines.clear()
 
 
 def for_current_device() -> LogObserver:

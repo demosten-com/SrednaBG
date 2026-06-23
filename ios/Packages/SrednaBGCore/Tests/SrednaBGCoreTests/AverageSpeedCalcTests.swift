@@ -158,6 +158,30 @@ struct AverageSpeedCalcTests {
     }
 
     @Test
+    func distanceRemainingOverrideDrivesRemainderInsteadOfIntegrator() {
+        // The speed×time integrator has over-counted — distanceTraveled (20_000)
+        // exceeds the zone (19_160), so the fallback `zoneDistance - distanceTraveled`
+        // is negative → clamped to 0 → a collapsed 0 km/h remainder (see
+        // distanceAlreadyExceeded). The polyline-projection override says 3_000 m
+        // of road actually remains.
+        let status = AverageSpeedCalc.calculate(
+            entryTime: 0,
+            currentTime: 300_000,
+            stopDurationMs: 0,
+            distanceTraveled: 20_000,
+            zoneDistance: 19_160,
+            speedLimitKmh: 140,
+            distanceRemainingOverride: 3_000
+        )
+
+        // Remainder follows the override, not the drifted integrator's clamped 0.
+        #expect(approxEqual(status.distanceRemaining, 3_000.0, tol: 0.01))
+        // Real road left + legal time on the clock → a usable positive max.
+        #expect(status.timeRemaining > 0)
+        #expect(status.maxSpeedForRemainder > 0)
+    }
+
+    @Test
     func nationalRoadLowerSpeedLimit() throws {
         // I-4 zone with 90 km/h limit; 5000/200 * 3.6 = 90 km/h exactly → not strictly over
         let status = AverageSpeedCalc.calculate(
