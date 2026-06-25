@@ -23,6 +23,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Wire Xcode toolchain into env
+        run: bash .github/scripts/setup-env.sh xcode
+
       # ios/CLAUDE.md "Definition of done": swiftlint --strict, swift test, then
       # the app-shell Simulator build. SwiftLint also runs as an Xcode build
       # phase, but we gate on it explicitly here so a lint failure fails fast.

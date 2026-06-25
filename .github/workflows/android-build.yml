@@ -36,6 +36,9 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
 
+      - name: Wire Android SDK into env
+        run: bash .github/scripts/setup-env.sh android
+
       - name: Grant execute permission for gradlew
         run: chmod +x android/gradlew
 

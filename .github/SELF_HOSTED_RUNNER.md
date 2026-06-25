@@ -59,9 +59,13 @@ The workflows assume these are installed and reachable in the runner's environme
 - **Python 3** — `scripts/setup-python.sh` provisions the repo `.venv`; the `qa/*.py`
   entrypoints auto-use it.
 
-> Tip: a `LaunchAgent` doesn't inherit your interactive shell's `PATH`. Put the SDK/tool
-> paths in the runner's `.env` file (next to `run.sh`) or in `~/.zprofile` for the
-> auto-login user so Actions steps see `adb`, `emulator`, `swiftlint`, etc.
+> The runner's `LaunchAgent` env does **not** match an interactive shell, so the SDK
+> and Xcode toolchain aren't on its `PATH`. The workflows handle this themselves via
+> `.github/scripts/setup-env.sh`, which resolves `ANDROID_HOME`, adds `adb`/`emulator`
+> to the path, and points `DEVELOPER_DIR` at full Xcode (the CommandLineTools toolchain
+> lacks `sourcekitdInProc`, which is what made SwiftLint crash). You just need Xcode +
+> the SDK + `swiftlint` actually installed on the machine. If SwiftLint still fails to
+> load sourcekit, run once on the runner: `sudo xcode-select -s /Applications/Xcode.app`.
 
 ## Signing credentials — not required
 

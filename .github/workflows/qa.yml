@@ -58,6 +58,9 @@ jobs:
       - name: Provision Python venv
         run: bash scripts/setup-python.sh
 
+      - name: Wire Android SDK into env
+        run: bash .github/scripts/setup-env.sh android
+
       - name: Boot emulator
         run: bash .github/scripts/boot-emulator.sh
 
@@ -110,6 +113,9 @@ jobs:
 
       - name: Provision Python venv
         run: bash scripts/setup-python.sh
+
+      - name: Wire Android SDK + Xcode into env
+        run: bash .github/scripts/setup-env.sh android xcode
 
       # ── Android prep (boot first, then install onto it) ──
       - name: Boot emulator
