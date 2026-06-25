@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import queue
 import time
 from dataclasses import dataclass, field
@@ -148,8 +149,13 @@ def _ensure_gpx(spec: BulkScenarioSpec) -> Path:
     out = GPX_FIXTURES_DIR / f"{prefix}_{_route_hash(zone, spec)}.gpx"
     if out.exists():
         return out
+    # Stale fixtures from an older data version share the prefix but not the
+    # hash; drop them. Never unlink `out` itself — under concurrent runs (e.g.
+    # the nightly Android + iOS jobs generating the same fixtures at once) the
+    # other process may have just written it.
     for stale in GPX_FIXTURES_DIR.glob(f"{prefix}*.gpx"):
-        stale.unlink(missing_ok=True)
+        if stale != out:
+            stale.unlink(missing_ok=True)
     # Lazy-import to avoid stdlib path mangling at module load.
     import importlib.util
     script_path = REPO_ROOT / "scrapers" / "scripts" / "make_test_route.py"
@@ -199,7 +205,12 @@ def _ensure_gpx(spec: BulkScenarioSpec) -> Path:
     exit_pts = resample([centerline[-1], exit_end])
     # Splice — keep boundary vertices explicit per make_test_route semantics
     pts = approach_pts + [centerline[0]] + centerline_pts[1:] + [centerline[-1]] + exit_pts[1:] + [exit_end]
-    mod.emit_gpx(pts, spec.hz, out, name=f"{spec.zone_id}@{spec.speed_kmh}kmh")
+    # Write to a per-process temp then atomically swap into place, so a
+    # concurrent reader (or the sibling-platform job generating the same
+    # fixture) never observes a half-written .gpx.
+    tmp = out.with_name(f".{out.name}.{os.getpid()}.tmp")
+    mod.emit_gpx(pts, spec.hz, tmp, name=f"{spec.zone_id}@{spec.speed_kmh}kmh")
+    os.replace(tmp, out)
     return out
 
 

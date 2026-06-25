@@ -1,5 +1,8 @@
 name: Android Build
 
+# Self-hosted only. Runs on the M4 Mac mini (label `srednabg`). Triggered on push
+# to main ONLY: pushes to main are maintainer-only, so the public repo's fork PRs
+# never execute code on the self-hosted box. See .github/SELF_HOSTED_RUNNER.md.
 on:
   push:
     branches: [ main ]
@@ -10,24 +13,15 @@ on:
       - 'web/**'
       - 'qa/**'
       - '**.md'
-  pull_request:
-    branches: [ main ]
-    paths-ignore:
-      - 'scrapers/**'
-      - 'backend/**'
-      - 'ios/**'
-      - 'web/**'
-      - 'qa/**'
-      - '**.md'
 
 concurrency:
-  group: android-build-${{ github.ref }}
-  # Superseded PR runs are cancelled; push-to-main runs always complete.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: android-build
+  # Superseded pushes to main are cancelled — only the newest commit needs a build.
+  cancel-in-progress: true
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macOS, srednabg]
 
     steps:
       - name: Checkout code
@@ -48,21 +42,7 @@ jobs:
       - name: Download offline map bundle
         env:
           MAP_BUNDLE_URL: ${{ secrets.MAP_BUNDLE_URL }}
-        run: |
-          mkdir -p backend/data
-          # Default: the rolling map-bundle-latest release asset (uploaded by
-          # web/fdroid/scripts/publish-map-bundle.sh); the secret is an
-          # optional override.
-          URL="${MAP_BUNDLE_URL:-https://github.com/${GITHUB_REPOSITORY}/releases/download/map-bundle-latest/map-bundle.zip}"
-          curl -fsSL "$URL" -o backend/data/map-bundle.zip
-          unzip -q backend/data/map-bundle.zip -d backend/data/map-bundle
-          # Keep in sync with `requiredMapFiles` in android/app/build.gradle.kts.
-          for f in style-light.json style-dark.json bulgaria.mbtiles; do
-            if [ ! -f "backend/data/map-bundle/$f" ]; then
-              echo "::error::map-bundle.zip is missing $f. Regenerate + republish with 'bash web/fdroid/scripts/publish-map-bundle.sh'."
-              exit 1
-            fi
-          done
+        run: bash .github/scripts/download-map-bundle.sh
 
       - name: Run core tests
         working-directory: android

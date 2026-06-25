@@ -1,0 +1,165 @@
+name: QA
+
+# Self-hosted only. Drives the qa/ harness against a real Pixel_8a emulator
+# (Android) and a booted iOS Simulator on the M4 Mac mini (label `srednabg`).
+#
+# Triggers are maintainer-controlled (push to main / schedule / manual) — the
+# public repo's fork PRs never reach the self-hosted box. The harness does NOT
+# build or install, so each job assembles + installs the app first.
+#
+# IMPORTANT: the iOS Simulator needs an active GUI login session (Metal). The
+# runner must run as a LaunchAgent in the logged-in desktop session, not a
+# headless LaunchDaemon. See .github/SELF_HOSTED_RUNNER.md.
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'android/**'
+      - 'ios/**'
+      - 'qa/**'
+  schedule:
+    # 01:00 UTC ≈ 04:00 Europe/Sofia — off-hours nightly full run.
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'QA suite to run'
+        type: choice
+        default: nightly
+        options: [smoke, representative, scenarios, sync, ui, full-zones, nightly]
+      platforms:
+        description: 'Which platforms (nightly path only)'
+        type: choice
+        default: both
+        options: [both, android, ios]
+
+jobs:
+  # ── Fast per-push signal: Android smoke only (~5 min). ────────────────────
+  smoke:
+    if: github.event_name == 'push'
+    runs-on: [self-hosted, macOS, srednabg]
+    concurrency:
+      group: qa
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Download offline map bundle
+        env:
+          MAP_BUNDLE_URL: ${{ secrets.MAP_BUNDLE_URL }}
+        run: bash .github/scripts/download-map-bundle.sh
+
+      - name: Provision Python venv
+        run: bash scripts/setup-python.sh
+
+      - name: Boot emulator
+        run: bash .github/scripts/boot-emulator.sh
+
+      - name: Build + install gms debug APK
+        run: bash .github/scripts/android-build-install.sh
+
+      - name: Run smoke suite (Android, gms)
+        run: |
+          python3 qa/srednabg_qa.py --suite smoke --flavor gms \
+            --reports-dir qa/reports/android
+
+      - name: Shut down emulator
+        if: always()
+        run: adb emu kill || true
+
+      - name: Upload QA reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: qa-smoke-reports
+          path: qa/reports/**
+          retention-days: 14
+
+  # ── Long nightly run: Android + iOS in PARALLEL within this one job. ───────
+  # One runner executes one job at a time, so a matrix would serialise — we run
+  # the two platforms as concurrent background processes instead. Wall-clock ≈
+  # the slower platform (~2 h) rather than the ~4 h serial sum.
+  nightly:
+    if: github.event_name != 'push'
+    runs-on: [self-hosted, macOS, srednabg]
+    concurrency:
+      group: qa
+      cancel-in-progress: false
+    env:
+      SUITE: ${{ github.event.inputs.suite || 'nightly' }}
+      PLATFORMS: ${{ github.event.inputs.platforms || 'both' }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Download offline map bundle
+        env:
+          MAP_BUNDLE_URL: ${{ secrets.MAP_BUNDLE_URL }}
+        run: bash .github/scripts/download-map-bundle.sh
+
+      - name: Provision Python venv
+        run: bash scripts/setup-python.sh
+
+      # ── Android prep (boot first, then install onto it) ──
+      - name: Boot emulator
+        if: env.PLATFORMS != 'ios'
+        run: bash .github/scripts/boot-emulator.sh
+
+      - name: Build + install gms debug APK
+        if: env.PLATFORMS != 'ios'
+        run: bash .github/scripts/android-build-install.sh
+
+      # ── iOS prep (script builds, boots a Simulator, then installs) ──
+      - name: Build + install iOS Debug app
+        if: env.PLATFORMS != 'android'
+        run: bash .github/scripts/ios-build-install.sh
+
+      # ── Run both platforms concurrently ──
+      - name: Run nightly suites in parallel
+        run: |
+          set -u
+          A=""; I=""; ra=0; ri=0
+          if [ "$PLATFORMS" != "ios" ]; then
+            python3 qa/srednabg_qa.py --platform android --suite "$SUITE" --flavor gms \
+              --reports-dir qa/reports/android > qa-android.log 2>&1 & A=$!
+            echo "Android QA started (pid $A)"
+          fi
+          if [ "$PLATFORMS" != "android" ]; then
+            python3 qa/srednabg_qa.py --platform ios --suite "$SUITE" \
+              --reports-dir qa/reports/ios > qa-ios.log 2>&1 & I=$!
+            echo "iOS QA started (pid $I)"
+          fi
+          [ -n "$A" ] && { wait "$A"; ra=$?; echo "Android QA exit=$ra"; }
+          [ -n "$I" ] && { wait "$I"; ri=$?; echo "iOS QA exit=$ri"; }
+          echo "===== Android log (tail) ====="; tail -n 60 qa-android.log 2>/dev/null || true
+          echo "===== iOS log (tail) ====="; tail -n 60 qa-ios.log 2>/dev/null || true
+          # Fail the job if either platform that ran failed.
+          [ "$ra" -eq 0 ] && [ "$ri" -eq 0 ]
+
+      - name: Tear down devices
+        if: always()
+        run: |
+          adb emu kill || true
+          xcrun simctl shutdown all || true
+
+      - name: Upload QA reports + logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: qa-nightly-reports
+          path: |
+            qa/reports/**
+            qa-android.log
+            qa-ios.log
+          retention-days: 14

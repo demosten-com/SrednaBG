@@ -261,7 +261,13 @@ def main(argv: list[str] | None = None) -> int:
                         "FusedLocationProvider; 'auto' (default) only records "
                         "which source was selected. The harness does not build "
                         "or install — install the matching flavor APK first.")
+    p.add_argument("--reports-dir", default=None, type=Path,
+                   help="Root directory for reports (default: qa/reports). Give "
+                        "each platform its own root when running Android and iOS "
+                        "concurrently so their <suite>-<timestamp> dirs don't clash.")
     args = p.parse_args(argv)
+
+    reports_root = args.reports_dir or REPORTS_ROOT
 
     global EXPECTED_LOCATION_SOURCE
     EXPECTED_LOCATION_SOURCE = _FLAVOR_TO_SOURCE[args.flavor]
@@ -297,11 +303,11 @@ def main(argv: list[str] | None = None) -> int:
             print(f"no scenarios matched filter {args.filter!r}", file=sys.stderr)
             return 2
 
-    REPORTS_ROOT.mkdir(parents=True, exist_ok=True)
+    reports_root.mkdir(parents=True, exist_ok=True)
     print(f"Running suite '{args.suite}' — {len(scenarios)} scenarios")
     runner = None
     try:
-        with SuiteRunner(args.suite, REPORTS_ROOT) as runner:
+        with SuiteRunner(args.suite, reports_root) as runner:
             for sc in scenarios:
                 print(f"  · {sc.name} ... ", end="", flush=True)
                 r = runner.run(sc)

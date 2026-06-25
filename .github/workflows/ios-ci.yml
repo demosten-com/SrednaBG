@@ -1,0 +1,42 @@
+name: iOS CI
+
+# Self-hosted only. Runs on the M4 Mac mini (label `srednabg`) — the one runner
+# with Xcode + an iOS Simulator. Triggered on push to main ONLY: pushes to main
+# are maintainer-only, so there's no fork-PR code-execution exposure on the
+# self-hosted box (the repo is public). See .github/SELF_HOSTED_RUNNER.md.
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'ios/**'
+      - '.github/workflows/ios-ci.yml'
+
+concurrency:
+  group: ios-ci
+  cancel-in-progress: true
+
+jobs:
+  ios:
+    runs-on: [self-hosted, macOS, srednabg]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # ios/CLAUDE.md "Definition of done": swiftlint --strict, swift test, then
+      # the app-shell Simulator build. SwiftLint also runs as an Xcode build
+      # phase, but we gate on it explicitly here so a lint failure fails fast.
+      - name: SwiftLint (strict)
+        working-directory: ios
+        run: swiftlint --strict
+
+      - name: Swift tests (all SPM packages)
+        working-directory: ios
+        run: swift test
+
+      - name: Xcode app-shell build (iOS Simulator, no signing)
+        working-directory: ios
+        run: |
+          xcodebuild -scheme SrednaBG -project SrednaBG.xcodeproj \
+            -destination 'generic/platform=iOS Simulator' -configuration Debug build \
+            CODE_SIGNING_ALLOWED=NO
