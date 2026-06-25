@@ -19,4 +19,6 @@
 # Requires the DEBUG build installed. Exit code 0 = all zones passed.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-exec python3 "$SCRIPT_DIR/validate_zones.py" "$@"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+bash "$REPO_ROOT/scripts/setup-python.sh" --check || exit 1
+exec "$REPO_ROOT/.venv/bin/python" "$SCRIPT_DIR/validate_zones.py" "$@"

@@ -37,14 +37,18 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Optional
 
-from PIL import Image, ImageDraw, ImageFont
-
 # Allow `python qa/srednabg_frame_screenshots.py` from the repo root.
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from qa.screenshots import loader
+from qa._preflight import require  # noqa: E402
+
+require("yaml", "PIL")
+
+from PIL import Image, ImageDraw, ImageFont  # noqa: E402
+
+from qa.screenshots import loader  # noqa: E402
 from qa.screenshots.loader import (
     ChromeMaskSpec,
     FrameConfig,

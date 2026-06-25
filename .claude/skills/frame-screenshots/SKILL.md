@@ -41,14 +41,14 @@ python qa/srednabg_frame_screenshots.py android
 Run **one** check before invoking the renderer:
 
 ```bash
-python -c "import PIL, yaml" 2>/dev/null
+bash scripts/setup-python.sh --check
 ```
 
 If this exits non-zero, tell the user:
 
-> Install dependencies first: `pip install -r qa/requirements.txt` (adds Pillow + PyYAML, ~6 MB).
+> Set up the Python env first: `bash scripts/setup-python.sh` (creates the root `.venv` with Pillow + PyYAML).
 
-…then stop. Do not try to install on the user's behalf — they may want a venv.
+…then stop. Don't run the setup on their behalf unless they ask — `--check` only verifies; it never installs.
 
 There is **no device check**. No emulator. No Simulator. This skill is offline.
 
@@ -57,7 +57,7 @@ There is **no device check**. No emulator. No Simulator. This skill is offline.
 Spawn it in the **foreground** (no cue loop, no background work):
 
 ```bash
-python qa/srednabg_frame_screenshots.py <platform> [shot] [lang] [--theme light|dark] [--force]
+.venv/bin/python qa/srednabg_frame_screenshots.py <platform> [shot] [lang] [--theme light|dark] [--force]
 ```
 
 Pass the user's args through verbatim. Outputs land under `web/screenshots/<platform>/framed/NN-<theme>-<lang>.png`.
@@ -76,7 +76,7 @@ Report concisely (cap at 150 words):
 
 ## Failure triage
 
-- **`ModuleNotFoundError: No module named 'PIL'`** → user skipped pre-flight. Tell them to `pip install -r qa/requirements.txt`.
+- **`ModuleNotFoundError: No module named 'PIL'`** → the root `.venv` is missing/incomplete (and you bypassed the venv interpreter). Tell them to run `bash scripts/setup-python.sh`.
 - **`title doesn't fit in canvas width ... even at <N>px`** → the title is too long even after the renderer auto-shrunk it. The user must either shorten `title.<lang>` in `shots.yaml` or insert a hard `\n` to break it earlier.
 - **`background=<X> not in palette`** → unknown palette key. The user must either add `<X>` to `frame.colors:` in `shots.yaml` or use a literal `#RRGGBB` value.
 - **0 rendered, 0 up-to-date, all skipped "raw PNG missing"** → the user hasn't run `/screenshot-app <platform>` for this theme yet (or didn't run it in the language they're asking for). Direct them to `/screenshot-app` first.

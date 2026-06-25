@@ -34,8 +34,13 @@ cd android && ./gradlew :app:assembleDebug
 # Build release APK (R8 minified)
 cd android && ./gradlew :app:assembleRelease
 
+# One-time: set up the single root .venv the Python tooling uses (scrapers + QA).
+# The .sh wrappers (refresh-zones.sh, qa/*.sh) and the python entry points also
+# use this venv automatically — if it's missing they tell you to run this.
+bash scripts/setup-python.sh && source .venv/bin/activate
+
 # Run Python scraper tests
-cd scrapers && pip install -r requirements-dev.txt && python -m pytest
+cd scrapers && python -m pytest
 
 # Generate a drive-through GPX for emulator testing (defaults to AM Trakiya east @ 130 km/h)
 cd scrapers && python scripts/make_test_route.py --out /tmp/route.gpx

@@ -19,14 +19,23 @@ import time
 from datetime import UTC, datetime
 from pathlib import Path
 
-from src import bgtoll_scraper, kml_scraper, osm_overpass, tolltracker_fetcher
-from src.validator import (
+from src._preflight import require
+
+require("bs4", "requests", "overpy", "pydantic", module="src.output")
+
+from src import (  # noqa: E402
+    bgtoll_scraper,
+    kml_scraper,
+    osm_overpass,
+    tolltracker_fetcher,
+)
+from src.validator import (  # noqa: E402
     REQUIRED_MOTORWAYS,
     align_centerline_to_endpoints,
     merge_all,
     normalize_road,
 )
-from src.zone_schema import ZoneDatabase
+from src.zone_schema import ZoneDatabase  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

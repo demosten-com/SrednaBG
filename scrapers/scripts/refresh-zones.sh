@@ -17,9 +17,12 @@
 set -euo pipefail
 
 scrapers_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_ROOT="$(cd "$scrapers_dir/.." && pwd)"
+bash "$REPO_ROOT/scripts/setup-python.sh" --check || exit 1
+PY="$REPO_ROOT/.venv/bin/python"
 cd "$scrapers_dir"
 
-python -m src.output
+"$PY" -m src.output
 bash ../backend/scripts/update-zones.sh   # cp -> backend/data/zones.json + regenerate version.json
 
 echo "✓ Refreshed zones.json — scrapers/data/ + backend/data/ in sync. Rebuild the app to re-bundle it."

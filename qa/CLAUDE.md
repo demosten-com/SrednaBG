@@ -250,7 +250,7 @@ Single source of truth for both scripts. Top-level keys:
 
 ### Python dependencies
 
-`qa/requirements.txt` (PyYAML + Pillow ≥10). The QA harness itself is stdlib + PyYAML; Pillow is only needed for `/frame-screenshots`. Install with `pip install -r qa/requirements.txt` (per project preference: pip + `requirements.txt`, never `pyproject.toml`).
+`qa/requirements.txt` (PyYAML + Pillow ≥10). The QA harness itself is stdlib + PyYAML; Pillow is only needed for `/frame-screenshots`. These install into the single root `.venv` via `bash scripts/setup-python.sh` (per project preference: pip + `requirements.txt`, never `pyproject.toml`). The `qa/*.sh` wrappers preflight that venv (`setup-python.sh --check`) and run through `.venv/bin/python`, so they work without activating it; the `python qa/*.py` entry points auto-use the venv if present, else print the same "run `bash scripts/setup-python.sh`" instruction instead of a `ModuleNotFoundError`.
 
 ### Bundled font
 

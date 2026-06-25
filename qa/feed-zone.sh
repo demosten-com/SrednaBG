@@ -47,18 +47,21 @@ case "${1:-}" in
 esac
 SELECTOR="${1:-}"
 
+bash "$REPO_ROOT/scripts/setup-python.sh" --check || exit 1
+PY="$REPO_ROOT/.venv/bin/python"
+
 [[ -f "$ZONES_JSON" ]] || { echo "zones.json not found at: $ZONES_JSON (set ZONES_JSON=...)" >&2; exit 1; }
 
 adb get-state >/dev/null 2>&1 || { echo "no adb device — boot the Pixel_8a emulator first" >&2; exit 1; }
 
 # No zone selected -> list and exit (does not touch the device).
 if [[ -z "$SELECTOR" || "$SELECTOR" == "list" ]]; then
-    python3 "$HELPER" list "$ZONES_JSON"
+    "$PY" "$HELPER" list "$ZONES_JSON"
     exit 0
 fi
 
 # Build the route first so an unknown selector fails before we start tracking.
-ROUTE="$(python3 "$HELPER" route "$ZONES_JSON" "$SELECTOR" "$STEP_M" "$SPEED_MS")"
+ROUTE="$("$PY" "$HELPER" route "$ZONES_JSON" "$SELECTOR" "$STEP_M" "$SPEED_MS")"
 
 if [[ "$NO_START" != "1" ]]; then
     # Foreground the app first. START_TRACKING starts a foreground service from a

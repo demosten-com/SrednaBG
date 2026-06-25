@@ -26,6 +26,12 @@ Zone data and BG TOLL scraping are Bulgarian Cyrillic.
 ## Build commands
 
 ```bash
+# First-time env setup (single root .venv: scraper + dev + QA deps). The direct
+# `python …` lines below assume it's active. The refresh-zones.sh wrapper and the
+# `python -m src.output` entry point self-handle it — they auto-use the .venv if
+# present, else tell you to run setup-python.sh.
+bash ../scripts/setup-python.sh && source ../.venv/bin/activate
+
 python -m pytest                         # All tests
 python -m pytest tests/test_validator.py # One file
 bash scripts/refresh-zones.sh            # Refresh bundled data: full scrape -> scrapers/data/ + sync backend/data/ (use this before a release cut)

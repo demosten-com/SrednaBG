@@ -52,10 +52,11 @@ Run these in order. Skip step 4 if the user explicitly asked for "fast" / "no bu
 
 ## Running the orchestrator
 
-Spawn the Python harness in the **background** so you can drive cues while it runs:
+Ensure the Python env first (single root `.venv`), then spawn the harness in the **background** so you can drive cues while it runs:
 
 ```bash
-python qa/srednabg_screenshots.py <platform> [shot] [lang] [--theme light|dark]
+bash scripts/setup-python.sh --check || bash scripts/setup-python.sh
+.venv/bin/python qa/srednabg_screenshots.py <platform> [shot] [lang] [--theme light|dark]
 ```
 
 `--theme` defaults to `light`; pass it through verbatim from the user's invocation. The theme value lands in both the system appearance (via `simctl ui ... appearance` / `cmd uimode night`) and the output filename.

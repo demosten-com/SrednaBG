@@ -49,9 +49,14 @@ If the user didn't specify, default to `smoke` and tell them which suites are av
 
 ## Running
 
+Ensure the Python env first (single root `.venv`); run the harness through it so it works whether or not the venv is activated:
+
 ```bash
-python qa/srednabg_qa.py --suite <name>
+bash scripts/setup-python.sh --check || bash scripts/setup-python.sh
+.venv/bin/python qa/srednabg_qa.py --suite <name>
 ```
+
+(`setup-python.sh --check` only verifies — it prints the fix and exits non-zero if the venv is missing/incomplete; running plain `python qa/srednabg_qa.py` also works, it auto-uses the `.venv` or instructs.)
 
 The orchestrator streams scenario results live (one line per scenario: PASS/FAIL + duration). For long runs (`full-zones`, `nightly`), use `run_in_background: true` and check back periodically.
 

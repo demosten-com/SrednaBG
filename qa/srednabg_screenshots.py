@@ -42,6 +42,10 @@ _HERE = Path(__file__).resolve().parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
+from qa._preflight import require  # noqa: E402
+
+require("yaml")
+
 from qa import device as device_mod  # noqa: E402
 from qa.screenshots import loader as shots_loader  # noqa: E402
 from qa.screenshots import sequencer  # noqa: E402
