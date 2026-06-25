@@ -37,6 +37,14 @@ jobs:
         working-directory: ios
         run: swift test
 
+      # The app target's "Map Bundle" build phase requires the offline bundle on
+      # disk (same dependency as the Android build). swift test above doesn't
+      # need it — only the xcodebuild app-shell build does.
+      - name: Download offline map bundle
+        env:
+          MAP_BUNDLE_URL: ${{ secrets.MAP_BUNDLE_URL }}
+        run: bash .github/scripts/download-map-bundle.sh
+
       - name: Xcode app-shell build (iOS Simulator, no signing)
         working-directory: ios
         run: |
