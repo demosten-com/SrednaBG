@@ -19,6 +19,9 @@ concurrency:
   # Superseded pushes to main are cancelled — only the newest commit needs a build.
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: [self-hosted, macOS, srednabg]

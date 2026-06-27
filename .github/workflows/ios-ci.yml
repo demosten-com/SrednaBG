@@ -15,6 +15,9 @@ concurrency:
   group: ios-ci
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   ios:
     runs-on: [self-hosted, macOS, srednabg]

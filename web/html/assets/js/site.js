@@ -112,7 +112,8 @@
       '<circle cx="24" cy="24" r="2.5" fill="currentColor"/>' +
       "</svg>" +
       '<div class="ss-label">SrednaBG</div>' +
-      '<div class="ss-label" style="color:var(--text-mid)">' + label + "</div>";
+      '<div class="ss-label ss-fallback-label" style="color:var(--text-mid)"></div>';
+    box.querySelector(".ss-fallback-label").textContent = label;
     img.replaceWith(box);
   };
 
