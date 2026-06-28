@@ -278,17 +278,12 @@ def build_scenario(spec: BulkScenarioSpec) -> Scenario:
                 ctx.obs)
 
         if spec.forbid_in_zone_rebound:
-            # Re-entering a zone after its own Exiting on a one-way drive is
-            # the InZone<->Exiting flap the engine's exit hysteresis prevents.
-            exited: set[str] = set()
-            for e in changes:
-                if e.new == "Exiting" and e.zone != "-":
-                    exited.add(e.zone)
-                elif e.new == "InZone" and e.zone in exited:
-                    raise AssertionFailure(
-                        f"in-zone rebound: {e.zone} re-entered after exiting "
-                        f"(flap) — {transitions()}",
-                        ctx.obs)
+            flap = _find_in_zone_rebound(changes, spec.zone_id)
+            if flap is not None:
+                raise AssertionFailure(
+                    f"in-zone rebound: {flap.zone} re-entered after exiting "
+                    f"(flap) — {transitions()}",
+                    ctx.obs)
 
         if spec.expect_avg_kmh is not None and exit_ev is not None:
             in_zone = [e.kmh for e in events
@@ -316,6 +311,34 @@ def build_scenario(spec: BulkScenarioSpec) -> Scenario:
     ]
     return Scenario(name=spec.name, steps=steps, teardown=teardown,
                     timeout_s=plan.duration_ms / 1000 + 60)
+
+
+def _find_in_zone_rebound(changes: list[ZoneStateChange], target_zone: str
+                          ) -> Optional[ZoneStateChange]:
+    """Return the offending change if the *target* zone is re-entered after its
+    own `Exiting` on a one-way drive — the InZone<->Exiting flap the engine's
+    exit hysteresis is meant to prevent — else None.
+
+    Scoped to ``target_zone`` on purpose. The synthetic straight-line
+    approach/exit legs the route builder extrapolates can legitimately clip a
+    *curved adjacent* zone and flap within it: e.g. ``i4-04-east``'s 2 km
+    approach cuts across ``i4-03-east``'s curved tail (i4-03 ends exactly where
+    i4-04 begins), so the engine reads InZone(i4-03) → Exiting(i4-03) →
+    Outside → InZone(i4-03) before ever reaching the target. That adjacent-zone
+    flap is a route-geometry artifact of the straight extrapolation, not an
+    engine flap — a real driver follows the road and the adjacent zone's own
+    scenario passes clean. Real-road adjacency is covered by validate-zones.sh
+    and colocated-zones.sh; here we only assert the target zone never flaps.
+    """
+    exited = False
+    for e in changes:
+        if e.zone != target_zone:
+            continue
+        if e.new == "Exiting":
+            exited = True
+        elif e.new == "InZone" and exited:
+            return e
+    return None
 
 
 def _drain_buffered(obs: LogObserver, *, quiet_s: float = 1.0,
