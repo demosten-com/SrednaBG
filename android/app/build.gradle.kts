@@ -21,8 +21,8 @@ android {
         // version (a computed expression yields "no version information"). The
         // android-release.yml workflow overrides these from the git tag for
         // GitHub/Play builds; F-Droid builds use the literals as-is.
-        versionCode = 10004
-        versionName = "1.0.4"
+        versionCode = 10100
+        versionName = "1.1.0"
         (project.findProperty("SREDNABG_VERSION_CODE") as String?)?.let { versionCode = it.toInt() }
         (project.findProperty("SREDNABG_VERSION_NAME") as String?)?.let { versionName = it }
         resourceConfigurations += listOf("bg", "en")

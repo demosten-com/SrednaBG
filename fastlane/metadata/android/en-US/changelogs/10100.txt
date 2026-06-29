@@ -1,0 +1,10 @@
+v1.1.0
+
+• New: floating overlay over Waze & Google Maps — an opt-in badge shows your live status on top of other navigation apps (off by default; enable in Settings).
+• New: per-vehicle speed limits — choose car, truck, bus, or motorcycle and zone limits adjust to match.
+• Clearer voice alerts: speeds are spoken more naturally in Bulgarian and English.
+• More accurate zone tracking, with fewer false entering/exiting flips at zone edges.
+• More reliable GPS for trustworthy speed readings.
+• Home and Settings now stay in portrait when your phone is mounted.
+• Settings now shows the date and version of the bundled zone list.
+• Plus a map screen fix and smaller stability improvements.
