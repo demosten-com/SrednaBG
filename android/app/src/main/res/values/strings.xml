@@ -96,8 +96,35 @@
     <string name="battery_opt_body">Някои Android телефони агресивно спират фоновите приложения, за да пестят батерия. За да сте сигурни, че SrednaBG ще следи цялото пътуване, изключете оптимизацията.</string>
     <string name="battery_opt_action">Изключи оптимизацията</string>
 
-    <!-- Trip history -->
-    <string name="trip_history_coming_soon">Историята на пътуванията идва скоро</string>
+    <!-- History -->
+    <string name="setting_history_retention">Съхранение на историята</string>
+    <string name="setting_history_retention_desc">Колко дълго да се пазят завършените зони в История</string>
+    <string name="history_retention_none">Изключено</string>
+    <string name="history_retention_1month">1 месец</string>
+    <string name="history_retention_3months">3 месеца</string>
+    <string name="history_retention_6months">6 месеца</string>
+    <string name="history_empty_title">Все още няма записи</string>
+    <string name="history_empty_body">Завършените зони със средна скорост ще се появят тук.</string>
+    <string name="history_disabled_title">Историята е изключена</string>
+    <string name="history_disabled_body">Включете съхранението на историята от Настройки, за да записвате завършените зони.</string>
+    <string name="history_entered">Влизане</string>
+    <string name="history_exited">Излизане</string>
+    <string name="history_duration">Времетраене</string>
+    <string name="history_your_average">Вашата средна скорост</string>
+    <string name="history_top_speed">Най-висока скорост</string>
+    <string name="history_lowest_speed">Най-ниска скорост</string>
+    <string name="history_kmh_value">%s km/h</string>
+    <string name="history_graph_title">Скорост във времето</string>
+    <string name="history_legend_speed">Скорост</string>
+    <string name="history_legend_average">Средна</string>
+    <string name="history_legend_limit">Ограничение</string>
+    <string name="history_direction">Посока</string>
+    <string name="history_direction_east">Изток</string>
+    <string name="history_direction_west">Запад</string>
+    <string name="history_direction_north">Север</string>
+    <string name="history_direction_south">Юг</string>
+    <string name="history_not_found">Записът не е намерен</string>
+    <string name="action_back">Назад</string>
 
     <!-- Notifications -->
     <string name="notification_channel_tracking">Проследяване на местоположение</string>

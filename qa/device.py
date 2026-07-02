@@ -131,6 +131,13 @@ class Device(abc.ABC):
     @abc.abstractmethod
     def force_sync_map(self) -> None: ...
 
+    @abc.abstractmethod
+    def dump_history(self) -> None:
+        """Ask the app to log its History-DB summary as a `DUMP_HISTORY …`
+        line on tag `DebugSettings` (parsed into a `HistoryDump` event). The
+        line shape is identical across platforms (Android `DUMP_HISTORY`
+        broadcast; iOS `/history?action=dump`)."""
+
     # ── network gating ──────────────────────────────────────────────────────
     @abc.abstractmethod
     def go_offline(self) -> None: ...

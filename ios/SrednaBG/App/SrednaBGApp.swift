@@ -83,6 +83,7 @@ struct SrednaBGApp: App {
             RootView(
                 tracking: container.tracking,
                 settings: container.settings,
+                historyStore: container.historyStore,
                 onSyncTap: { await container.runZoneSync() },
                 onZoneSyncToggle: { enabled in
                     // Apply the "Automatic zone updates" toggle immediately:
@@ -111,6 +112,11 @@ final class AppContainer {
     let settings: SettingsStore
     let tracking: ZoneTrackingService
     let zoneStore: ZoneStore
+    /// SwiftData-backed History persistence + the recorder that captures
+    /// completed traversals from the tracking loop. Read by the History UI and
+    /// the QA `DUMP_HISTORY` dump.
+    let historyStore: HistoryStore
+    let historyRecorder: HistoryRecorder
     let mapInstaller: OfflineMapInstaller
     let syncClient: SyncClient
     let alerts: AudioAlertManager
@@ -149,6 +155,14 @@ final class AppContainer {
             ?? FileManager.default.temporaryDirectory
         self.zoneStore = ZoneStore(url: baseDir.appendingPathComponent("zones.json"))
         self.mapInstaller = OfflineMapInstaller(rootDir: baseDir)
+
+        // History persistence (SwiftData) + the traversal recorder. The
+        // recorder's `recordingEnabled` flag and pruning are driven by the
+        // retention observer armed in `bootstrap()`.
+        let historyStore = HistoryStore()
+        self.historyStore = historyStore
+        let historyRecorder = HistoryRecorder(store: historyStore)
+        self.historyRecorder = historyRecorder
 
         // Backend host — both debug and release hit the Namecheap production
         // host so dev builds always exercise real zone data. Mirrors the
@@ -212,6 +226,7 @@ final class AppContainer {
             provider: provider,
             alerts: alerts,
             settings: settings,
+            historyRecorder: historyRecorder,
             zoneStateSink: zoneStateSink,
             onSessionStart: onSessionStart,
             onSessionStop: onSessionStop
@@ -225,6 +240,13 @@ final class AppContainer {
         // End any Live Activity left orphaned by a prior, killed process so a
         // stale chip doesn't linger after the user taps it back into the app.
         await onLaunchReconcile()
+
+        // Arm the History retention observer. It runs once now (the launch
+        // prune + seeds the recorder's gate) and re-arms itself on every
+        // retention change — one hook covering both, mirroring Android's
+        // single prune-on-emission observer.
+        observeHistoryRetention()
+
         await zoneStore.loadFromDisk()
         let cached = await zoneStore.snapshot()
         if cached.isEmpty {
@@ -253,6 +275,31 @@ final class AppContainer {
         if FeatureFlags.isMapSyncEnabled {
             Task { _ = await runMapSync() }
         }
+    }
+
+    /// Apply the History retention setting and re-arm the observer. Reading the
+    /// current value seeds the recorder's `recordingEnabled` gate and prunes
+    /// the store (`none` purges everything); `withObservationTracking` then
+    /// fires `onChange` the next time the Picker / QA flips the setting, which
+    /// re-invokes this on the main actor. One hook covers both the launch prune
+    /// and every subsequent change — mirrors Android's prune-on-emission.
+    private func observeHistoryRetention() {
+        let retention = HistoryRetention.fromSetting(settings.historyRetention)
+        historyRecorder.recordingEnabled = retention.isRecording
+        historyStore.applyRetention(retention, nowMs: Self.nowMs())
+        withObservationTracking {
+            _ = settings.historyRetention
+        } onChange: {
+            // `onChange` fires during willSet (before the new value commits),
+            // so defer to the next main-actor turn to read the applied value.
+            // Capture `self` weakly on the Task itself (not the outer closure) so
+            // Swift 6 doesn't flag a captured-var reference in concurrent code.
+            Task { @MainActor [weak self] in self?.observeHistoryRetention() }
+        }
+    }
+
+    private static func nowMs() -> Int64 {
+        Int64(Date().timeIntervalSince1970 * 1000)
     }
 
     /// Whether the periodic background zone sync should run. The Settings

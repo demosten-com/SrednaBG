@@ -142,6 +142,22 @@ class SettingsRepositoryTest {
     }
 
     @Test
+    fun `default historyRetention is 3months`() = runTest {
+        repository.historyRetention.test {
+            assertEquals(SettingsRepository.DEFAULT_HISTORY_RETENTION, awaitItem())
+        }
+    }
+
+    @Test
+    fun `setHistoryRetention persists and emits new value`() = runTest {
+        repository.historyRetention.test {
+            assertEquals("3months", awaitItem())
+            repository.setHistoryRetention("none")
+            assertEquals("none", awaitItem())
+        }
+    }
+
+    @Test
     fun `default zoneSyncEnabled is true`() = runTest {
         repository.zoneSyncEnabled.test {
             assertEquals(SettingsRepository.DEFAULT_ZONE_SYNC_ENABLED, awaitItem())

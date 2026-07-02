@@ -21,6 +21,7 @@
                 <action android:name="com.demosten.srednabg.debug.START_TRACKING" />
                 <action android:name="com.demosten.srednabg.debug.STOP_TRACKING" />
                 <action android:name="com.demosten.srednabg.debug.FEED_POINT" />
+                <action android:name="com.demosten.srednabg.debug.DUMP_HISTORY" />
             </intent-filter>
         </receiver>
     </application>

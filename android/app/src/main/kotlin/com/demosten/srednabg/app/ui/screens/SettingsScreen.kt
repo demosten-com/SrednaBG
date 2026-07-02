@@ -50,9 +50,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -64,7 +68,7 @@ import com.demosten.srednabg.app.ui.util.shortZoneHash
 import com.demosten.srednabg.app.ui.viewmodel.SettingsViewModel
 import com.demosten.srednabg.core.MapThemeMode
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val voiceEnabled by viewModel.voiceEnabled.collectAsStateWithLifecycle()
@@ -73,6 +77,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val appLanguage by viewModel.appLanguage.collectAsStateWithLifecycle()
     val vehicleType by viewModel.vehicleType.collectAsStateWithLifecycle()
     val autoStopHours by viewModel.autoStopHours.collectAsStateWithLifecycle()
+    val historyRetention by viewModel.historyRetention.collectAsStateWithLifecycle()
     val mapThemeMode by viewModel.mapThemeMode.collectAsStateWithLifecycle()
     val zoneSyncEnabled by viewModel.zoneSyncEnabled.collectAsStateWithLifecycle()
     val overlayEnabled by viewModel.overlayEnabled.collectAsStateWithLifecycle()
@@ -329,6 +334,61 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                         onClick = {
                             viewModel.setAutoStopHours(hours)
                             autoStopExpanded = false
+                        },
+                    )
+                }
+            }
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+        // History retention — None / 1 / 3 / 6 months
+        Text(
+            text = stringResource(R.string.setting_history_retention),
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Text(
+            text = stringResource(R.string.setting_history_retention_desc),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        var retentionExpanded by rememberSaveable { mutableStateOf(false) }
+        val retentionOptions = listOf(
+            "none" to stringResource(R.string.history_retention_none),
+            "1month" to stringResource(R.string.history_retention_1month),
+            "3months" to stringResource(R.string.history_retention_3months),
+            "6months" to stringResource(R.string.history_retention_6months),
+        )
+        val currentRetentionLabel =
+            retentionOptions.firstOrNull { it.first == historyRetention }?.second ?: historyRetention
+
+        ExposedDropdownMenuBox(
+            expanded = retentionExpanded,
+            onExpandedChange = { retentionExpanded = it },
+        ) {
+            OutlinedTextField(
+                value = currentRetentionLabel,
+                onValueChange = {},
+                readOnly = true,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = retentionExpanded) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { testTagsAsResourceId = true }
+                    .testTag("settings-history-retention")
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+            )
+            ExposedDropdownMenu(
+                expanded = retentionExpanded,
+                onDismissRequest = { retentionExpanded = false },
+            ) {
+                retentionOptions.forEach { (code, label) ->
+                    DropdownMenuItem(
+                        text = { Text(label) },
+                        onClick = {
+                            viewModel.setHistoryRetention(code)
+                            retentionExpanded = false
                         },
                     )
                 }

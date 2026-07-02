@@ -89,6 +89,14 @@ public final class SettingsStore {
         didSet { defaults.set(zoneSyncEnabled, forKey: SettingsKey.zoneSyncEnabled) }
     }
 
+    /// How long completed zone traversals are kept in History, as the raw
+    /// string token (`none | 1month | 3months | 6months`). Map to
+    /// `HistoryRetention` via `HistoryRetention.fromSetting(_:)` for gating /
+    /// pruning. Stored as a string (not an Int) to match Android.
+    public var historyRetention: String {
+        didSet { defaults.set(historyRetention, forKey: SettingsKey.historyRetention) }
+    }
+
     public var debugAutoStopSeconds: Int? {
         didSet {
             if let value = debugAutoStopSeconds, value > 0 {
@@ -131,6 +139,8 @@ public final class SettingsStore {
             ?? SettingsDefaults.autoStopHours
         self.zoneSyncEnabled = (defaults.object(forKey: SettingsKey.zoneSyncEnabled) as? Bool)
             ?? SettingsDefaults.zoneSyncEnabled
+        self.historyRetention = defaults.string(forKey: SettingsKey.historyRetention)
+            ?? SettingsDefaults.historyRetention
         self.debugAutoStopSeconds = defaults.object(forKey: SettingsKey.debugAutoStopSeconds) as? Int
     }
 }

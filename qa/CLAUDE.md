@@ -20,7 +20,7 @@ End-to-end QA harness (Python, stdlib + PyYAML). Drives the running Android emul
 - `qa/settings.py` — flips settings via the active device (broadcast on Android, HTTP POST to the debug listener on iOS).
 - `qa/sync.py` — triggers sync via the active device and inspects on-disk map bundle integrity.
 - `qa/ui.py`, `qa/report.py` — UI walk + report generation.
-- Scenarios under `qa/scenarios/{bulk,representative,edge,sync,ui}/`.
+- Scenarios under `qa/scenarios/{bulk,representative,edge,sync,history,ui}/`. The `history` package drives a zone then reads the History DB via the active device's `dump_history()` — a `DUMP_HISTORY` broadcast on Android, a `/history?action=dump` HTTP call on iOS — both emitting the identical `DUMP_HISTORY …` line on tag `DebugSettings` (parsed into a `HistoryDump` event). It's **cross-platform** (no `--platform` gate), registered in `HISTORY_SCENARIOS`. Separately, for *manual* browsing / store screenshots (not a suite step), both platforms expose a curated seed that wipes + refills the DB with varied sample traversals: Android's `SEED_HISTORY` broadcast (`--es count N`, see `android/CLAUDE.md`) and iOS's `/history?action=seed[&count=N]` (see `ios/CLAUDE.md`) — twin `HistorySeeder`s producing the same scenario set.
 - Fixtures in `qa/fixtures/` (GPX). Harness unit tests in `qa/tests/` (parsers / geo / drive / speech-number + TTS phrase parity), run headlessly via `python -m unittest discover qa/tests`.
 - `qa/logcat.py` — compatibility shim, re-exports `LogObserver as LogcatObserver` and the regexes. New code should import from `qa.log_observer` + `qa.parsers`.
 
@@ -34,6 +34,7 @@ Android depends on `android/`'s debug-only `DebugSyncReceiver` and `DebugControl
 python qa/srednabg_qa.py --suite smoke           # ~5 min — 1 zone + 1 sync + parser self-test
 python qa/srednabg_qa.py --suite representative  # ~30 min — 6 hand-picked zones × 4 settings combos + sync set
 python qa/srednabg_qa.py --suite scenarios       # ~20 min — edge cases (stop, dropout, off-ramp, U-turn, swap, auto-stop, dense-centerline, stop-silences-TTS, noisy-fix-rejected, …)
+python qa/srednabg_qa.py --suite history         # ~7 min — History: records a traversal, retention=none records nothing, retention key round-trips (cross-platform)
 python qa/srednabg_qa.py --suite sync            # ~5 min — zones happy + offline; map happy + integrity
 python qa/srednabg_qa.py --suite ui              # <1 min — phone UI walk
 python qa/srednabg_qa.py --suite full-zones      # ~75 min @4× — all 72 zones, minimal asserts

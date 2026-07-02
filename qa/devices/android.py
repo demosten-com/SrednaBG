@@ -116,6 +116,9 @@ class AndroidDevice(Device):
     def force_sync_map(self) -> None:
         adb.broadcast(ACTION_SYNC_MAP, DEBUG_SYNC_RECEIVER)
 
+    def dump_history(self) -> None:
+        adb.dump_history()
+
     # ── network gating ──────────────────────────────────────────────────────
     def _device_online(self) -> bool:
         """True iff the *device* can reach the network.

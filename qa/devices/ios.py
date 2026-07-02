@@ -245,8 +245,8 @@ class IosDevice(Device):
         `DebugActionRouter.swift`'s `/tab` case which posts the
         `DebugTabName.selectionNotification` observed by `RootView`.
         """
-        if name not in ("home", "map", "settings"):
-            raise ValueError(f"unknown tab {name!r}; want home|map|settings")
+        if name not in ("home", "map", "history", "settings"):
+            raise ValueError(f"unknown tab {name!r}; want home|map|history|settings")
         self._debug_get("/tab", {"which": name})
 
     def start_tracking(self) -> None:
@@ -260,6 +260,13 @@ class IosDevice(Device):
 
     def force_sync_map(self) -> None:
         self._debug_get("/sync", {"action": "map"})
+
+    def dump_history(self) -> None:
+        # The DebugActionRouter emits the `DUMP_HISTORY …` line on the
+        # `DebugSettings` category; `am broadcast`'s blocking-until-logged
+        # behavior on Android is matched here by the synchronous HTTP round
+        # trip returning only after the handler has emitted.
+        self._debug_get("/history", {"action": "dump"}, retries=2)
 
     # ── network gating ──────────────────────────────────────────────────────
     def go_offline(self) -> None:

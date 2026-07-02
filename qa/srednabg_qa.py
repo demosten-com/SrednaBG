@@ -84,6 +84,11 @@ EDGE_SCENARIOS = [
 #     anti-vacuous guard (`assert_signal_observed`) flags the missing diagnostic
 #     stream on iOS instead of passing vacuously.
 _ANDROID_ONLY_EDGE = {"noisy_fix_rejected", "cold_start_spike"}
+HISTORY_SCENARIOS = [
+    "retention_roundtrip",
+    "records_traversal",
+    "retention_none",
+]
 SYNC_SCENARIOS = [
     "zones_happy",
     # Keep network-dependent scenarios before `zones_offline` — it toggles
@@ -209,6 +214,14 @@ def _sync_suite() -> list[Scenario]:
     return _load_module_scenarios("sync", SYNC_SCENARIOS)
 
 
+def _history_suite() -> list[Scenario]:
+    """History-feature scenarios. Cross-platform — they read the history DB via
+    the active device's `dump_history()` (Android `DUMP_HISTORY` broadcast, iOS
+    `/history?action=dump`), both emitting the same `DUMP_HISTORY …` line parsed
+    into a `HistoryDump` event."""
+    return _load_module_scenarios("history", HISTORY_SCENARIOS)
+
+
 def _ui_suite() -> list[Scenario]:
     """UI smoke is a degenerate scenario list — wraps the smoke_walk.
 
@@ -231,6 +244,7 @@ SUITE_BUILDERS = {
     "full-zones": _full_zones_suite,
     "scenarios": _edge_suite,
     "sync": _sync_suite,
+    "history": _history_suite,
     "ui": _ui_suite,
 }
 
@@ -240,6 +254,7 @@ def _nightly() -> list[Scenario]:
     out.extend(_representative_suite())
     out.extend(_full_zones_suite())
     out.extend(_edge_suite())
+    out.extend(_history_suite())
     out.extend(_ui_suite())
     return out
 

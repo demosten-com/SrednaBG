@@ -16,9 +16,10 @@ public enum DebugTabName {
 
     public static let home = "home"
     public static let map = "map"
+    public static let history = "history"
     public static let settings = "settings"
 
-    public static let all: [String] = [home, map, settings]
+    public static let all: [String] = [home, map, history, settings]
 
     public static let selectionNotification = Notification.Name(
         "bg.srednabg.debug.selectTab"

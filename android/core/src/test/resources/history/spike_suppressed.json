@@ -1,0 +1,15 @@
+{
+  "description": "A single 200 km/h spike in an otherwise steady 100 km/h series must not move the sustained max. Shared with the iOS SrednaBGCore port — keep values in sync.",
+  "windowMs": 3000,
+  "samples": [
+    { "timestampMs": 0, "speedKmh": 100.0 },
+    { "timestampMs": 1000, "speedKmh": 100.0 },
+    { "timestampMs": 2000, "speedKmh": 100.0 },
+    { "timestampMs": 3000, "speedKmh": 200.0 },
+    { "timestampMs": 4000, "speedKmh": 100.0 },
+    { "timestampMs": 5000, "speedKmh": 100.0 },
+    { "timestampMs": 6000, "speedKmh": 100.0 }
+  ],
+  "expectedSustainedMin": 100.0,
+  "expectedSustainedMax": 133.33333333333334
+}

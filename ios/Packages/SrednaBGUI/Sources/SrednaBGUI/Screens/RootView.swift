@@ -3,6 +3,7 @@
 //
 // SrednaBG — ios / SrednaBGUI
 
+import SwiftData
 import SwiftUI
 import SrednaBGCore
 import SrednaBGData
@@ -20,6 +21,7 @@ public struct RootView: View {
 
     public let tracking: ZoneTrackingService
     public let settings: SettingsStore
+    public let historyStore: HistoryStore
     public let onSyncTap: () async -> SyncResult
     public let onZoneSyncToggle: (Bool) -> Void
     public let mapStyleURLProvider: (MapTheme) async -> URL?
@@ -38,12 +40,14 @@ public struct RootView: View {
     public init(
         tracking: ZoneTrackingService,
         settings: SettingsStore,
+        historyStore: HistoryStore,
         onSyncTap: @escaping () async -> SyncResult,
         onZoneSyncToggle: @escaping (Bool) -> Void = { _ in },
         mapStyleURLProvider: @escaping (MapTheme) async -> URL?
     ) {
         self.tracking = tracking
         self.settings = settings
+        self.historyStore = historyStore
         self.onSyncTap = onSyncTap
         self.onZoneSyncToggle = onZoneSyncToggle
         self.mapStyleURLProvider = mapStyleURLProvider
@@ -57,6 +61,7 @@ public struct RootView: View {
         RootTabs(
             tracking: tracking,
             settings: settings,
+            historyStore: historyStore,
             onSyncTap: onSyncTap,
             onZoneSyncToggle: onZoneSyncToggle,
             mapStyleURLProvider: mapStyleURLProvider,
@@ -74,6 +79,7 @@ private struct RootTabs: View {
 
     let tracking: ZoneTrackingService
     let settings: SettingsStore
+    let historyStore: HistoryStore
     let onSyncTap: () async -> SyncResult
     let onZoneSyncToggle: (Bool) -> Void
     let mapStyleURLProvider: (MapTheme) async -> URL?
@@ -83,6 +89,7 @@ private struct RootTabs: View {
     init(
         tracking: ZoneTrackingService,
         settings: SettingsStore,
+        historyStore: HistoryStore,
         onSyncTap: @escaping () async -> SyncResult,
         onZoneSyncToggle: @escaping (Bool) -> Void,
         mapStyleURLProvider: @escaping (MapTheme) async -> URL?,
@@ -91,6 +98,7 @@ private struct RootTabs: View {
     ) {
         self.tracking = tracking
         self.settings = settings
+        self.historyStore = historyStore
         self.onSyncTap = onSyncTap
         self.onZoneSyncToggle = onZoneSyncToggle
         self.mapStyleURLProvider = mapStyleURLProvider
@@ -134,6 +142,16 @@ private struct RootTabs: View {
             .tabItem { Label(L10n.navMap, systemImage: "map") }
             .tag(DebugTabName.map)
             .accessibilityIdentifier("tab-map")
+
+            NavigationStack {
+                HistoryScreen(settings: settings)
+            }
+            // Attach the History store's SwiftData container so `@Query` in
+            // HistoryScreen reads the same context the recorder writes to.
+            .modelContainer(historyStore.container)
+            .tabItem { Label(L10n.navHistory, systemImage: "clock.arrow.circlepath") }
+            .tag(DebugTabName.history)
+            .accessibilityIdentifier("tab-history")
 
             NavigationStack {
                 SettingsScreen(settings: settings, onSyncTap: onSyncTap, onZoneSyncToggle: onZoneSyncToggle)

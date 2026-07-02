@@ -5,6 +5,7 @@
 
 #if DEBUG
 import Foundation
+import os
 import SrednaBGCore
 import SrednaBGData
 import SrednaBGTracking
@@ -43,6 +44,7 @@ extension AppContainer {
     private func debugHandlers() -> DebugActionRouter.Handlers {
         let settings = self.settings
         let tracking = self.tracking
+        let historyStore = self.historyStore
         return DebugActionRouter.Handlers(
             applySetting: { key, value in applyDebugSetting(settings, key: key, value: value) },
             runZoneSync: { [weak self] in
@@ -73,9 +75,39 @@ extension AppContainer {
                     await tracking.debugFeed(lat: lat, lng: lng, speedMps: speed,
                                              bearing: bearing, timestampMs: timeMs)
                 }
-            }
+            },
+            dumpHistory: { emitHistoryDump(historyStore) },
+            seedHistory: { count in
+                HistorySeeder.seed(
+                    into: historyStore,
+                    zones: tracking.zones,
+                    count: count,
+                    nowMs: Int64(Date().timeIntervalSince1970 * 1000)
+                )
+            },
+            clearHistory: { historyStore.deleteAll() }
         )
     }
+}
+
+/// Emit the QA `DUMP_HISTORY …` line (tag `DebugSettings`) that
+/// `qa/parsers.py` `HISTORY_DUMP_RE` matches. Field names/order are
+/// byte-for-byte the Android `DebugControlReceiver.handleDumpHistory` shape:
+/// `avg` is `null` when the traversal was too short to average.
+@MainActor
+private func emitHistoryDump(_ store: HistoryStore) {
+    let count = store.count()
+    let msg: String
+    if let latest = store.fetchLatest() {
+        let avg = latest.avgSpeedKmh.map { String($0) } ?? "null"
+        msg = "DUMP_HISTORY count=\(count) zone=\(latest.zoneId) avg=\(avg) "
+            + "min=\(latest.sustainedMinKmh) max=\(latest.sustainedMaxKmh) "
+            + "over=\(latest.isOverLimit) limit=\(latest.speedLimitKmh) "
+            + "vehicle=\(latest.vehicleType) entry=\(latest.entryTimeMs) exit=\(latest.exitTimeMs)"
+    } else {
+        msg = "DUMP_HISTORY count=\(count) latest=none"
+    }
+    QALog.settings.info("\(msg, privacy: .public)")
 }
 
 /// Free-function form of the settings dispatch so the closure inside
@@ -125,6 +157,11 @@ private func applyDebugSetting(_ settings: SettingsStore, key: String, value: St
         settings.autoStopHours = n
     case "zone_sync_enabled":
         settings.zoneSyncEnabled = asBool
+    case "history_retention":
+        // Stored as the raw string token (none|1month|3months|6months); an
+        // unknown token maps to the default via HistoryRetention.fromSetting.
+        // Matches Android's DebugControlReceiver (stores raw, no validation).
+        settings.historyRetention = value
     case "cached_zone_hash":
         // QA poisons this to force the next manual sync into a full re-fetch
         // (mismatch → fetchZones) — mirrors Android's DebugControlReceiver.

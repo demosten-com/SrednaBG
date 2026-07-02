@@ -143,6 +143,25 @@ class AutoStopped(Event):
 
 
 @dataclass(frozen=True)
+class HistoryDump(Event):
+    """DebugControlReceiver `DUMP_HISTORY` — QA introspection of the History DB.
+
+    `count` is the total stored traversals. When `count > 0` the remaining
+    fields summarize the most-recently-exited record (`avg_kmh` is None when
+    the traversal was too short to compute an average). All None when empty.
+    Emitted on tag `DebugSettings`.
+    """
+    count: int
+    zone: Optional[str] = None
+    avg_kmh: Optional[float] = None
+    sustained_min_kmh: Optional[float] = None
+    sustained_max_kmh: Optional[float] = None
+    over_limit: Optional[bool] = None
+    limit_kmh: Optional[int] = None
+    vehicle: Optional[str] = None
+
+
+@dataclass(frozen=True)
 class Crash(Event):
     """Anything from logcat -b crash, or an uncaught FATAL EXCEPTION."""
     process: str

@@ -27,6 +27,14 @@ public final class DebugActionRouter {
         /// (lat, lng, speedMps, bearing, timestampMs). `timestampMs` is the
         /// harness's simulated-timeline stamp (epoch ms) — see `/inject`.
         public let feedLocation: @MainActor (Double, Double, Double, Double?, Int64?) -> Void
+        /// Emit the QA `DUMP_HISTORY …` line (on tag `DebugSettings`) that the
+        /// shared `qa/parsers.py` `HISTORY_DUMP_RE` matches — see `/history`.
+        public let dumpHistory: @MainActor () -> Void
+        /// Wipe the History store and refill it with `count` varied demo
+        /// traversals; returns the number inserted — see `/history?action=seed`.
+        public let seedHistory: @MainActor (Int) -> Int
+        /// Wipe the History store — see `/history?action=clear`.
+        public let clearHistory: @MainActor () -> Void
 
         public init(
             applySetting: @escaping @MainActor (String, String) -> Bool,
@@ -34,7 +42,10 @@ public final class DebugActionRouter {
             runMapSync: @escaping @MainActor () async -> DebugSyncOutcome,
             startTracking: @escaping @MainActor () async -> Void,
             stopTracking: @escaping @MainActor () async -> Void,
-            feedLocation: @escaping @MainActor (Double, Double, Double, Double?, Int64?) -> Void = { _, _, _, _, _ in }
+            feedLocation: @escaping @MainActor (Double, Double, Double, Double?, Int64?) -> Void = { _, _, _, _, _ in },
+            dumpHistory: @escaping @MainActor () -> Void = {},
+            seedHistory: @escaping @MainActor (Int) -> Int = { _ in 0 },
+            clearHistory: @escaping @MainActor () -> Void = {}
         ) {
             self.applySetting = applySetting
             self.runZoneSync = runZoneSync
@@ -42,6 +53,9 @@ public final class DebugActionRouter {
             self.startTracking = startTracking
             self.stopTracking = stopTracking
             self.feedLocation = feedLocation
+            self.dumpHistory = dumpHistory
+            self.seedHistory = seedHistory
+            self.clearHistory = clearHistory
         }
     }
 
@@ -144,6 +158,9 @@ public final class DebugActionRouter {
             handlers.feedLocation(lat, lng, speed, bearing, timeMs)
             return Result(status: 200, body: "ok")
 
+        case "/history":
+            return history(params)
+
         case "/tab":
             // Switch the RootView's TabView selection. Lets the screenshot
             // harness drive tab navigation over HTTP instead of needing a
@@ -162,6 +179,31 @@ public final class DebugActionRouter {
 
         default:
             return Result(status: 404, body: "no such endpoint: \(path)")
+        }
+    }
+
+    /// History DB actions:
+    ///   - `dump` — QA introspection: emit the `DUMP_HISTORY …` line (tag
+    ///     `DebugSettings`) the shared parser matches (read + format + emit live
+    ///     in the handler, which holds the store).
+    ///   - `seed` — wipe and refill with `count` (default 12) varied demo
+    ///     traversals so a developer can browse History scenarios without driving
+    ///     every zone (the iOS peer of Android's QA-driven History fill).
+    ///   - `clear` — wipe the store.
+    private func history(_ params: [String: String]) -> Result {
+        switch params["action"] {
+        case "dump":
+            handlers.dumpHistory()
+            return Result(status: 200, body: "ok")
+        case "seed":
+            let count = params["count"].flatMap(Int.init) ?? 12
+            let inserted = handlers.seedHistory(count)
+            return Result(status: 200, body: "seeded \(inserted)")
+        case "clear":
+            handlers.clearHistory()
+            return Result(status: 200, body: "cleared")
+        default:
+            return Result(status: 400, body: "history requires action in {dump,seed,clear}")
         }
     }
 }

@@ -15,13 +15,20 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.demosten.srednabg.app.data.HistoryRepository
+import com.demosten.srednabg.app.data.HistoryRetention
 import com.demosten.srednabg.app.data.MapSyncWorker
 import com.demosten.srednabg.app.data.SettingsRepository
 import com.demosten.srednabg.app.data.ZoneSyncScheduler
 import dagger.hilt.android.HiltAndroidApp
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 @HiltAndroidApp
@@ -30,6 +37,9 @@ class SrednaBGApp : Application(), Configuration.Provider {
     @Inject lateinit var workerFactory: HiltWorkerFactory
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var zoneSyncScheduler: ZoneSyncScheduler
+    @Inject lateinit var historyRepository: HistoryRepository
+
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
@@ -40,8 +50,20 @@ class SrednaBGApp : Application(), Configuration.Provider {
         super.onCreate()
         applyPersistedLocale()
         applyZoneSync()
+        applyHistoryRetention()
         if (FeatureFlags.IS_MAP_SYNC_ENABLED) {
             scheduleMapSync()
+        }
+    }
+
+    private fun applyHistoryRetention() {
+        // Prune once on launch, then on every retention-setting change (which
+        // includes switching to "none" — that purges everything). The Flow emits
+        // the current value immediately, so this covers the launch prune too.
+        appScope.launch {
+            settingsRepository.historyRetention.distinctUntilChanged().collect { value ->
+                historyRepository.prune(HistoryRetention.fromSetting(value))
+            }
         }
     }
 

@@ -25,6 +25,7 @@ DEBUG_CONTROL_RECEIVER = f"{PACKAGE}/{PACKAGE}.app.debug.DebugControlReceiver"
 ACTION_SYNC_MAP = "com.demosten.srednabg.debug.SYNC_MAP"
 ACTION_SYNC_ZONES = "com.demosten.srednabg.debug.SYNC_ZONES"
 ACTION_SET_SETTING = "com.demosten.srednabg.debug.SET_SETTING"
+ACTION_DUMP_HISTORY = "com.demosten.srednabg.debug.DUMP_HISTORY"
 
 
 def _adb() -> str:
@@ -167,6 +168,16 @@ def broadcast(action: str, receiver: str, extras: Optional[dict[str, str]] = Non
     if extras:
         extra_args = " " + " ".join(f'--es {k} "{v}"' for k, v in extras.items())
     return shell(f"am broadcast -n {receiver} -a {action}{extra_args}", timeout=timeout)
+
+
+def dump_history() -> str:
+    """Ask DebugControlReceiver to log the history count + latest-record summary.
+
+    Android-only (talks straight to DebugControlReceiver, like the manual
+    zone-feeding tools). The `DUMP_HISTORY …` line lands on tag DebugSettings,
+    parsed into a `HistoryDump` event.
+    """
+    return broadcast(ACTION_DUMP_HISTORY, DEBUG_CONTROL_RECEIVER)
 
 
 def geo_fix(lng: float, lat: float) -> None:

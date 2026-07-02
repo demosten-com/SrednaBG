@@ -10,10 +10,14 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
+import com.demosten.srednabg.app.ui.screens.HistoryDetailScreen
 import com.demosten.srednabg.app.ui.screens.HomeScreen
 import com.demosten.srednabg.app.ui.screens.SettingsScreen
+import com.demosten.srednabg.app.ui.screens.TripHistoryScreen
 import com.demosten.srednabg.app.ui.screens.ZoneMapScreen
 
 @Composable
@@ -30,7 +34,19 @@ fun SrednaBGNavHost(navController: NavHostController, modifier: Modifier = Modif
         composable(NavRoute.Home.route) { HomeScreen() }
         composable(NavRoute.Map.route) { ZoneMapScreen() }
         composable(NavRoute.Settings.route) { SettingsScreen() }
-        // TODO: Re-add when TripHistoryScreen is implemented
-        // composable(NavRoute.History.route) { TripHistoryScreen() }
+        composable(NavRoute.History.route) {
+            TripHistoryScreen(
+                onItemClick = { id -> navController.navigate("history/$id") },
+            )
+        }
+        composable(
+            route = "history/{id}",
+            arguments = listOf(navArgument("id") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            HistoryDetailScreen(
+                id = backStackEntry.arguments?.getString("id").orEmpty(),
+                onBack = { navController.popBackStack() },
+            )
+        }
     }
 }

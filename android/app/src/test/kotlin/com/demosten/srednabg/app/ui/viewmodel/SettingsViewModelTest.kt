@@ -45,6 +45,7 @@ class SettingsViewModelTest {
         every { settingsRepository.announceOnlyWhenOver } returns flowOf(true)
         every { settingsRepository.appLanguage } returns flowOf("system")
         every { settingsRepository.vehicleType } returns flowOf("car")
+        every { settingsRepository.historyRetention } returns flowOf("3months")
 
         viewModel = SettingsViewModel(settingsRepository, zoneRepository, zoneSyncScheduler)
     }
@@ -67,6 +68,17 @@ class SettingsViewModelTest {
     fun `setVoiceEnabled delegates to repository`() = runTest {
         viewModel.setVoiceEnabled(false)
         coVerify { settingsRepository.setVoiceEnabled(false) }
+    }
+
+    @Test
+    fun `historyRetention reflects repository default`() {
+        assertEquals("3months", viewModel.historyRetention.value)
+    }
+
+    @Test
+    fun `setHistoryRetention delegates to repository`() = runTest {
+        viewModel.setHistoryRetention("none")
+        coVerify { settingsRepository.setHistoryRetention("none") }
     }
 
     @Test

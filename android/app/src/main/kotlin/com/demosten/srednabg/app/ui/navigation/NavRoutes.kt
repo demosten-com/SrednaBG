@@ -62,7 +62,7 @@ sealed class NavRoute(
     }
 
     companion object {
-        // TODO: Re-add History when TripHistoryScreen is implemented
-        val all = listOf(Home, Map, Settings)
+        // History sits between Map and Settings in the bottom bar.
+        val all = listOf(Home, Map, History, Settings)
     }
 }

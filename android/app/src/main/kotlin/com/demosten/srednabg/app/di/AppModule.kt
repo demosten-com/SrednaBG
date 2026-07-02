@@ -13,6 +13,7 @@ import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.room.Room
 import com.demosten.srednabg.app.data.local.ZoneDao
 import com.demosten.srednabg.app.data.local.ZoneDatabase
+import com.demosten.srednabg.app.data.local.ZoneTraversalDao
 import com.demosten.srednabg.app.data.remote.MapApi
 import com.demosten.srednabg.app.data.remote.ZoneApi
 import com.google.gson.FieldNamingPolicy
@@ -48,14 +49,21 @@ object AppModule {
     @Singleton
     fun provideZoneDatabase(@ApplicationContext context: Context): ZoneDatabase =
         Room.databaseBuilder(context, ZoneDatabase::class.java, "srednabg.db")
-            // Zones are fully re-syncable (bundled asset + server sync), so a future
-            // schema bump can safely drop and rebuild the table instead of crashing
-            // on launch with "a migration from N to M must be provided".
+            // v1 → v2 adds the History `zone_traversals` table additively so the
+            // re-syncable zone cache survives the upgrade (see MIGRATION_1_2).
+            .addMigrations(ZoneDatabase.MIGRATION_1_2)
+            // Backstop for any unforeseen path: zones are fully re-syncable
+            // (bundled asset + server sync), so a schema bump with no migration
+            // can safely drop and rebuild rather than crash on launch. History is
+            // best-effort local data, acceptable to lose in that edge case.
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
 
     @Provides
     fun provideZoneDao(db: ZoneDatabase): ZoneDao = db.zoneDao()
+
+    @Provides
+    fun provideZoneTraversalDao(db: ZoneDatabase): ZoneTraversalDao = db.zoneTraversalDao()
 
     @Provides
     @Singleton

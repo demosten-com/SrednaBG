@@ -34,6 +34,7 @@ public struct SettingsScreen: View {
             languageSection
             vehicleSection
             autoStopSection
+            historySection
             mapSection
             syncSection
             aboutSection
@@ -104,6 +105,21 @@ public struct SettingsScreen: View {
             }
             .accessibilityIdentifier("settings-auto-stop-hours")
             Text(L10n.settingAutoStopDesc)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var historySection: some View {
+        Section {
+            Picker(L10n.settingHistoryRetention, selection: $settings.historyRetention) {
+                Text(L10n.historyRetentionNone).tag("none")
+                Text(L10n.historyRetention1Month).tag("1month")
+                Text(L10n.historyRetention3Months).tag("3months")
+                Text(L10n.historyRetention6Months).tag("6months")
+            }
+            .accessibilityIdentifier("settings-history-retention")
+            Text(L10n.settingHistoryRetentionDesc)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }

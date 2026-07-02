@@ -20,7 +20,7 @@ Pure Kotlin library (no Android deps) with zone detection, average speed calcula
 
 ## Key files
 
-`Models.kt`, `ZoneDetector.kt`, `AverageSpeedCalc.kt`, `GeoUtils.kt`, `RoadMatcher.kt`, `GpsFilter.kt`, `VehicleType.kt`, `MapThemeResolver.kt`, `ZoneStatusColor.kt`
+`Models.kt`, `ZoneDetector.kt`, `AverageSpeedCalc.kt`, `GeoUtils.kt`, `RoadMatcher.kt`, `GpsFilter.kt`, `VehicleType.kt`, `MapThemeResolver.kt`, `ZoneStatusColor.kt`, `HistoryStats.kt`
 
 ## Algorithm edge cases
 
@@ -38,6 +38,10 @@ Pure Kotlin library (no Android deps) with zone detection, average speed calcula
 ## Vehicle-type-aware speed limit
 
 `ZoneDetector.update(point, vehicleType)` takes a `VehicleType` (`CAR`/`TRUCK`/`BUS`/`MOTORCYCLE`, default `CAR`) and passes `vehicleType.limit(zone.speedLimits)` into every `AverageSpeedCalc.calculate(...)`, so a user who sets `vehicle_type` to truck/bus/motorcycle gets that limit (motorcycle falls back to the car limit when a zone has none). `LocationTrackingService` mirrors `SettingsRepository.vehicleType` into `currentVehicleType` via a `lifecycleScope` collector and threads it into the detector call. Regression: `ZoneDetectorTest."vehicle type changes effective limit"`. This was ported from the Swift core; the iOS `ZoneDetector.update(_:vehicleType:)` is the equivalent.
+
+## History statistics (`HistoryStats.kt`)
+
+Pure stats over a captured `SpeedSample(timestampMs, speedKmh)` series, feeding the app's **History** feature (app layer `HistoryRecorder` captures the series; core stays pure). `sustainedExtremes(samples, windowMs = 3000)` smooths with a centered moving-average window (O(n) two-pointer) and returns the min/max of the *smoothed* series, so a single GPS spike/drop can't become the reported top/low ("sustained for a few seconds, not a flake"). `downsample(samples, maxPoints = 500)` passes through when it fits, else bucket-averages into ≤500 points (a long zone at 1 Hz exceeds 500). `runningAverage(samples)` returns the cumulative time-average at each sample — the evolving series both platforms' `SpeedGraph` fills as a band (converges toward the final trip average, not a flat line). Tests: `HistoryStatsTest`, with a shared golden fixture at `src/test/resources/history/spike_suppressed.json` mirrored for the iOS Swift port.
 
 ## iOS engine parity
 

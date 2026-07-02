@@ -1,6 +1,7 @@
 /* Navigation */
 "navHome" = "Home";
 "navMap" = "Map";
+"navHistory" = "History";
 "navSettings" = "Settings";
 
 /* HomeScreen */
@@ -86,3 +87,32 @@
 "mapLoadFailed" = "Map couldn't load";
 "mapLoadFailedHint" = "Check your connection and try again.";
 "mapRetry" = "Retry";
+
+/* History */
+"settingHistoryRetention" = "History retention";
+"settingHistoryRetentionDesc" = "How long to keep completed zones in History";
+"historyRetentionNone" = "Off";
+"historyRetention1Month" = "1 month";
+"historyRetention3Months" = "3 months";
+"historyRetention6Months" = "6 months";
+"historyEmptyTitle" = "No records yet";
+"historyEmptyBody" = "Completed average-speed zones will appear here.";
+"historyDisabledTitle" = "History is off";
+"historyDisabledBody" = "Turn on history retention in Settings to record completed zones.";
+"historyEntered" = "Entered";
+"historyExited" = "Exited";
+"historyDuration" = "Duration";
+"historyYourAverage" = "Your average";
+"historyTopSpeed" = "Top speed";
+"historyLowestSpeed" = "Lowest speed";
+"historyKmhValue" = "%@ km/h";
+"historyGraphTitle" = "Speed over time";
+"historyLegendSpeed" = "Speed";
+"historyLegendAverage" = "Average";
+"historyLegendLimit" = "Limit";
+"historyDirection" = "Direction";
+"historyDirectionEast" = "East";
+"historyDirectionWest" = "West";
+"historyDirectionNorth" = "North";
+"historyDirectionSouth" = "South";
+"actionBack" = "Back";

@@ -26,6 +26,7 @@ public enum L10n {
     // MARK: Navigation
     public static var navHome: String { loc("navHome") }
     public static var navMap: String { loc("navMap") }
+    public static var navHistory: String { loc("navHistory") }
     public static var navSettings: String { loc("navSettings") }
 
     // MARK: HomeScreen
@@ -112,6 +113,45 @@ public enum L10n {
     public static var mapLoadFailedHint: String { loc("mapLoadFailedHint") }
     public static var mapRetry: String { loc("mapRetry") }
 
+    // MARK: History
+    public static var settingHistoryRetention: String { loc("settingHistoryRetention") }
+    public static var settingHistoryRetentionDesc: String { loc("settingHistoryRetentionDesc") }
+    public static var historyRetentionNone: String { loc("historyRetentionNone") }
+    public static var historyRetention1Month: String { loc("historyRetention1Month") }
+    public static var historyRetention3Months: String { loc("historyRetention3Months") }
+    public static var historyRetention6Months: String { loc("historyRetention6Months") }
+    public static var historyEmptyTitle: String { loc("historyEmptyTitle") }
+    public static var historyEmptyBody: String { loc("historyEmptyBody") }
+    public static var historyDisabledTitle: String { loc("historyDisabledTitle") }
+    public static var historyDisabledBody: String { loc("historyDisabledBody") }
+    public static var historyEntered: String { loc("historyEntered") }
+    public static var historyExited: String { loc("historyExited") }
+    public static var historyDuration: String { loc("historyDuration") }
+    public static var historyYourAverage: String { loc("historyYourAverage") }
+    public static var historyTopSpeed: String { loc("historyTopSpeed") }
+    public static var historyLowestSpeed: String { loc("historyLowestSpeed") }
+    public static var historyKmhValue: String { loc("historyKmhValue") }                  // "%@"
+    public static var historyGraphTitle: String { loc("historyGraphTitle") }
+    public static var historyLegendSpeed: String { loc("historyLegendSpeed") }
+    public static var historyLegendAverage: String { loc("historyLegendAverage") }
+    public static var historyLegendLimit: String { loc("historyLegendLimit") }
+    public static var historyDirection: String { loc("historyDirection") }
+
+    /// Localized compass label for a stored zone direction, or `nil` when the
+    /// value isn't one of the known compass points (render nothing). Mirrors
+    /// Android's `directionKey` + `directionLabel`.
+    public static func historyDirectionLabel(_ direction: String) -> String? {
+        switch direction.trimmingCharacters(in: .whitespaces).lowercased() {
+        case "east": return loc("historyDirectionEast")
+        case "west": return loc("historyDirectionWest")
+        case "north": return loc("historyDirectionNorth")
+        case "south": return loc("historyDirectionSouth")
+        default: return nil
+        }
+    }
+
+    public static var actionBack: String { loc("actionBack") }
+
     // MARK: AppLanguage → Locale
 
     /// Maps the user's `AppLanguage` setting to the SwiftUI locale override
@@ -147,7 +187,7 @@ public enum L10n {
 }
 
 // Not localized on iOS (Android-only keys from android/app/src/main/res/values/strings.xml):
-// app_name, nav_history, no_zones_loaded, map_user_position, map_recenter,
+// app_name, no_zones_loaded, map_user_position, map_recenter,
 // map_follow_user_on, map_follow_user_off, map_orientation_north_up,
 // map_orientation_heading_up, zone_complete, max_for_remainder_format, retry_sync,
 // trip_history_coming_soon, notification_channel_tracking,

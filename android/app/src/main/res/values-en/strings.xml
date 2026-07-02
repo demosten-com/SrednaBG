@@ -96,8 +96,35 @@
     <string name="battery_opt_body">Some Android phones aggressively kill background apps to save battery. To make sure SrednaBG keeps tracking through the whole drive, ask the system to skip optimizing it.</string>
     <string name="battery_opt_action">Disable optimization</string>
 
-    <!-- Trip history -->
-    <string name="trip_history_coming_soon">Trip history coming soon</string>
+    <!-- History -->
+    <string name="setting_history_retention">History retention</string>
+    <string name="setting_history_retention_desc">How long to keep completed zones in History</string>
+    <string name="history_retention_none">Off</string>
+    <string name="history_retention_1month">1 month</string>
+    <string name="history_retention_3months">3 months</string>
+    <string name="history_retention_6months">6 months</string>
+    <string name="history_empty_title">No records yet</string>
+    <string name="history_empty_body">Completed average-speed zones will appear here.</string>
+    <string name="history_disabled_title">History is off</string>
+    <string name="history_disabled_body">Turn on history retention in Settings to record completed zones.</string>
+    <string name="history_entered">Entered</string>
+    <string name="history_exited">Exited</string>
+    <string name="history_duration">Duration</string>
+    <string name="history_your_average">Your average</string>
+    <string name="history_top_speed">Top speed</string>
+    <string name="history_lowest_speed">Lowest speed</string>
+    <string name="history_kmh_value">%s km/h</string>
+    <string name="history_graph_title">Speed over time</string>
+    <string name="history_legend_speed">Speed</string>
+    <string name="history_legend_average">Average</string>
+    <string name="history_legend_limit">Limit</string>
+    <string name="history_direction">Direction</string>
+    <string name="history_direction_east">East</string>
+    <string name="history_direction_west">West</string>
+    <string name="history_direction_north">North</string>
+    <string name="history_direction_south">South</string>
+    <string name="history_not_found">Record not found</string>
+    <string name="action_back">Back</string>
 
     <!-- Notifications -->
     <string name="notification_channel_tracking">Location tracking</string>

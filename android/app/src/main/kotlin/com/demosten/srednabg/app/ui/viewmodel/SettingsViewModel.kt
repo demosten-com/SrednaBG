@@ -59,6 +59,13 @@ class SettingsViewModel @Inject constructor(
     val autoStopHours: StateFlow<Int> = settingsRepository.autoStopHours
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SettingsRepository.DEFAULT_AUTO_STOP_HOURS)
 
+    val historyRetention: StateFlow<String> = settingsRepository.historyRetention
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            SettingsRepository.DEFAULT_HISTORY_RETENTION,
+        )
+
     val zoneSyncEnabled: StateFlow<Boolean> = settingsRepository.zoneSyncEnabled
         .stateIn(
             viewModelScope,
@@ -111,6 +118,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setAutoStopHours(value: Int) {
         viewModelScope.launch { settingsRepository.setAutoStopHours(value) }
+    }
+
+    fun setHistoryRetention(value: String) {
+        viewModelScope.launch { settingsRepository.setHistoryRetention(value) }
     }
 
     fun setZoneSyncEnabled(value: Boolean) {

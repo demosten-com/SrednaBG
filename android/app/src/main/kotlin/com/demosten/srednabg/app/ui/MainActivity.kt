@@ -89,11 +89,12 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                // Lock Home and Settings to portrait — neither was designed
-                // for landscape — while letting the Map tab free-rotate. Driven
-                // from the route here (a single source of truth) rather than
-                // per-screen, so swapping between the two portrait screens
-                // can't race a restore-on-dispose back to free-rotate.
+                // Lock every non-Map screen (Home, History + its detail,
+                // Settings) to portrait — none was designed for landscape —
+                // while letting the Map tab free-rotate. Driven from the route
+                // here (a single source of truth) rather than per-screen, so
+                // swapping between portrait screens can't race a
+                // restore-on-dispose back to free-rotate.
                 // userPortrait: honors the system auto-rotate lock.
                 DisposableEffect(isMapRoute, view) {
                     val activity = view.context as? android.app.Activity

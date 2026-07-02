@@ -44,6 +44,13 @@ public enum SettingsKey {
     /// off, zones update only via the manual "Sync zones now" action. Mirrors
     /// Android `KEY_ZONE_SYNC_ENABLED`.
     public static let zoneSyncEnabled = "zone_sync_enabled"
+    /// How long completed zone-traversal history is kept: one of
+    /// `none | 1month | 3months | 6months`. `none` records nothing and purges
+    /// existing history; the others are a rolling window. Stored as the raw
+    /// string token (NOT an Int) so it lines up byte-for-byte with Android
+    /// `KEY_HISTORY_RETENTION` for the shared QA surface. Mirrors Android
+    /// `KEY_HISTORY_RETENTION`.
+    public static let historyRetention = "history_retention"
 }
 
 public enum SettingsDefaults {
@@ -60,6 +67,8 @@ public enum SettingsDefaults {
     public static let mapZoomOverride: Double? = nil
     public static let autoStopHours = 3
     public static let zoneSyncEnabled = true
+    /// Mirrors Android `DEFAULT_HISTORY_RETENTION`. Keep the raw string token.
+    public static let historyRetention = "3months"
 }
 
 public enum AppLanguage: String, Sendable, CaseIterable, Codable {

@@ -1,6 +1,7 @@
 /* Navigation */
 "navHome" = "Начало";
 "navMap" = "Карта";
+"navHistory" = "История";
 "navSettings" = "Настройки";
 
 /* HomeScreen */
@@ -86,3 +87,32 @@
 "mapLoadFailed" = "Картата не се зарежда";
 "mapLoadFailedHint" = "Проверете връзката или опитайте отново.";
 "mapRetry" = "Опитай отново";
+
+/* History */
+"settingHistoryRetention" = "Съхранение на историята";
+"settingHistoryRetentionDesc" = "Колко дълго да се пазят завършените зони в История";
+"historyRetentionNone" = "Изключено";
+"historyRetention1Month" = "1 месец";
+"historyRetention3Months" = "3 месеца";
+"historyRetention6Months" = "6 месеца";
+"historyEmptyTitle" = "Все още няма записи";
+"historyEmptyBody" = "Завършените зони със средна скорост ще се появят тук.";
+"historyDisabledTitle" = "Историята е изключена";
+"historyDisabledBody" = "Включете съхранението на историята от Настройки, за да записвате завършените зони.";
+"historyEntered" = "Влизане";
+"historyExited" = "Излизане";
+"historyDuration" = "Времетраене";
+"historyYourAverage" = "Вашата средна скорост";
+"historyTopSpeed" = "Най-висока скорост";
+"historyLowestSpeed" = "Най-ниска скорост";
+"historyKmhValue" = "%@ km/h";
+"historyGraphTitle" = "Скорост във времето";
+"historyLegendSpeed" = "Скорост";
+"historyLegendAverage" = "Средна";
+"historyLegendLimit" = "Ограничение";
+"historyDirection" = "Посока";
+"historyDirectionEast" = "Изток";
+"historyDirectionWest" = "Запад";
+"historyDirectionNorth" = "Север";
+"historyDirectionSouth" = "Юг";
+"actionBack" = "Назад";

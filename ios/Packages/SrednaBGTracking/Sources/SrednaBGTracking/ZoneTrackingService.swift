@@ -104,11 +104,17 @@ public final class ZoneTrackingService {
     @ObservationIgnored
     private var lastActivityDate: Date = .distantPast
 
+    /// Captures completed traversals for the History tab. Nil disables history
+    /// (macOS / tests). Runs on this actor so its sample buffer needs no lock.
+    @ObservationIgnored
+    private let historyRecorder: HistoryRecorder?
+
     public init(
         zones: [Zone],
         provider: any LocationProviding,
         alerts: AudioAlertManager,
         settings: SettingsStore,
+        historyRecorder: HistoryRecorder? = nil,
         zoneStateSink: @escaping @Sendable (ZoneState, Double?, Int?) async -> Void = { _, _, _ in },
         onSessionStart: @escaping @Sendable () async -> Void = {},
         onSessionStop: @escaping @Sendable () async -> Void = {}
@@ -118,6 +124,7 @@ public final class ZoneTrackingService {
         self.provider = provider
         self.alerts = alerts
         self.settings = settings
+        self.historyRecorder = historyRecorder
         self.zoneStateSink = zoneStateSink
         self.onSessionStart = onSessionStart
         self.onSessionStop = onSessionStop
@@ -237,6 +244,16 @@ public final class ZoneTrackingService {
         }
         if checkAutoStop() { return }
 
+        let limitKmh = Self.resolvedLimit(for: next, vehicleType: vehicleType)
+
+        // Capture the traversal for the History tab: buffers one SpeedSample
+        // per in-zone fix and finalizes on the exit transition. Runs on this
+        // actor, so its buffer needs no locking; the DB write hops off.
+        historyRecorder?.onZoneStateChanged(
+            point: point, previous: previous, next: next,
+            vehicleType: vehicleType, limitKmh: limitKmh ?? 0
+        )
+
         // Fire-and-forget the TTS pipeline so we don't block the GPS consumer
         // on synthesis (could be hundreds of ms while the audio session
         // negotiates ducking).
@@ -246,7 +263,6 @@ public final class ZoneTrackingService {
 
         // Fire-and-forget the Live Activity update — the sink throttles
         // internally so calling on every point is safe.
-        let limitKmh = Self.resolvedLimit(for: next, vehicleType: vehicleType)
         Task.detached { [zoneStateSink] in
             await zoneStateSink(next, point.speed, limitKmh)
         }

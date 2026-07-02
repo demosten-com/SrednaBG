@@ -111,6 +111,7 @@ class LocationTrackingService : LifecycleService() {
     @Inject lateinit var zoneRepository: ZoneRepository
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var audioAlertManager: AudioAlertManager
+    @Inject lateinit var historyRecorder: HistoryRecorder
 
     private var zoneDetector: ZoneDetector? = null
     private lateinit var overlayController: OverlayController
@@ -260,6 +261,12 @@ class LocationTrackingService : LifecycleService() {
             lastActivityMs = android.os.SystemClock.elapsedRealtime()
         }
         audioAlertManager.onZoneStateChanged(previousState, newState, point.speed)
+        val limitKmh = when (newState) {
+            is ZoneState.InZone -> currentVehicleType.limit(newState.zone.speedLimits)
+            is ZoneState.Exiting -> currentVehicleType.limit(newState.zone.speedLimits)
+            else -> 0
+        }
+        historyRecorder.onZoneStateChanged(point, previousState, newState, currentVehicleType, limitKmh)
         adjustGpsInterval(newState, point)
     }
 

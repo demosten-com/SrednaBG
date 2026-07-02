@@ -41,6 +41,9 @@ class SettingsRepository @Inject constructor(
         // the live calc would land at the 250 cap or near 0.
         private val KEY_DEBUG_MAX_SPEED_OVERRIDE = intPreferencesKey("debug_max_speed_override")
         private val KEY_AUTO_STOP_HOURS = intPreferencesKey("auto_stop_hours")
+        // How long completed zone-traversal history is kept. "none" records
+        // nothing and purges existing history; otherwise a rolling window.
+        private val KEY_HISTORY_RETENTION = stringPreferencesKey("history_retention")
         // QA harness only: when > 0, the inactivity timer compares against
         // this value in seconds instead of `auto_stop_hours * 3600` so the
         // scenario can fire in ~10 s instead of 3 h. Mirrors the
@@ -60,6 +63,7 @@ class SettingsRepository @Inject constructor(
         const val DEFAULT_PERIODIC_VOICE_UPDATES = true
         const val DEFAULT_ANNOUNCE_ONLY_WHEN_OVER = true
         const val DEFAULT_AUTO_STOP_HOURS = 3
+        const val DEFAULT_HISTORY_RETENTION = "3months"
         const val DEFAULT_ZONE_SYNC_ENABLED = true
         const val DEFAULT_OVERLAY_ENABLED = false
         const val OVERLAY_POS_UNSET = -1
@@ -127,6 +131,10 @@ class SettingsRepository @Inject constructor(
 
     val debugAutoStopSeconds: Flow<Int?> = dataStore.data.map { prefs ->
         prefs[KEY_DEBUG_AUTO_STOP_SECONDS]
+    }
+
+    val historyRetention: Flow<String> = dataStore.data.map { prefs ->
+        prefs[KEY_HISTORY_RETENTION] ?: DEFAULT_HISTORY_RETENTION
     }
 
     val zoneSyncEnabled: Flow<Boolean> = dataStore.data.map { prefs ->
@@ -207,6 +215,10 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setAutoStopHours(value: Int) {
         dataStore.edit { it[KEY_AUTO_STOP_HOURS] = value }
+    }
+
+    suspend fun setHistoryRetention(value: String) {
+        dataStore.edit { it[KEY_HISTORY_RETENTION] = value }
     }
 
     suspend fun setDebugAutoStopSeconds(value: Int?) {

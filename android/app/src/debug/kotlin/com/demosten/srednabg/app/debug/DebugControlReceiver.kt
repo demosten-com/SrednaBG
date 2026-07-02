@@ -15,13 +15,17 @@ import android.util.Log
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
 import androidx.core.os.LocaleListCompat
+import com.demosten.srednabg.app.data.HistoryRepository
 import com.demosten.srednabg.app.data.SettingsRepository
+import com.demosten.srednabg.app.data.ZoneRepository
 import com.demosten.srednabg.app.service.LocationTrackingService
 import com.demosten.srednabg.core.MapThemeMode
+import com.google.gson.Gson
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -61,6 +65,9 @@ import javax.inject.Inject
 class DebugControlReceiver : BroadcastReceiver() {
 
     @Inject lateinit var settings: SettingsRepository
+    @Inject lateinit var historyRepository: HistoryRepository
+    @Inject lateinit var zoneRepository: ZoneRepository
+    @Inject lateinit var gson: Gson
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -70,6 +77,8 @@ class DebugControlReceiver : BroadcastReceiver() {
             ACTION_START_TRACKING -> handleStartTracking(context)
             ACTION_STOP_TRACKING -> handleStopTracking(context)
             ACTION_FEED_POINT -> handleFeedPoint(intent)
+            ACTION_DUMP_HISTORY -> handleDumpHistory()
+            ACTION_SEED_HISTORY -> handleSeedHistory(intent)
             else -> Log.w(TAG, "unknown action: ${intent.action}")
         }
     }
@@ -114,6 +123,68 @@ class DebugControlReceiver : BroadcastReceiver() {
         Log.i(TAG, "feed lat=$lat lng=$lng speed=${speedMs}m/s bearing=$bearing accuracy=${accuracyM}m")
     }
 
+    /**
+     * QA introspection: log the history record count plus a one-line summary of
+     * the most recent traversal under [TAG], so the harness can assert on history
+     * without reading the Room DB directly. All fields are on a single, easily
+     * grepped line prefixed `DUMP_HISTORY`.
+     */
+    private fun handleDumpHistory() {
+        val pendingResult = goAsync()
+        scope.launch {
+            try {
+                val count = historyRepository.count()
+                val latest = historyRepository.latest()
+                if (latest == null) {
+                    Log.i(TAG, "DUMP_HISTORY count=$count latest=none")
+                } else {
+                    Log.i(
+                        TAG,
+                        "DUMP_HISTORY count=$count zone=${latest.zoneId} " +
+                            "avg=${latest.avgSpeedKmh} min=${latest.sustainedMinKmh} " +
+                            "max=${latest.sustainedMaxKmh} over=${latest.isOverLimit} " +
+                            "limit=${latest.speedLimitKmh} vehicle=${latest.vehicleType} " +
+                            "entry=${latest.entryTimeMs} exit=${latest.exitTimeMs}",
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "DUMP_HISTORY failed: ${e.message}", e)
+            } finally {
+                pendingResult.finish()
+            }
+        }
+    }
+
+    /**
+     * Wipe the History DB and refill it with a curated set of varied sample
+     * traversals (default 12; override with `--es count N`) so a developer can
+     * browse the History tab + detail graph without driving every zone. Uses the
+     * app's loaded zones for real roads. Android peer of iOS's
+     * `/history?action=seed`. See [HistorySeeder].
+     */
+    private fun handleSeedHistory(intent: Intent) {
+        val count = intent.getStringExtra("count")?.toIntOrNull() ?: DEFAULT_SEED_COUNT
+        val pendingResult = goAsync()
+        scope.launch {
+            try {
+                zoneRepository.ensureLoaded()
+                val zones = zoneRepository.zones.first()
+                val inserted = HistorySeeder.seed(
+                    historyRepository = historyRepository,
+                    gson = gson,
+                    zones = zones,
+                    count = count,
+                    nowMs = System.currentTimeMillis(),
+                )
+                Log.i(TAG, "SEED_HISTORY inserted=$inserted (requested=$count, zones=${zones.size})")
+            } catch (e: Exception) {
+                Log.e(TAG, "SEED_HISTORY failed: ${e.message}", e)
+            } finally {
+                pendingResult.finish()
+            }
+        }
+    }
+
     private fun handleSetSetting(intent: Intent) {
         val key = intent.getStringExtra(EXTRA_KEY) ?: run {
             Log.w(TAG, "SET_SETTING missing extra key")
@@ -156,6 +227,7 @@ class DebugControlReceiver : BroadcastReceiver() {
             "map_zoom_override" -> settings.setMapZoomOverride(raw.toFloatOrNull())
             "debug_max_speed_override" -> settings.setDebugMaxSpeedOverride(raw.toIntOrNull())
             "auto_stop_hours" -> settings.setAutoStopHours(raw.toInt())
+            "history_retention" -> settings.setHistoryRetention(raw)
             "debug_auto_stop_seconds" -> settings.setDebugAutoStopSeconds(raw.toIntOrNull())
             "cached_zone_hash" -> settings.setCachedZoneHash(raw)
             "cached_zone_version" -> settings.setCachedZoneVersion(raw)
@@ -184,7 +256,10 @@ class DebugControlReceiver : BroadcastReceiver() {
         const val ACTION_START_TRACKING = "com.demosten.srednabg.debug.START_TRACKING"
         const val ACTION_STOP_TRACKING = "com.demosten.srednabg.debug.STOP_TRACKING"
         const val ACTION_FEED_POINT = "com.demosten.srednabg.debug.FEED_POINT"
+        const val ACTION_DUMP_HISTORY = "com.demosten.srednabg.debug.DUMP_HISTORY"
+        const val ACTION_SEED_HISTORY = "com.demosten.srednabg.debug.SEED_HISTORY"
         const val EXTRA_KEY = "key"
         const val EXTRA_VALUE = "value"
+        private const val DEFAULT_SEED_COUNT = 12
     }
 }

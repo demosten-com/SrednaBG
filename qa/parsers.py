@@ -33,6 +33,7 @@ from .events import (
     AutoStopped,
     DisplaySpeed,
     Event,
+    HistoryDump,
     IntervalChanged,
     LocationSourceSelected,
     LocationUpdate,
@@ -84,6 +85,14 @@ SYNC_RE = re.compile(
     r"(?P<action>[\w.]+\.debug\.SYNC_\w+) -> (?:SyncResult\.)?(?P<outcome>\w+)(?:\((?P<detail>.*)\))?"
 )
 SETTING_RE = re.compile(r"set (?P<key>\w+)=(?P<value>.+)$")
+# DebugControlReceiver DUMP_HISTORY: count always present; the latest-record
+# summary fields only when count > 0 (else `latest=none`).
+HISTORY_DUMP_RE = re.compile(
+    r"DUMP_HISTORY count=(?P<count>\d+)"
+    r"(?: zone=(?P<zone>\S+) avg=(?P<avg>\S+) min=(?P<min>\S+) max=(?P<max>\S+) "
+    r"over=(?P<over>true|false) limit=(?P<limit>\d+) vehicle=(?P<vehicle>\S+) "
+    r"entry=(?P<entry>\d+) exit=(?P<exit>\d+))?"
+)
 # Emitted by the flavor-specific createLocationSource() (LocationSourceFactory.kt
 # in src/aosp + src/gms). "Selecting FusedLocationSource" / "Selecting
 # SystemLocationSource …" — the trailing parenthetical detail is ignored.
@@ -199,6 +208,21 @@ def parse_message(tag: str, msg: str, raw: str) -> Optional[Event]:
         return UnparsedLog(monotonic_ms=ts, raw=raw, tag=tag)
 
     if tag == "DebugSettings":
+        mh = HISTORY_DUMP_RE.search(msg)
+        if mh:
+            avg_raw = mh.group("avg")
+            return HistoryDump(
+                monotonic_ms=ts,
+                raw=raw,
+                count=int(mh.group("count")),
+                zone=mh.group("zone"),
+                avg_kmh=None if avg_raw in (None, "null") else float(avg_raw),
+                sustained_min_kmh=None if mh.group("min") is None else float(mh.group("min")),
+                sustained_max_kmh=None if mh.group("max") is None else float(mh.group("max")),
+                over_limit=None if mh.group("over") is None else mh.group("over") == "true",
+                limit_kmh=None if mh.group("limit") is None else int(mh.group("limit")),
+                vehicle=mh.group("vehicle"),
+            )
         mst = SETTING_RE.search(msg)
         if mst:
             return SettingChanged(
