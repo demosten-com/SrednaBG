@@ -234,8 +234,8 @@ def _ui_suite() -> list[Scenario]:
     enhancement, not wired here."""
     if device_mod.current().platform == "ios":
         return []
-    from qa.scenarios.ui import smoke_walk_scenario  # added below
-    return [smoke_walk_scenario.build()]
+    from qa.scenarios.ui import font_scale_cards, smoke_walk_scenario
+    return [smoke_walk_scenario.build(), font_scale_cards.build()]
 
 
 SUITE_BUILDERS = {
