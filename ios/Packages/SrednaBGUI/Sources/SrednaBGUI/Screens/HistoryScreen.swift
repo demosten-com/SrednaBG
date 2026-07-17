@@ -6,6 +6,7 @@
 import SwiftData
 import SwiftUI
 import SrednaBGData
+import SrednaBGTracking
 
 /// History tab: completed average-speed-zone traversals grouped by local
 /// calendar day (most-recent day first, rows within a day most-recent first).
@@ -15,12 +16,24 @@ public struct HistoryScreen: View {
 
     /// Retention setting drives the "disabled" empty state.
     public let settings: SettingsStore
+    /// Tracking + map session gate the detail view's "Show on map" action.
+    let tracking: ZoneTrackingService
+    let mapSession: MapSessionStore
+    let onShowOnMap: () -> Void
 
     @Query(sort: \ZoneTraversalRecord.exitTimeMs, order: .reverse)
     private var records: [ZoneTraversalRecord]
 
-    public init(settings: SettingsStore) {
+    public init(
+        settings: SettingsStore,
+        tracking: ZoneTrackingService,
+        mapSession: MapSessionStore,
+        onShowOnMap: @escaping () -> Void
+    ) {
         self.settings = settings
+        self.tracking = tracking
+        self.mapSession = mapSession
+        self.onShowOnMap = onShowOnMap
     }
 
     private var recordingDisabled: Bool {
@@ -48,7 +61,13 @@ public struct HistoryScreen: View {
                 Section(HistoryFormat.historyDay(group.dayMs, locale: locale)) {
                     ForEach(group.records) { record in
                         NavigationLink {
-                            HistoryDetailView(record: record, locale: locale)
+                            HistoryDetailView(
+                                record: record,
+                                locale: locale,
+                                tracking: tracking,
+                                mapSession: mapSession,
+                                onShowOnMap: onShowOnMap
+                            )
                         } label: {
                             HistoryRow(record: record, locale: locale)
                         }

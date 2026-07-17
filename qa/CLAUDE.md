@@ -36,7 +36,7 @@ python qa/srednabg_qa.py --suite representative  # ~30 min — 6 hand-picked zon
 python qa/srednabg_qa.py --suite scenarios       # ~20 min — edge cases (stop, dropout, off-ramp, U-turn, swap, auto-stop, dense-centerline, stop-silences-TTS, noisy-fix-rejected, …)
 python qa/srednabg_qa.py --suite history         # ~7 min — History: records a traversal, retention=none records nothing, retention key round-trips (cross-platform)
 python qa/srednabg_qa.py --suite sync            # ~5 min — zones happy + offline; map happy + integrity
-python qa/srednabg_qa.py --suite ui              # <1 min — phone UI walk
+python qa/srednabg_qa.py --suite ui              # ~1 min — phone UI walk + font-scale cards + History "Show on map" gating
 python qa/srednabg_qa.py --suite full-zones      # ~75 min @4× — all 72 zones, minimal asserts
 python qa/srednabg_qa.py --suite nightly         # ~2 hr — representative + full-zones + scenarios + ui
 ```

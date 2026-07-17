@@ -28,6 +28,11 @@ struct MapLibreView: UIViewRepresentable {
     let headingUp: Bool
     let mapSession: MapSessionStore
     let zoomOverride: Double?
+    /// History "Show on map" overrides (nil during live tracking): verdict
+    /// line color for the active zone, and a synthetic user-arrow fix at the
+    /// traversal's start pointing toward the zone end.
+    let highlightColor: UIColor?
+    let highlightUser: GpsPoint?
     @Binding var pendingCommand: MapCommand?
     @Binding var styleLoadFailed: Bool
     @Binding var isMapReady: Bool
@@ -37,6 +42,7 @@ struct MapLibreView: UIViewRepresentable {
         case zoomOut
         case recenter
         case zoomTo(Double)
+        case fitZone(String)
     }
 
     /// Default zoom for the follow camera when no per-shot override is set.
@@ -143,13 +149,19 @@ struct MapLibreView: UIViewRepresentable {
         if let point = currentPosition {
             coord.damper.update(speedKmh: point.speed, bearingDegrees: point.bearing)
         }
+        // A highlight fix carries its own bearing (first centerline segment),
+        // so it bypasses the damper — there's no live heading to damp.
         MapLayers.applyUser(
-            displayPosition ?? currentPosition,
-            bearing: coord.damper.effectiveBearing,
+            highlightUser ?? displayPosition ?? currentPosition,
+            bearing: highlightUser?.bearing ?? coord.damper.effectiveBearing,
             to: style
         )
 
-        if mapSession.isFollowing, let position = displayPosition ?? currentPosition {
+        // No follow while a highlight is shown (belt-and-braces on top of
+        // `isFollowing = false` at request time) — the camera stays on the
+        // fitted zone, not on a stale last-known position.
+        if highlightUser == nil, mapSession.isFollowing,
+           let position = displayPosition ?? currentPosition {
             applyFollowCamera(uiView: uiView, position: position, coordinator: coord)
         }
 
@@ -167,6 +179,11 @@ struct MapLibreView: UIViewRepresentable {
     // MARK: - Helpers
 
     private func activeZoneColor() -> UIColor {
+        // A History highlight paints the trip's binary verdict; it can only be
+        // set while tracking is off, so it never masks the live traffic light.
+        if let highlightColor {
+            return highlightColor
+        }
         switch zoneState {
         case .inZone(let inZone):
             return statusUIColor(zoneStatusColor(state: inZone, currentSpeedKmh: currentPosition?.speed))
@@ -232,6 +249,10 @@ struct MapLibreView: UIViewRepresentable {
             }
         case .zoomTo(let level):
             uiView.setZoomLevel(level, animated: true)
+        case .fitZone(let zoneId):
+            if let zone = zones.first(where: { $0.id == zoneId }) {
+                fit(uiView: uiView, to: zone)
+            }
         }
     }
 
@@ -347,8 +368,8 @@ struct MapLibreView: UIViewRepresentable {
                     to: style
                 )
                 MapLayers.applyUser(
-                    self.parent.displayPosition ?? self.parent.currentPosition,
-                    bearing: self.damper.effectiveBearing,
+                    self.parent.highlightUser ?? self.parent.displayPosition ?? self.parent.currentPosition,
+                    bearing: self.parent.highlightUser?.bearing ?? self.damper.effectiveBearing,
                     to: style
                 )
             }

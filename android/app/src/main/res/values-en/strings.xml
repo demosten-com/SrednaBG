@@ -115,6 +115,7 @@
     <string name="history_lowest_speed">Lowest speed</string>
     <string name="history_kmh_value">%s km/h</string>
     <string name="history_graph_title">Speed over time</string>
+    <string name="history_show_on_map">Show on map</string>
     <string name="history_legend_speed">Speed</string>
     <string name="history_legend_average">Average</string>
     <string name="history_legend_limit">Limit</string>

@@ -132,6 +132,7 @@ public enum L10n {
     public static var historyLowestSpeed: String { loc("historyLowestSpeed") }
     public static var historyKmhValue: String { loc("historyKmhValue") }                  // "%@"
     public static var historyGraphTitle: String { loc("historyGraphTitle") }
+    public static var historyShowOnMap: String { loc("historyShowOnMap") }
     public static var historyLegendSpeed: String { loc("historyLegendSpeed") }
     public static var historyLegendAverage: String { loc("historyLegendAverage") }
     public static var historyLegendLimit: String { loc("historyLegendLimit") }

@@ -107,6 +107,7 @@
 "historyLowestSpeed" = "Най-ниска скорост";
 "historyKmhValue" = "%@ km/h";
 "historyGraphTitle" = "Скорост във времето";
+"historyShowOnMap" = "Покажи на картата";
 "historyLegendSpeed" = "Скорост";
 "historyLegendAverage" = "Средна";
 "historyLegendLimit" = "Ограничение";

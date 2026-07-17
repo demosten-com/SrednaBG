@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -35,9 +36,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -54,16 +59,18 @@ import com.demosten.srednabg.app.ui.viewmodel.HistoryDetailUiState
 import com.demosten.srednabg.app.ui.viewmodel.HistoryViewModel
 import com.demosten.srednabg.core.ZONE_COLOR_RED
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
 fun HistoryDetailScreen(
     id: String,
     onBack: () -> Unit,
+    onShowOnMap: () -> Unit,
     viewModel: HistoryViewModel = hiltViewModel(),
 ) {
     LaunchedEffect(id) { viewModel.loadDetail(id) }
     val state by viewModel.detailState.collectAsStateWithLifecycle()
     val loaded = state as? HistoryDetailUiState.Loaded
+    val canShowOnMap by viewModel.canShowOnMap.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -80,6 +87,23 @@ fun HistoryDetailScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.action_back),
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(
+                        enabled = canShowOnMap,
+                        onClick = {
+                            viewModel.showOnMap()
+                            onShowOnMap()
+                        },
+                        modifier = Modifier
+                            .semantics { testTagsAsResourceId = true }
+                            .testTag("history-show-on-map"),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Map,
+                            contentDescription = stringResource(R.string.history_show_on_map),
                         )
                     }
                 },

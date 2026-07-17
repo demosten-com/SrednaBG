@@ -7,6 +7,8 @@ package com.demosten.srednabg.app.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.demosten.srednabg.app.data.MapHighlight
+import com.demosten.srednabg.app.data.MapHighlightStore
 import com.demosten.srednabg.app.data.MapRepository
 import com.demosten.srednabg.app.data.SettingsRepository
 import com.demosten.srednabg.app.data.ZoneRepository
@@ -39,6 +41,7 @@ class ZoneMapViewModel @Inject constructor(
     private val zoneRepository: ZoneRepository,
     private val settingsRepository: SettingsRepository,
     private val mapRepository: MapRepository,
+    mapHighlightStore: MapHighlightStore,
 ) : ViewModel() {
 
     fun styleUriFor(theme: MapTheme): String = mapRepository.localStyleUri(theme)
@@ -50,15 +53,30 @@ class ZoneMapViewModel @Inject constructor(
 
     val zoneState: StateFlow<ZoneState> = LocationTrackingService.zoneState
 
-    val activeZoneId: StateFlow<String?> = LocationTrackingService.zoneState
-        .map { state ->
-            when (state) {
-                is ZoneState.InZone -> state.zone.id
-                is ZoneState.Exiting -> state.zone.id
-                ZoneState.Outside -> null
-            }
+    /**
+     * The History-detail "Show on map" request, non-null only while tracking is
+     * off and its zone still resolves in the current catalog. Tracking taking
+     * over is belt-and-braces here — the service clears the store on start.
+     */
+    val resolvedHighlight: StateFlow<Pair<MapHighlight, Zone>?> = combine(
+        mapHighlightStore.highlight,
+        LocationTrackingService.isTracking,
+        zoneRepository.zones,
+    ) { highlight, tracking, zones ->
+        if (highlight == null || tracking) return@combine null
+        zones.firstOrNull { it.id == highlight.zoneId }?.let { highlight to it }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val activeZoneId: StateFlow<String?> = combine(
+        LocationTrackingService.zoneState,
+        resolvedHighlight,
+    ) { state, highlight ->
+        when (state) {
+            is ZoneState.InZone -> state.zone.id
+            is ZoneState.Exiting -> state.zone.id
+            ZoneState.Outside -> highlight?.second?.id
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     val displayPosition: StateFlow<GpsPoint?> =
         combine(LocationTrackingService.currentPosition, LocationTrackingService.zoneState) { pos, state ->
@@ -151,6 +169,11 @@ class ZoneMapViewModel @Inject constructor(
     fun setFollowing(following: Boolean) {
         _isFollowing.value = following
     }
+
+    // Which highlight request the camera has already fitted. Plain VM property
+    // (like cameraSnapshot) so revisiting the Map tab doesn't re-fit an
+    // already-shown highlight, but a fresh "Show on map" press always fits.
+    var lastFittedHighlightRequestId: Long? = null
 
     fun retrySync() {
         if (_isSyncing.value) return

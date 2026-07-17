@@ -115,6 +115,7 @@
     <string name="history_lowest_speed">Най-ниска скорост</string>
     <string name="history_kmh_value">%s km/h</string>
     <string name="history_graph_title">Скорост във времето</string>
+    <string name="history_show_on_map">Покажи на картата</string>
     <string name="history_legend_speed">Скорост</string>
     <string name="history_legend_average">Средна</string>
     <string name="history_legend_limit">Ограничение</string>

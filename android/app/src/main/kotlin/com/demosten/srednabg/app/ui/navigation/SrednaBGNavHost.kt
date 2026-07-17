@@ -46,6 +46,15 @@ fun SrednaBGNavHost(navController: NavHostController, modifier: Modifier = Modif
             HistoryDetailScreen(
                 id = backStackEntry.arguments?.getString("id").orEmpty(),
                 onBack = { navController.popBackStack() },
+                onShowOnMap = {
+                    // Same options as MainActivity's tab clicks so the bottom
+                    // bar selection and saved tab states stay consistent.
+                    navController.navigate(NavRoute.Map.route) {
+                        popUpTo(navController.graph.startDestinationId) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
             )
         }
     }

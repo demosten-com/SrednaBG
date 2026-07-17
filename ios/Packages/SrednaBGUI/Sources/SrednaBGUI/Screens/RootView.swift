@@ -144,7 +144,12 @@ private struct RootTabs: View {
             .accessibilityIdentifier("tab-map")
 
             NavigationStack {
-                HistoryScreen(settings: settings)
+                HistoryScreen(
+                    settings: settings,
+                    tracking: tracking,
+                    mapSession: mapSession,
+                    onShowOnMap: { selectedTab = DebugTabName.map }
+                )
             }
             // Attach the History store's SwiftData container so `@Query` in
             // HistoryScreen reads the same context the recorder writes to.
@@ -187,6 +192,14 @@ private struct RootTabs: View {
         // taps and the DEBUG `/tab` back-channel share one path. No-op on macOS.
         .onChange(of: selectedTab, initial: true) { _, tab in
             OrientationLock.shared.apply(tab == DebugTabName.map ? .free : .portrait)
+        }
+        // Tracking owns the map from the moment it starts — drop any History
+        // "Show on map" highlight so the two never drive the map at once.
+        // Watching `isTracking` here covers every start path (Home button and
+        // the QA debug listener both flip it via ZoneTrackingService.start());
+        // the Tracking package can't reference this UI-layer store itself.
+        .onChange(of: tracking.isTracking) { _, isOn in
+            if isOn { mapSession.clearHighlight() }
         }
         // View-scoped locale override for SwiftUI's own formatters. Does NOT
         // mutate Bundle.main or Locale.current, so AudioAlertManager's TTS

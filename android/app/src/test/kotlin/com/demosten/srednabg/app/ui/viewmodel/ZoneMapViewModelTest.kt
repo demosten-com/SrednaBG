@@ -6,6 +6,7 @@
 package com.demosten.srednabg.app.ui.viewmodel
 
 import app.cash.turbine.test
+import com.demosten.srednabg.app.data.MapHighlightStore
 import com.demosten.srednabg.app.data.MapRepository
 import com.demosten.srednabg.app.data.SettingsRepository
 import com.demosten.srednabg.app.data.ZoneRepository
@@ -62,7 +63,7 @@ class ZoneMapViewModelTest {
         every { mapRepository.localStyleUri(MapTheme.LIGHT) } returns "file:///dev/null/style-light.json"
         every { mapRepository.localStyleUri(MapTheme.DARK) } returns "file:///dev/null/style-dark.json"
 
-        val viewModel = ZoneMapViewModel(zoneRepository, settingsRepository, mapRepository)
+        val viewModel = ZoneMapViewModel(zoneRepository, settingsRepository, mapRepository, MapHighlightStore())
 
         assertEquals(emptyList<Zone>(), viewModel.zones.value)
     }
@@ -87,7 +88,7 @@ class ZoneMapViewModelTest {
         every { mapRepository.localStyleUri(MapTheme.LIGHT) } returns "file:///dev/null/style-light.json"
         every { mapRepository.localStyleUri(MapTheme.DARK) } returns "file:///dev/null/style-dark.json"
 
-        val viewModel = ZoneMapViewModel(zoneRepository, settingsRepository, mapRepository)
+        val viewModel = ZoneMapViewModel(zoneRepository, settingsRepository, mapRepository, MapHighlightStore())
 
         assertEquals(false, viewModel.isFollowing.value)
         viewModel.setFollowing(true)
@@ -129,7 +130,7 @@ class ZoneMapViewModelTest {
         every { mapRepository.localStyleUri(MapTheme.LIGHT) } returns "file:///dev/null/style-light.json"
         every { mapRepository.localStyleUri(MapTheme.DARK) } returns "file:///dev/null/style-dark.json"
 
-        val viewModel = ZoneMapViewModel(zoneRepository, settingsRepository, mapRepository)
+        val viewModel = ZoneMapViewModel(zoneRepository, settingsRepository, mapRepository, MapHighlightStore())
 
         viewModel.zones.test {
             val zones = awaitItem()

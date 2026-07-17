@@ -107,6 +107,7 @@
 "historyLowestSpeed" = "Lowest speed";
 "historyKmhValue" = "%@ km/h";
 "historyGraphTitle" = "Speed over time";
+"historyShowOnMap" = "Show on map";
 "historyLegendSpeed" = "Speed";
 "historyLegendAverage" = "Average";
 "historyLegendLimit" = "Limit";

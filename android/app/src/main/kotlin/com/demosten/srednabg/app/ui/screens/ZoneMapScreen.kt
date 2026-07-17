@@ -76,7 +76,9 @@ import com.demosten.srednabg.core.GpsPoint
 import com.demosten.srednabg.core.MapTheme
 import com.demosten.srednabg.core.Zone
 import com.demosten.srednabg.core.ZoneState
+import com.demosten.srednabg.core.ZONE_COLOR_GREEN
 import com.demosten.srednabg.core.ZONE_COLOR_RED
+import com.demosten.srednabg.core.bearingBetween
 import com.demosten.srednabg.core.zoneStatusColor
 import org.json.JSONArray
 import org.json.JSONObject
@@ -131,6 +133,7 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
     val displayPosition by viewModel.displayPosition.collectAsStateWithLifecycle()
     val activeZoneId by viewModel.activeZoneId.collectAsStateWithLifecycle()
     val zoneState by viewModel.zoneState.collectAsStateWithLifecycle()
+    val resolvedHighlight by viewModel.resolvedHighlight.collectAsStateWithLifecycle()
     val mapHeadingUp by viewModel.mapHeadingUp.collectAsStateWithLifecycle()
     val mapZoomOverride by viewModel.mapZoomOverride.collectAsStateWithLifecycle()
     val debugMaxSpeedOverride by viewModel.debugMaxSpeedOverride.collectAsStateWithLifecycle()
@@ -341,13 +344,19 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
 
     // The active-zone line color only changes on over/under-limit transitions,
     // not on every 1 Hz fix. Derive it so the style update below re-fires when
-    // the color actually changes — not once per GPS update.
+    // the color actually changes — not once per GPS update. A History "Show on
+    // map" highlight (only possible while tracking is off) paints the trip's
+    // binary verdict instead of the live traffic light.
     val zoneLineColor by remember {
         derivedStateOf {
-            when (val s = zoneState) {
-                is ZoneState.InZone -> zoneStatusColor(s, currentPosition?.speed)
-                is ZoneState.Exiting -> ZONE_COLOR_RED
-                ZoneState.Outside -> ZONE_COLOR_RED
+            val highlight = resolvedHighlight?.first
+            when {
+                highlight != null -> if (highlight.isOverLimit) ZONE_COLOR_RED else ZONE_COLOR_GREEN
+                else -> when (val s = zoneState) {
+                    is ZoneState.InZone -> zoneStatusColor(s, currentPosition?.speed)
+                    is ZoneState.Exiting -> ZONE_COLOR_RED
+                    ZoneState.Outside -> ZONE_COLOR_RED
+                }
             }
         }
     }
@@ -360,13 +369,30 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
         }
     }
 
-    LaunchedEffect(displayPosition, effectiveBearing, styleEpoch) {
+    // While a History highlight is shown, the arrow marks the traversal's
+    // starting point, pointed straight at the zone's end point — the reading
+    // is "you drove from here to there", not the instantaneous road heading.
+    val highlightArrow = remember(resolvedHighlight) {
+        resolvedHighlight?.second?.let { zone ->
+            GpsPoint(
+                lat = zone.start.lat,
+                lng = zone.start.lng,
+                speed = 0.0,
+                timestamp = 0L,
+                bearing = bearingBetween(zone.start.lat, zone.start.lng, zone.end.lat, zone.end.lng),
+            )
+        }
+    }
+
+    LaunchedEffect(displayPosition, effectiveBearing, highlightArrow, styleEpoch) {
+        val point = highlightArrow ?: displayPosition
+        val rotation = highlightArrow?.bearing ?: effectiveBearing
         mapView.getMapAsync { map ->
             map.getStyle { style ->
                 style.getSourceAs<GeoJsonSource>(USER_SOURCE_ID)
-                    ?.setGeoJson(userPositionGeoJson(displayPosition))
+                    ?.setGeoJson(userPositionGeoJson(point))
                 style.getLayerAs<SymbolLayer>(USER_LAYER_ID)
-                    ?.setProperties(PropertyFactory.iconRotate(effectiveBearing.toFloat()))
+                    ?.setProperties(PropertyFactory.iconRotate(rotation.toFloat()))
             }
         }
     }
@@ -405,6 +431,21 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
             map.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, ZONE_FIT_PADDING_PX))
         }
         lastFittedZoneId = id
+    }
+
+    // One-shot camera fit per "Show on map" press, keyed on the requestId so
+    // revisiting the Map tab keeps the user's pan/zoom while a fresh press
+    // always re-fits — even for the same zone.
+    LaunchedEffect(resolvedHighlight, styleEpoch) {
+        val (highlight, zone) = resolvedHighlight ?: return@LaunchedEffect
+        if (highlight.requestId == viewModel.lastFittedHighlightRequestId) return@LaunchedEffect
+        viewModel.setFollowing(false)
+        val bounds = zoneBounds(zone) ?: return@LaunchedEffect
+        mapView.getMapAsync { map ->
+            map.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, ZONE_FIT_PADDING_PX))
+        }
+        viewModel.lastFittedHighlightRequestId = highlight.requestId
+        lastFittedZoneId = zone.id
     }
 
     var hasCenteredOnUser by remember { mutableStateOf(initialCameraSnapshot != null) }

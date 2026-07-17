@@ -6,6 +6,7 @@
 import SwiftUI
 import SrednaBGCore
 import SrednaBGData
+import SrednaBGMapCore
 import SrednaBGTracking
 
 /// Map tab. Mounts `MapLibreView` as soon as a style URL resolves and keeps
@@ -107,12 +108,14 @@ public struct ZoneMapScreen: View {
             reevaluateThemeIfNeeded()
             #if os(iOS)
             applyZoomOverrideIfNeeded()
+            fitHighlightIfNeeded()
             #endif
         }
         .onChange(of: settings.mapThemeMode) { _, _ in reevaluateThemeIfNeeded() }
         .onChange(of: tracking.currentPosition?.lat) { _, _ in reevaluateThemeIfNeeded() }
         #if os(iOS)
         .onChange(of: settings.mapZoomOverride) { _, _ in applyZoomOverrideIfNeeded() }
+        .onChange(of: mapSession.highlight) { _, _ in fitHighlightIfNeeded() }
         #endif
         .onReceive(themeTimer) { now in
             nowTick = now
@@ -142,6 +145,8 @@ public struct ZoneMapScreen: View {
                 headingUp: settings.mapHeadingUp,
                 mapSession: mapSession,
                 zoomOverride: settings.mapZoomOverride,
+                highlightColor: highlightColor,
+                highlightUser: highlightUser,
                 pendingCommand: $pendingCommand,
                 styleLoadFailed: $styleLoadFailed,
                 isMapReady: $isMapReady
@@ -293,9 +298,54 @@ public struct ZoneMapScreen: View {
         switch tracking.zoneState {
         case .inZone(let inZone): return inZone.zone.id
         case .exiting(let exiting): return exiting.zone.id
-        case .outside: return nil
+        case .outside: return effectiveHighlight?.zone.id
         }
     }
+
+    /// The History "Show on map" request, honored only while tracking is off
+    /// and its zone still resolves in the catalog (a sync can delete zones).
+    private var effectiveHighlight: (request: MapHighlight, zone: Zone)? {
+        guard !tracking.isTracking, let request = mapSession.highlight,
+              let zone = tracking.zones.first(where: { $0.id == request.zoneId })
+        else { return nil }
+        return (request, zone)
+    }
+
+    #if os(iOS)
+    /// Verdict line color for the highlighted zone — the trip's binary result
+    /// (green within limit, red over), never the live traffic light.
+    private var highlightColor: UIColor? {
+        effectiveHighlight.map {
+            statusUIColor($0.request.isOverLimit ? zoneColorRed : zoneColorGreen)
+        }
+    }
+
+    /// Synthetic user-arrow fix marking the highlighted traversal's start,
+    /// pointed straight at the zone's end point — the reading is "you drove
+    /// from here to there", not the instantaneous road heading.
+    private var highlightUser: GpsPoint? {
+        guard let zone = effectiveHighlight?.zone else { return nil }
+        return GpsPoint(
+            lat: zone.start.lat,
+            lng: zone.start.lng,
+            speed: 0,
+            timestamp: 0,
+            bearing: bearingBetween(zone.start.lat, zone.start.lng, zone.end.lat, zone.end.lng)
+        )
+    }
+
+    /// One-shot camera fit per "Show on map" press, keyed on the requestId so
+    /// a tab round-trip keeps the user's pan/zoom while a fresh press re-fits.
+    @MainActor
+    private func fitHighlightIfNeeded() {
+        guard let (request, zone) = effectiveHighlight,
+              request.requestId != mapSession.lastFittedHighlightRequestId
+        else { return }
+        mapSession.isFollowing = false
+        pendingCommand = .fitZone(zone.id)
+        mapSession.lastFittedHighlightRequestId = request.requestId
+    }
+    #endif
 
     @MainActor
     private func resolveStyleURLIfNeeded() async {

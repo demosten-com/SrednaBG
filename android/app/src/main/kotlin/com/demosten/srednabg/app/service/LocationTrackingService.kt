@@ -22,6 +22,7 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.demosten.srednabg.R
 import com.demosten.srednabg.app.auto.SrednaBGSession
+import com.demosten.srednabg.app.data.MapHighlightStore
 import com.demosten.srednabg.app.data.ZoneRepository
 import com.demosten.srednabg.app.data.SettingsRepository
 import com.demosten.srednabg.app.overlay.OverlayController
@@ -112,6 +113,7 @@ class LocationTrackingService : LifecycleService() {
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var audioAlertManager: AudioAlertManager
     @Inject lateinit var historyRecorder: HistoryRecorder
+    @Inject lateinit var mapHighlightStore: MapHighlightStore
 
     private var zoneDetector: ZoneDetector? = null
     private lateinit var overlayController: OverlayController
@@ -321,6 +323,11 @@ class LocationTrackingService : LifecycleService() {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION,
         )
         _isTracking.value = true
+        // Tracking owns the map from here on — drop any History "Show on map"
+        // highlight so the two features never drive the map at the same time.
+        // Single choke point: covers the Home button, the debug receiver's
+        // START_TRACKING, and sticky restarts alike.
+        mapHighlightStore.clear()
         lastActivityMs = android.os.SystemClock.elapsedRealtime()
 
         if (setupStarted) return START_STICKY

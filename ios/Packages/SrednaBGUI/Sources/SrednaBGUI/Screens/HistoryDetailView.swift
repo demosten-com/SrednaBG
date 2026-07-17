@@ -5,6 +5,7 @@
 
 import SwiftUI
 import SrednaBGData
+import SrednaBGTracking
 
 /// Detail for one completed traversal: a stats card then a graph card, both
 /// tinted by the verdict color (green within / red over, ~0.15 alpha over the
@@ -12,9 +13,18 @@ import SrednaBGData
 struct HistoryDetailView: View {
     let record: ZoneTraversalRecord
     let locale: Locale
+    let tracking: ZoneTrackingService
+    let mapSession: MapSessionStore
+    let onShowOnMap: () -> Void
 
     private var verdictColor: Color {
         historyVerdictColor(isOverLimit: record.isOverLimit)
+    }
+
+    /// Disabled while tracking (live tracking owns the map) and when the
+    /// record's zone no longer exists in the catalog (deleted by a sync).
+    private var canShowOnMap: Bool {
+        !tracking.isTracking && tracking.zones.contains { $0.id == record.zoneId }
     }
 
     var body: some View {
@@ -29,6 +39,22 @@ struct HistoryDetailView: View {
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    mapSession.requestHighlight(
+                        zoneId: record.zoneId,
+                        isOverLimit: record.isOverLimit
+                    )
+                    mapSession.isFollowing = false
+                    onShowOnMap()
+                } label: {
+                    Label(L10n.historyShowOnMap, systemImage: "map")
+                }
+                .disabled(!canShowOnMap)
+                .accessibilityIdentifier("history-show-on-map")
+            }
+        }
     }
 
     private var statsCard: some View {

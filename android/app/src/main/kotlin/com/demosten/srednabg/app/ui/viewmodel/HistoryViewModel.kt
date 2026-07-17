@@ -8,9 +8,12 @@ package com.demosten.srednabg.app.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.demosten.srednabg.app.data.HistoryRepository
+import com.demosten.srednabg.app.data.MapHighlightStore
 import com.demosten.srednabg.app.data.SettingsRepository
+import com.demosten.srednabg.app.data.ZoneRepository
 import com.demosten.srednabg.app.data.local.ZoneTraversalEntity
 import com.demosten.srednabg.app.data.local.speedSamples
+import com.demosten.srednabg.app.service.LocationTrackingService
 import com.demosten.srednabg.app.ui.util.epochDay
 import com.demosten.srednabg.core.SpeedSample
 import com.google.gson.Gson
@@ -47,6 +50,7 @@ data class HistoryDayGroup(
 /** Fully-hydrated single traversal for the detail screen (samples parsed). */
 data class HistoryDetail(
     val id: String,
+    val zoneId: String,
     val road: String,
     val roadLatin: String?,
     val direction: String,
@@ -65,6 +69,8 @@ data class HistoryDetail(
 class HistoryViewModel @Inject constructor(
     private val historyRepository: HistoryRepository,
     settingsRepository: SettingsRepository,
+    zoneRepository: ZoneRepository,
+    private val mapHighlightStore: MapHighlightStore,
     private val gson: Gson,
 ) : ViewModel() {
 
@@ -84,6 +90,26 @@ class HistoryViewModel @Inject constructor(
 
     private val _detailState = MutableStateFlow<HistoryDetailUiState>(HistoryDetailUiState.Loading)
     val detailState: StateFlow<HistoryDetailUiState> = _detailState.asStateFlow()
+
+    /**
+     * "Show on map" is available only when the detail is loaded, its zone still
+     * exists in the current catalog (a sync can delete zones), and tracking is
+     * off — live tracking and the history highlight must not drive the map at
+     * the same time.
+     */
+    val canShowOnMap: StateFlow<Boolean> = combine(
+        detailState,
+        zoneRepository.zones,
+        LocationTrackingService.isTracking,
+    ) { state, zones, tracking ->
+        val detail = (state as? HistoryDetailUiState.Loaded)?.detail
+        detail != null && !tracking && zones.any { it.id == detail.zoneId }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    fun showOnMap() {
+        val detail = (detailState.value as? HistoryDetailUiState.Loaded)?.detail ?: return
+        mapHighlightStore.request(detail.zoneId, detail.isOverLimit)
+    }
 
     fun loadDetail(id: String) {
         // Reset to Loading so the detail screen shows a spinner (not the "no
@@ -122,6 +148,7 @@ class HistoryViewModel @Inject constructor(
 
     private fun ZoneTraversalEntity.toDetail(gson: Gson) = HistoryDetail(
         id = id,
+        zoneId = zoneId,
         road = road,
         roadLatin = roadLatin,
         direction = direction,
