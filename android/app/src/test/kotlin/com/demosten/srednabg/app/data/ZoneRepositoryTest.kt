@@ -61,17 +61,71 @@ class ZoneRepositoryTest {
         context = mockk()
 
         every { zoneDao.getAllZones() } returns flowOf(emptyList())
+        // Relaxed mocks return a non-emitting Flow, on which `.first()` throws —
+        // stub the cached-state reads the recency gate performs. Per-test stubs
+        // override these defaults.
+        every { settingsRepository.cachedZoneHash } returns flowOf("")
+        every { settingsRepository.cachedZoneVersion } returns flowOf("")
 
         repository = ZoneRepository(zoneDao, zoneApi, settingsRepository, gson, context)
+    }
+
+    private fun stubBundledZones(version: String, hash: String) {
+        val zonesJson = gson.toJson(ZonesResponse(version, hash, listOf(testZone)))
+        val assetManager = mockk<AssetManager>()
+        every { context.assets } returns assetManager
+        every { assetManager.open("zones.json") } returns ByteArrayInputStream(zonesJson.toByteArray())
     }
 
     @Test
     fun `ensureLoaded skips loading when database has zones`() = runTest {
         coEvery { zoneDao.count() } returns 10
+        stubBundledZones(version = "2026-07-17T11:51:47Z", hash = "samehash")
+        every { settingsRepository.cachedZoneHash } returns flowOf("samehash")
 
         repository.ensureLoaded()
 
         coVerify(exactly = 0) { zoneDao.replaceAll(any()) }
+    }
+
+    @Test
+    fun `ensureLoaded reseeds when bundled version is newer than cached`() = runTest {
+        coEvery { zoneDao.count() } returns 10
+        stubBundledZones(version = "2026-07-17T11:51:47Z", hash = "bundlehash")
+        every { settingsRepository.cachedZoneHash } returns flowOf("oldhash")
+        every { settingsRepository.cachedZoneVersion } returns flowOf("2026-07-13T06:10:40Z")
+
+        repository.ensureLoaded()
+
+        coVerify { zoneDao.replaceAll(any()) }
+        coVerify { settingsRepository.setCachedZoneHash("bundlehash") }
+        coVerify { settingsRepository.setCachedZoneVersion("2026-07-17T11:51:47Z") }
+    }
+
+    @Test
+    fun `ensureLoaded skips reseed when bundled version is not newer`() = runTest {
+        coEvery { zoneDao.count() } returns 10
+        stubBundledZones(version = "2026-07-13T06:10:40Z", hash = "bundlehash")
+        every { settingsRepository.cachedZoneHash } returns flowOf("newerhash")
+        every { settingsRepository.cachedZoneVersion } returns flowOf("2026-07-17T11:51:47Z")
+
+        repository.ensureLoaded()
+
+        coVerify(exactly = 0) { zoneDao.replaceAll(any()) }
+        coVerify(exactly = 0) { settingsRepository.setCachedZoneHash(any()) }
+    }
+
+    @Test
+    fun `ensureLoaded checks bundle recency only once per process`() = runTest {
+        coEvery { zoneDao.count() } returns 10
+        stubBundledZones(version = "2026-07-17T11:51:47Z", hash = "bundlehash")
+        every { settingsRepository.cachedZoneHash } returns flowOf("oldhash")
+        every { settingsRepository.cachedZoneVersion } returns flowOf("2026-07-13T06:10:40Z")
+
+        repository.ensureLoaded()
+        repository.ensureLoaded()
+
+        coVerify(exactly = 1) { zoneDao.replaceAll(any()) }
     }
 
     @Test
@@ -131,6 +185,71 @@ class ZoneRepositoryTest {
         coEvery { zoneApi.fetchVersion() } returns VersionResponse("v1", "hash1", null, 1)
         coEvery { settingsRepository.cachedZoneHash } returns flowOf("")
         coEvery { zoneApi.fetchZones() } returns ZonesResponse("v1", "hash1", listOf(testZone))
+
+        val result = repository.syncFromServer()
+
+        assertEquals(SyncResult.Updated, result)
+        coVerify { zoneApi.fetchZones() }
+    }
+
+    @Test
+    fun `syncFromServer skips fetch when remote version is older`() = runTest {
+        coEvery { zoneApi.fetchVersion() } returns
+            VersionResponse("2026-07-13T06:10:40Z", "serverhash", null, 1)
+        every { settingsRepository.cachedZoneHash } returns flowOf("localhash")
+        every { settingsRepository.cachedZoneVersion } returns flowOf("2026-07-17T11:51:47Z")
+
+        val result = repository.syncFromServer()
+
+        assertEquals(SyncResult.UpToDate, result)
+        coVerify(exactly = 0) { zoneApi.fetchZones() }
+        coVerify(exactly = 0) { settingsRepository.setCachedZoneHash(any()) }
+        coVerify(exactly = 0) { settingsRepository.setCachedZoneVersion(any()) }
+    }
+
+    @Test
+    fun `syncFromServer fetches when remote version equals cached with different hash`() = runTest {
+        // Equal version + different hash = corrupted local state; the server
+        // repairs it (also what lets QA poison the hash to force a re-fetch).
+        coEvery { zoneApi.fetchVersion() } returns
+            VersionResponse("2026-07-17T11:51:47Z", "serverhash", null, 1)
+        every { settingsRepository.cachedZoneHash } returns flowOf("localhash")
+        every { settingsRepository.cachedZoneVersion } returns flowOf("2026-07-17T11:51:47Z")
+        coEvery { zoneApi.fetchZones() } returns
+            ZonesResponse("2026-07-17T11:51:47Z", "serverhash", listOf(testZone))
+
+        val result = repository.syncFromServer()
+
+        assertEquals(SyncResult.Updated, result)
+        coVerify { zoneApi.fetchZones() }
+    }
+
+    @Test
+    fun `syncFromServer applies when remote version is newer`() = runTest {
+        coEvery { zoneApi.fetchVersion() } returns
+            VersionResponse("2026-07-20T02:10:00Z", "serverhash", null, 1)
+        every { settingsRepository.cachedZoneHash } returns flowOf("localhash")
+        every { settingsRepository.cachedZoneVersion } returns flowOf("2026-07-17T11:51:47Z")
+        coEvery { zoneApi.fetchZones() } returns
+            ZonesResponse("2026-07-20T02:10:00Z", "serverhash", listOf(testZone))
+
+        val result = repository.syncFromServer()
+
+        assertEquals(SyncResult.Updated, result)
+        coVerify { zoneDao.replaceAll(any()) }
+        coVerify { settingsRepository.setCachedZoneVersion("2026-07-20T02:10:00Z") }
+    }
+
+    @Test
+    fun `syncFromServer applies when cached version is legacy`() = runTest {
+        // Pre-recency installs cached "" or non-timestamp versions — not
+        // comparable, so the pre-ISSUE-011 hash-only behavior applies.
+        coEvery { zoneApi.fetchVersion() } returns
+            VersionResponse("2026-07-13T06:10:40Z", "serverhash", null, 1)
+        every { settingsRepository.cachedZoneHash } returns flowOf("localhash")
+        every { settingsRepository.cachedZoneVersion } returns flowOf("v1")
+        coEvery { zoneApi.fetchZones() } returns
+            ZonesResponse("2026-07-13T06:10:40Z", "serverhash", listOf(testZone))
 
         val result = repository.syncFromServer()
 

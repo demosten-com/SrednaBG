@@ -30,6 +30,13 @@ ROAD_NAME_ALIASES: dict[str, str] = {
     'АМ "Европа"': "АМ Европа",
     "АМ Европа": "АМ Европа",
     'АМ "Европа" (Северна скоростна тангента)': "АМ Европа",
+    # Bare motorway names as they appear in TollTracker tile titles
+    # ("Илиянци - Чепинци, Европа")
+    "Тракия": "АМ Тракия",
+    "Хемус": "АМ Хемус",
+    "Струма": "АМ Струма",
+    "Марица": "АМ Марица",
+    "Европа": "АМ Европа",
     "Път I-1": "Път I-1",
     "Път I-2": "Път I-2",
     "Път I-3": "Път I-3",
@@ -125,6 +132,36 @@ def road_slug(canonical: str) -> str:
     return re.sub(r"[^a-z0-9]", "", canonical.lower())
 
 
+# Bulgarian Cyrillic -> Latin transliteration (BDS / streamlined system).
+# Single source of truth: the validator's Latin-vs-Cyrillic consistency check
+# and the TollTracker fetcher's synthesized Latin names both use this table.
+CYR_TO_LAT: dict[str, str] = {
+    "а": "a", "б": "b", "в": "v", "г": "g", "д": "d", "е": "e", "ж": "zh",
+    "з": "z", "и": "i", "й": "y", "к": "k", "л": "l", "м": "m", "н": "n",
+    "о": "o", "п": "p", "р": "r", "с": "s", "т": "t", "у": "u", "ф": "f",
+    "х": "h", "ц": "ts", "ч": "ch", "ш": "sh", "щ": "sht", "ъ": "a",
+    "ь": "y", "ю": "yu", "я": "ya",
+}
+
+
+def to_latin(text: str) -> str:
+    """Transliterate Bulgarian Cyrillic to Latin, preserving letter case.
+
+    Non-Cyrillic characters pass through unchanged, so Latin input (road
+    codes like "I-3") is the identity. "Чепинци" -> "Chepintsi".
+    """
+    out = []
+    for ch in text:
+        mapped = CYR_TO_LAT.get(ch.lower())
+        if mapped is None:
+            out.append(ch)
+        elif ch.isupper():
+            out.append(mapped.capitalize())
+        else:
+            out.append(mapped)
+    return "".join(out)
+
+
 def opposite_direction(direction: str) -> str:
     """Return the opposite compass direction."""
     opposites = {"east": "west", "west": "east", "north": "south", "south": "north"}
@@ -139,8 +176,8 @@ def is_motorway(road: str) -> bool:
 
     Single source of truth for the per-scraper checks that used to be spelled
     three different ways: BG TOLL canonical names (``АМ Тракия``), KML road
-    codes (``A-1``), and bare codes (``A1``). TollTracker doesn't call this —
-    its payload carries an explicit ``roadType`` field.
+    codes (``A-1``), and bare codes (``A1``). The TollTracker fetcher derives
+    ``road_type`` from this too (its vector tiles carry only OSM road classes).
     """
     return road.startswith("АМ") or bool(re.match(r"^A-?\d", road))
 

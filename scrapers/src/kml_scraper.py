@@ -482,18 +482,17 @@ def _find_camera_km(
 def scrape(kml_text: str | None = None) -> list[Zone]:
     """Main entry point. Fetch and parse KML data.
 
+    Raises on fetch/parse failure — the pipeline treats a failed source as
+    fatal (degraded data must not publish) and reports the error.
+
     Args:
         kml_text: Pre-fetched KML text (for testing). If None, fetches from network.
 
     Returns:
         List of Zone objects (2 per physical segment: forward + reverse).
     """
-    try:
-        if kml_text is None:
-            kml_text = fetch_kmz()
+    if kml_text is None:
+        kml_text = fetch_kmz()
 
-        cameras, segments = parse_kml(kml_text)
-        return segments_to_zones(segments, cameras)
-    except Exception:
-        logger.warning("KML scraper failed", exc_info=True)
-        return []
+    cameras, segments = parse_kml(kml_text)
+    return segments_to_zones(segments, cameras)

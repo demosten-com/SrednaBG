@@ -8,7 +8,6 @@
 import pytest
 
 from src.bgtoll_scraper import scrape as bgtoll_scrape
-from src.tolltracker_fetcher import scrape as tolltracker_scrape
 from src.validator import (
     ZoneMatch,
     _coords_close,
@@ -23,6 +22,7 @@ from src.validator import (
     merge_match,
     normalize_road,
     road_slug,
+    snap_junction_seams,
     validate,
 )
 from src.zone_schema import SpeedLimits, Zone, ZoneEndpoint
@@ -371,10 +371,10 @@ class TestValidate:
 
 
 class TestMergeAll:
-    def test_end_to_end_with_fixtures(self, bgtoll_html, tolltracker_html):
+    def test_end_to_end_with_fixtures(self, bgtoll_html, tolltracker_zones):
         """End-to-end merge using both fixtures."""
         bg_zones = bgtoll_scrape(html=bgtoll_html)
-        tt_zones = tolltracker_scrape(html=tolltracker_html)
+        tt_zones = tolltracker_zones
 
         merged = merge_all(bg_zones, tt_zones, [])
 
@@ -389,15 +389,68 @@ class TestMergeAll:
         roads = {normalize_road(z.road) for z in merged}
         assert "АМ Тракия" in roads
 
-    def test_merged_zones_have_coordinates(self, bgtoll_html, tolltracker_html):
+    def test_merged_zones_have_coordinates(self, bgtoll_html, tolltracker_zones):
         """Zones matched with TollTracker should have GPS coordinates."""
         bg_zones = bgtoll_scrape(html=bgtoll_html)
-        tt_zones = tolltracker_scrape(html=tolltracker_html)
+        tt_zones = tolltracker_zones
         merged = merge_all(bg_zones, tt_zones, [])
 
         matched = [z for z in merged if "tolltracker" in z.source]
         for z in matched:
             assert z.start.lat != 0.0, f"Zone {z.id} has no start coordinates"
+
+
+class TestSnapJunctionSeams:
+    def _zone(self, zid, start, end, source="tolltracker", direction="east"):
+        z = _make_zone(
+            direction=direction,
+            start_lat=start[0],
+            start_lng=start[1],
+            end_lat=end[0],
+            end_lng=end[1],
+            source=source,
+        )
+        z.id = zid
+        return z
+
+    def test_snaps_shared_camera_endpoints(self):
+        # B starts ~15 m from where A ends — the same physical camera.
+        a = self._zone("trakiya-01-east", (42.550, 23.703), (42.427, 23.855))
+        b = self._zone("trakiya-02-east", (42.4271, 23.8551), (42.400, 23.990))
+        snap_junction_seams([a, b])
+        assert (b.start.lat, b.start.lng) == (a.end.lat, a.end.lng)
+
+    def test_tolltracker_backed_endpoint_wins(self):
+        # A merged without TollTracker; B's start is the higher-precision
+        # coordinate, so A's end moves onto it.
+        a = self._zone(
+            "trakiya-01-east", (42.550, 23.703), (42.427, 23.855), source="kml"
+        )
+        b = self._zone("trakiya-02-east", (42.4271, 23.8551), (42.400, 23.990))
+        b_start = (b.start.lat, b.start.lng)
+        snap_junction_seams([a, b])
+        assert (a.end.lat, a.end.lng) == b_start
+
+    def test_opposite_direction_is_never_snapped(self):
+        # The opposite carriageway's start sits near this zone's end but is
+        # a genuinely distinct point.
+        a = self._zone("trakiya-01-east", (42.550, 23.703), (42.427, 23.855))
+        b = self._zone(
+            "trakiya-01-west",
+            (42.4271, 23.8551),
+            (42.5501, 23.7031),
+            direction="west",
+        )
+        before = (b.start.lat, b.start.lng)
+        snap_junction_seams([a, b])
+        assert (b.start.lat, b.start.lng) == before
+
+    def test_wide_gap_left_for_validate_warning(self):
+        a = self._zone("trakiya-01-east", (42.550, 23.703), (42.427, 23.855))
+        b = self._zone("trakiya-02-east", (42.428, 23.856), (42.400, 23.990))
+        before = (b.start.lat, b.start.lng)
+        snap_junction_seams([a, b])  # ~140 m gap — beyond JUNCTION_SNAP_M
+        assert (b.start.lat, b.start.lng) == before
 
 
 class TestAlignCenterlineToEndpoints:

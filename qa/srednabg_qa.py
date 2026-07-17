@@ -95,6 +95,7 @@ SYNC_SCENARIOS = [
     # connectivity and the emulator's DNS can take a few seconds to recover.
     "zones_toggle_off",
     "zones_freshness",
+    "zones_remote_older",
     "zones_offline",
     # Map sync is feature-gated off (see FeatureFlags on both platforms).
     # `map_disabled` asserts the gate is in place; restore `map_happy` when

@@ -27,6 +27,7 @@ from src.roads import (
     normalize_road,
     opposite_direction,
     road_slug,
+    to_latin,
 )
 from src.zone_schema import SpeedLimits, Zone, ZoneEndpoint
 
@@ -682,26 +683,25 @@ def align_centerline_to_endpoints(zone: Zone) -> Zone:
     })
 
 
-# Cyrillic -> Latin transliteration for the consistency check below (BDS/
-# streamlined system, lowercase only — the check is case-insensitive).
-_CYR_TO_LAT = {
-    "а": "a", "б": "b", "в": "v", "г": "g", "д": "d", "е": "e", "ж": "zh",
-    "з": "z", "и": "i", "й": "y", "к": "k", "л": "l", "м": "m", "н": "n",
-    "о": "o", "п": "p", "р": "r", "с": "s", "т": "t", "у": "u", "ф": "f",
-    "х": "h", "ц": "ts", "ч": "ch", "ш": "sh", "щ": "sht", "ъ": "a",
-    "ь": "y", "ю": "yu", "я": "ya",
-}
-
 # Junction continuity band: a gap below the floor is a shared camera (fine);
 # one above the ceiling is a genuine inter-zone stretch (fine); in between
 # is a seam that should coincide but doesn't — bad upstream data.
 JUNCTION_GAP_MIN_M = 10.0
 JUNCTION_GAP_MAX_M = 500.0
 
+# Consecutive same-direction zones share a physical camera, but their merged
+# endpoints can come from different sources (or independently-quantized
+# TollTracker tile features) and land a few metres apart. Seams up to this
+# size are snapped back together in merge_all; anything larger is left for
+# the validate() junction warning. Well below the ~10-25 m separation of
+# opposite carriageways — which are in different (road, direction) groups
+# anyway, so they are never candidates.
+JUNCTION_SNAP_M = 30.0
+
 
 def _transliterate(cyrillic: str) -> str:
     """Lowercase Bulgarian-Cyrillic-to-Latin transliteration (loose)."""
-    return "".join(_CYR_TO_LAT.get(c, c) for c in cyrillic.lower())
+    return to_latin(cyrillic.lower())
 
 
 def _latin_matches_cyrillic(cyrillic: str, latin: str) -> bool:
@@ -738,6 +738,13 @@ def validate(zones: list[Zone]) -> tuple[list[Zone], list[str]]:
         if z.distance_m <= 0:
             warnings.append(f"Zone {z.id} has invalid distance: {z.distance_m}")
             continue
+
+        # Every published zone needs the full per-vehicle limit set. Only KML
+        # and BG TOLL carry truck/bus limits (TollTracker tiles have a single
+        # speed_limit), so a gap here means a zone merged without either.
+        for vehicle in ("car", "truck", "bus"):
+            if getattr(z.speed_limits, vehicle) is None:
+                warnings.append(f"Zone {z.id} has no {vehicle} speed limit")
 
         # Centerline orientation guard (defense-in-depth post-condition of
         # align_centerline_to_endpoints, which merge_all runs just above). The
@@ -843,6 +850,41 @@ def validate(zones: list[Zone]) -> tuple[list[Zone], list[str]]:
     return valid, warnings
 
 
+def snap_junction_seams(
+    zones: list[Zone], snap_m: float = JUNCTION_SNAP_M
+) -> list[Zone]:
+    """Make shared-camera endpoints of consecutive zones coincide exactly.
+
+    Where zone A ends and zone B starts (same road, same direction), both
+    endpoints describe the same physical camera. When they disagree by a few
+    metres, the endpoint backed by TollTracker coordinates wins (the highest-
+    precision source); on a tie, A's end wins. Runs before centerline
+    alignment, which then pulls the centerlines onto the snapped endpoints.
+    """
+    groups: dict[tuple[str, str], list[Zone]] = {}
+    for zone in zones:
+        if zone.start.lat != 0 or zone.start.lng != 0:
+            groups.setdefault(
+                (normalize_road(zone.road), zone.direction), []
+            ).append(zone)
+    for group in groups.values():
+        group.sort(key=lambda z: z.id)
+        for a in group:
+            for b in group:
+                if a is b:
+                    continue
+                gap = _haversine(a.end.lat, a.end.lng, b.start.lat, b.start.lng)
+                if not 0 < gap <= snap_m:
+                    continue
+                a_tt = "tolltracker" in a.source
+                b_tt = "tolltracker" in b.source
+                if b_tt and not a_tt:
+                    a.end.lat, a.end.lng = b.start.lat, b.start.lng
+                else:
+                    b.start.lat, b.start.lng = a.end.lat, a.end.lng
+    return zones
+
+
 def merge_all(
     bgtoll: list[Zone],
     tolltracker: list[Zone],
@@ -853,6 +895,7 @@ def merge_all(
     matches = match_zones(bgtoll, tolltracker, osm, kml)
     merged = [merge_match(m) for m in matches]
     with_ids = assign_ids(merged)
-    aligned = [align_centerline_to_endpoints(z) for z in with_ids]
+    snapped = snap_junction_seams(with_ids)
+    aligned = [align_centerline_to_endpoints(z) for z in snapped]
     valid, warnings = validate(aligned)
     return valid

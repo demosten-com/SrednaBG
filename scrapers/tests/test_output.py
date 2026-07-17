@@ -13,7 +13,6 @@ import pytest
 
 from src import output, validator
 from src.bgtoll_scraper import scrape as bgtoll_scrape
-from src.tolltracker_fetcher import scrape as tolltracker_scrape
 from src.validator import merge_all
 from src.zone_schema import SpeedLimits, Zone, ZoneDatabase, ZoneEndpoint
 
@@ -117,7 +116,7 @@ class TestPipelineHashStability:
     fresh last_verified stamp baked into the hash.
     """
 
-    def _run_pipeline_on_date(self, bgtoll_html, tolltracker_html, date_str):
+    def _run_pipeline_on_date(self, bgtoll_html, tolltracker_zones, date_str):
         """Run the merge pipeline with datetime.now patched to return date_str."""
         fake_now = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=UTC)
 
@@ -131,17 +130,17 @@ class TestPipelineHashStability:
         # merge_match overwrites those.
         with patch.object(validator, "datetime", _FakeDatetime):
             bg_zones = bgtoll_scrape(html=bgtoll_html)
-            tt_zones = tolltracker_scrape(html=tolltracker_html)
+            tt_zones = tolltracker_zones
             merged = merge_all(bg_zones, tt_zones, [])
             db = ZoneDatabase(version="v1", zones=merged).with_hash()
         return db
 
-    def test_hash_stable_across_dates(self, bgtoll_html, tolltracker_html):
+    def test_hash_stable_across_dates(self, bgtoll_html, tolltracker_zones):
         db_day1 = self._run_pipeline_on_date(
-            bgtoll_html, tolltracker_html, "2026-05-11"
+            bgtoll_html, tolltracker_zones, "2026-05-11"
         )
         db_day2 = self._run_pipeline_on_date(
-            bgtoll_html, tolltracker_html, "2026-08-23"
+            bgtoll_html, tolltracker_zones, "2026-08-23"
         )
 
         # Sanity: confirm the patch actually moved last_verified.
@@ -152,7 +151,7 @@ class TestPipelineHashStability:
         assert db_day1.hash == db_day2.hash
 
     def test_write_target_dir_no_snapshot_when_only_date_changed(
-        self, bgtoll_html, tolltracker_html, tmp_path
+        self, bgtoll_html, tolltracker_zones, tmp_path
     ):
         """write_target_dir snapshots zones.json only on a genuine content
         change. The trigger is gated on ``db.hash`` (which excludes
@@ -160,13 +159,13 @@ class TestPipelineHashStability:
         common cron case — must NOT rotate a snapshot.
         """
         db1 = self._run_pipeline_on_date(
-            bgtoll_html, tolltracker_html, "2026-05-11"
+            bgtoll_html, tolltracker_zones, "2026-05-11"
         )
         output.write_target_dir(db1, tmp_path)
         version1 = json.loads((tmp_path / "version.json").read_text())
 
         db2 = self._run_pipeline_on_date(
-            bgtoll_html, tolltracker_html, "2026-08-23"
+            bgtoll_html, tolltracker_zones, "2026-08-23"
         )
         output.write_target_dir(db2, tmp_path)
         version2 = json.loads((tmp_path / "version.json").read_text())
@@ -177,11 +176,11 @@ class TestPipelineHashStability:
         assert list(tmp_path.glob("zones-*.json")) == []
 
     def test_write_target_dir_snapshots_on_content_change(
-        self, bgtoll_html, tolltracker_html, tmp_path
+        self, bgtoll_html, tolltracker_zones, tmp_path
     ):
         """A genuine data change (different hash) DOES rotate a snapshot."""
         db1 = self._run_pipeline_on_date(
-            bgtoll_html, tolltracker_html, "2026-05-11"
+            bgtoll_html, tolltracker_zones, "2026-05-11"
         )
         output.write_target_dir(db1, tmp_path)
 
@@ -219,6 +218,81 @@ class TestPipelineHashStability:
             f"zones-2026{i:04d}T000000Z.json" for i in range(seeded)
         )[-retain:]
         assert remaining == expected
+
+
+class TestSourceFailure:
+    """Any failed or empty source aborts the run — publishing without a
+    source would silently degrade the shipped data."""
+
+    def _patch_sources(self, monkeypatch, bgtoll, tolltracker, kml):
+        monkeypatch.setattr(output.bgtoll_scraper, "scrape", bgtoll)
+        monkeypatch.setattr(output.tolltracker_fetcher, "scrape", tolltracker)
+        monkeypatch.setattr(output.kml_scraper, "scrape", kml)
+
+    def test_raising_source_fails_the_pipeline(self, monkeypatch):
+        def broken():
+            raise ValueError("tile schema changed")
+
+        self._patch_sources(
+            monkeypatch,
+            bgtoll=lambda: [_sample_zone()],
+            tolltracker=broken,
+            kml=lambda: [_sample_zone()],
+        )
+        with pytest.raises(output.SourceFailure) as exc:
+            output.run_pipeline()
+        assert exc.value.errors == [
+            "TollTracker: ValueError: tile schema changed"
+        ]
+
+    def test_empty_source_fails_the_pipeline(self, monkeypatch):
+        self._patch_sources(
+            monkeypatch,
+            bgtoll=lambda: [_sample_zone()],
+            tolltracker=lambda: [_sample_zone()],
+            kml=lambda: [],
+        )
+        with pytest.raises(output.SourceFailure) as exc:
+            output.run_pipeline()
+        assert exc.value.errors == ["KML: returned no zones"]
+
+    def test_all_failures_reported_together(self, monkeypatch):
+        def broken():
+            raise ConnectionError("timed out")
+
+        self._patch_sources(
+            monkeypatch, bgtoll=broken, tolltracker=broken, kml=lambda: []
+        )
+        with pytest.raises(output.SourceFailure) as exc:
+            output.run_pipeline()
+        assert len(exc.value.errors) == 3
+        assert exc.value.errors[-1] == "KML: returned no zones"
+
+    def test_main_exits_nonzero_and_leaves_files(
+        self, tmp_path, monkeypatch, caplog
+    ):
+        healthy = ZoneDatabase(
+            version="v1", zones=[_sample_zone()]
+        ).with_hash()
+        output.write_target_dir(healthy, tmp_path)
+        zones_before = (tmp_path / "zones.json").read_text()
+
+        def broken_pipeline():
+            raise output.SourceFailure(["TollTracker: ValueError: boom"])
+
+        monkeypatch.setattr(output, "run_pipeline", broken_pipeline)
+        monkeypatch.setattr(
+            "sys.argv", ["src.output", "--target-dir", str(tmp_path)]
+        )
+        with pytest.raises(SystemExit) as exc:
+            output.main()
+        assert exc.value.code == 1
+        assert (tmp_path / "zones.json").read_text() == zones_before
+        # The concise per-source error is re-logged for the Telegram log tail.
+        assert any(
+            "TollTracker: ValueError: boom" in r.getMessage()
+            for r in caplog.records
+        )
 
 
 class TestPublishGuard:

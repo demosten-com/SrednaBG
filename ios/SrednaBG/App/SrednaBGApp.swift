@@ -3,6 +3,7 @@
 //
 // SrednaBG — ios / SrednaBG
 
+import os
 import SwiftUI
 import SrednaBGCore
 import SrednaBGData
@@ -249,15 +250,26 @@ final class AppContainer {
 
         await zoneStore.loadFromDisk()
         let cached = await zoneStore.snapshot()
-        if cached.isEmpty {
-            // First-launch fallback: parse the bundled `bundled-zones.json`.
-            if let response = BundledZonesLoader().load() {
-                try? await zoneStore.replaceAll(with: response.zones)
-                tracking.updateZones(response.zones)
-                settings.cachedZoneHash = response.hash
-                settings.cachedZoneVersion = response.version
-            }
-        } else {
+        // First launch seeds from the bundled `bundled-zones.json`; an app
+        // upgrade re-seeds over a non-empty store when the bundle is provably
+        // newer than the last synced data (a build can carry a fresher scrape
+        // than the weekly server cron). Runs before the launch sync task below,
+        // so the sync's recency gate sees the bundle's version.
+        var seeded = false
+        if let response = BundledZonesLoader().load(),
+           cached.isEmpty || ZoneDataRecency.shouldReseedFromBundle(
+               bundleHash: response.hash,
+               bundleVersion: response.version,
+               cachedHash: settings.cachedZoneHash,
+               cachedVersion: settings.cachedZoneVersion
+           ) {
+            try? await zoneStore.replaceAll(with: response.zones)
+            tracking.updateZones(response.zones)
+            settings.cachedZoneHash = response.hash
+            settings.cachedZoneVersion = response.version
+            seeded = true
+        }
+        if !seeded {
             tracking.updateZones(cached)
         }
 
@@ -310,18 +322,32 @@ final class AppContainer {
     func runZoneSync() async -> SyncResult {
         do {
             let version = try await syncClient.fetchVersion()
-            if !settings.cachedZoneHash.isEmpty, version.hash == settings.cachedZoneHash {
+            switch ZoneDataRecency.decide(
+                remoteHash: version.hash,
+                remoteVersion: version.version,
+                cachedHash: settings.cachedZoneHash,
+                cachedVersion: settings.cachedZoneVersion
+            ) {
+            case .upToDate:
                 // Backfill for installs that cached the hash before the
                 // version timestamp existed — same data, so same version.
                 settings.cachedZoneVersion = version.version
                 return .upToDate
+            case .skipRemoteStale:
+                // A locally built app can bundle a fresher scrape than the
+                // weekly server cron — the server must never downgrade us.
+                QALog.location.info(
+                    "Skipping zone sync: server data \(version.version, privacy: .public) is not newer than local \(self.settings.cachedZoneVersion, privacy: .public)"
+                )
+                return .upToDate
+            case .applyRemote:
+                let response = try await syncClient.fetchZones()
+                try await zoneStore.replaceAll(with: response.zones)
+                tracking.updateZones(response.zones)
+                settings.cachedZoneHash = response.hash
+                settings.cachedZoneVersion = response.version
+                return .updated
             }
-            let response = try await syncClient.fetchZones()
-            try await zoneStore.replaceAll(with: response.zones)
-            tracking.updateZones(response.zones)
-            settings.cachedZoneHash = response.hash
-            settings.cachedZoneVersion = response.version
-            return .updated
         } catch {
             return .failed(SyncFailure(underlying: error))
         }

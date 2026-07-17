@@ -6,14 +6,14 @@
 
 /* HomeScreen */
 "statusNotTracking" = "Не наблюдава";
-"tapToStartHint" = "Натиснете Старт, за да започнете наблюдение на зоните за секционен контрол.";
+"tapToStartHint" = "Натиснете ▶, за да започнете наблюдение на зоните за средна скорост.";
 "statusTrackingOutside" = "Наблюдаване — няма активна зона";
 "statusInZone" = "В зона — %@";
 "statusExiting" = "Излизане %@";
 "statusOverLimit" = "Превишение";
 "statusWithinLimit" = "В норма";
-"statusNowSpeed" = "Сега %@ km/h";
-"avgSpeedLabel" = "Средна";
+"statusNowSpeed" = "Текуща %@ km/h";
+"avgSpeedLabel" = "Средна скорост";
 "currentSpeedLabel" = "Текуща скорост";
 "speedLimit" = "Ограничение";
 "maxForRemainder" = "Макс. напред";

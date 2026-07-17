@@ -214,14 +214,13 @@ def to_zones(sections: list[RawSection]) -> list[Zone]:
 def scrape(html: str | None = None) -> list[Zone]:
     """Main entry point. Fetch and parse BG TOLL data.
 
+    Raises on fetch/parse failure — the pipeline treats a failed source as
+    fatal (degraded data must not publish) and reports the error.
+
     Args:
         html: Pre-fetched HTML (for testing). If None, fetches from network.
     """
-    try:
-        if html is None:
-            html = fetch_page()
-        sections = parse_html(html)
-        return to_zones(sections)
-    except Exception:
-        logger.warning("BG TOLL scraper failed", exc_info=True)
-        return []
+    if html is None:
+        html = fetch_page()
+    sections = parse_html(html)
+    return to_zones(sections)

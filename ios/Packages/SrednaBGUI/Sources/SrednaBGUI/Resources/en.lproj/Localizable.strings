@@ -6,14 +6,14 @@
 
 /* HomeScreen */
 "statusNotTracking" = "Not tracking";
-"tapToStartHint" = "Tap Start to begin monitoring section-control zones.";
+"tapToStartHint" = "Tap ▶ to begin monitoring average-speed zones.";
 "statusTrackingOutside" = "Tracking — no active zone";
 "statusInZone" = "In zone — %@";
 "statusExiting" = "Exiting %@";
 "statusOverLimit" = "Over limit";
 "statusWithinLimit" = "Within limit";
-"statusNowSpeed" = "Now %@ km/h";
-"avgSpeedLabel" = "Average";
+"statusNowSpeed" = "Current %@ km/h";
+"avgSpeedLabel" = "Average speed";
 "currentSpeedLabel" = "Current speed";
 "speedLimit" = "Limit";
 "maxForRemainder" = "Max ahead";

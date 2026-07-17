@@ -17,7 +17,9 @@ ATTEMPTS = 3
 BACKOFF_BASE_S = 2.0  # 2s, then 4s between the three attempts
 
 
-def _get(url: str, timeout: int, label: str) -> requests.Response:
+def _get(
+    url: str, timeout: int, label: str, quiet_404: bool = False
+) -> requests.Response:
     last_exc: requests.RequestException | None = None
     for attempt in range(ATTEMPTS):
         try:
@@ -34,7 +36,10 @@ def _get(url: str, timeout: int, label: str) -> requests.Response:
             # Connection/timeout errors and 5xx are transient — keep retrying.
             status = getattr(getattr(e, "response", None), "status_code", None)
             if status is not None and 400 <= status < 500:
-                logger.warning("%s fetch got %d (non-retryable): %s", label, status, e)
+                if not (quiet_404 and status == 404):
+                    logger.warning(
+                        "%s fetch got %d (non-retryable): %s", label, status, e
+                    )
                 raise
             last_exc = e
             logger.warning("%s fetch attempt %d failed: %s", label, attempt + 1, e)
@@ -50,6 +55,22 @@ def fetch_text(url: str, *, timeout: int = 30, label: str = "HTTP") -> str:
     return resp.text
 
 
-def fetch_bytes(url: str, *, timeout: int = 30, label: str = "HTTP") -> bytes:
-    """GET ``url`` and return its raw body, retrying with backoff."""
-    return _get(url, timeout, label).content
+def fetch_bytes(
+    url: str,
+    *,
+    timeout: int = 30,
+    label: str = "HTTP",
+    none_on_404: bool = False,
+) -> bytes | None:
+    """GET ``url`` and return its raw body, retrying with backoff.
+
+    With ``none_on_404`` a 404 returns ``None`` without logging — for
+    resources where absence is an expected answer (e.g. empty map tiles).
+    """
+    try:
+        return _get(url, timeout, label, quiet_404=none_on_404).content
+    except requests.HTTPError as e:
+        status = getattr(e.response, "status_code", None)
+        if none_on_404 and status == 404:
+            return None
+        raise

@@ -16,12 +16,12 @@
     <string name="status_exiting">Излизане от зона: %s</string>
     <string name="start_tracking">Стартирай</string>
     <string name="stop_tracking">Спри</string>
-    <string name="tap_to_start_hint">Натиснете ▶ за начало</string>
-    <string name="avg_speed_label">средна km/h</string>
+    <string name="tap_to_start_hint">Натиснете ▶, за да започнете наблюдение на зоните за средна скорост.</string>
+    <string name="avg_speed_label">Средна скорост</string>
     <string name="current_speed_label">km/h</string>
-    <string name="status_now_speed">Сега %1$s km/h</string>
+    <string name="status_now_speed">Текуща %1$s km/h</string>
     <string name="speed_limit">Ограничение</string>
-    <string name="max_for_remainder">Макс. сега</string>
+    <string name="max_for_remainder">Макс. напред</string>
     <string name="remaining">Остават</string>
     <string name="status_within_limit">В норма</string>
     <string name="status_over_limit">Превишение!</string>

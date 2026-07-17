@@ -16,12 +16,12 @@
     <string name="status_exiting">Leaving zone: %s</string>
     <string name="start_tracking">Start tracking</string>
     <string name="stop_tracking">Stop tracking</string>
-    <string name="tap_to_start_hint">Tap ▶ to start</string>
-    <string name="avg_speed_label">avg km/h</string>
+    <string name="tap_to_start_hint">Tap ▶ to begin monitoring average-speed zones.</string>
+    <string name="avg_speed_label">Average speed</string>
     <string name="current_speed_label">km/h</string>
-    <string name="status_now_speed">Now %1$s km/h</string>
+    <string name="status_now_speed">Current %1$s km/h</string>
     <string name="speed_limit">Limit</string>
-    <string name="max_for_remainder">Max now</string>
+    <string name="max_for_remainder">Max ahead</string>
     <string name="remaining">Remaining</string>
     <string name="status_within_limit">Within limit</string>
     <string name="status_over_limit">Over limit!</string>

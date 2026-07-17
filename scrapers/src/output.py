@@ -26,7 +26,7 @@ require("bs4", "requests", "overpy", "pydantic", module="src.output")
 from src import (  # noqa: E402
     bgtoll_scraper,
     kml_scraper,
-    osm_overpass,
+    # osm_overpass,  # disabled for now — see run_pipeline()
     tolltracker_fetcher,
 )
 from src.validator import (  # noqa: E402
@@ -43,30 +43,71 @@ DEFAULT_OUTPUT = Path(__file__).parent.parent / "data" / "zones.json"
 SNAPSHOT_RETENTION = 26
 MIN_APP_VERSION = "1.0.0"
 
-# Publish guard: refuse to overwrite good data with a collapsed scrape. If an
-# upstream source breaks (site redesign, payload format change), its scraper
-# returns [] rather than raising — without these floors the pipeline would
-# publish a near-empty zones.json to the live /api/zones and every client
-# would happily sync it.
+# Publish guard: refuse to overwrite good data with a collapsed scrape.
+# First line of defense is SourceFailure — any source that raises or comes
+# back empty aborts the run before merging. These floors remain as a second
+# net against *partial* collapse (a source silently losing most of its
+# zones), which per-source failure detection can't see.
 MIN_PUBLISH_ZONES = 50
 MIN_PREV_RATIO = 0.7
 
 
+class SourceFailure(RuntimeError):
+    """One or more upstream sources failed — the run must not publish.
+
+    Publishing with a missing source would silently degrade the shipped data
+    (lost coordinates, Latin names, limits), so a failed source is fatal.
+    """
+
+    def __init__(self, errors: list[str]):
+        super().__init__("; ".join(errors))
+        self.errors = errors
+
+
+def _scrape_source(name: str, scrape_fn, errors: list[str]) -> list:
+    """Run one source scraper, recording a concise error line on failure.
+
+    An empty result counts as failure too: every active source always has
+    zones for Bulgaria, so zero means the source broke quietly.
+    """
+    try:
+        zones = scrape_fn()
+    except Exception as e:
+        logger.error("%s source failed", name, exc_info=True)
+        errors.append(f"{name}: {type(e).__name__}: {e}")
+        return []
+    if not zones:
+        errors.append(f"{name}: returned no zones")
+        return []
+    logger.info("%s: %d zones", name, len(zones))
+    return zones
+
+
 def run_pipeline() -> ZoneDatabase:
-    """Run all scrapers and merge into a ZoneDatabase."""
+    """Run all scrapers and merge into a ZoneDatabase.
+
+    Raises SourceFailure — after attempting every source, so the report
+    covers all of them — when any source fails or returns no zones.
+    """
     logger.info("Starting zone data pipeline")
 
-    bgtoll_zones = bgtoll_scraper.scrape()
-    logger.info("BG TOLL: %d zones", len(bgtoll_zones))
+    source_errors: list[str] = []
+    bgtoll_zones = _scrape_source("BG TOLL", bgtoll_scraper.scrape, source_errors)
+    tolltracker_zones = _scrape_source(
+        "TollTracker", tolltracker_fetcher.scrape, source_errors
+    )
+    kml_zones = _scrape_source("KML", kml_scraper.scrape, source_errors)
 
-    tolltracker_zones = tolltracker_fetcher.scrape()
-    logger.info("TollTracker: %d zones", len(tolltracker_zones))
+    # OSM Overpass disabled for now: the API answers 406 and OSM has no
+    # enforcement=average_speed relations for Bulgaria anyway, so the call
+    # only adds latency and a warning to every run. Re-enable by restoring
+    # the _scrape_source call when OSM coverage appears (note: empty-is-
+    # failure would need an exemption while OSM legitimately has no BG data).
+    # osm_zones = _scrape_source("OSM Overpass", osm_overpass.scrape, source_errors)
+    osm_zones: list = []
 
-    kml_zones = kml_scraper.scrape()
-    logger.info("KML: %d zones", len(kml_zones))
-
-    osm_zones = osm_overpass.scrape()
-    logger.info("OSM Overpass: %d zones", len(osm_zones))
+    if source_errors:
+        raise SourceFailure(source_errors)
 
     merged = merge_all(bgtoll_zones, tolltracker_zones, osm_zones, kml_zones)
     logger.info("Merged: %d zones", len(merged))
@@ -252,7 +293,19 @@ def main() -> None:
         return
 
     start = time.monotonic()
-    db = run_pipeline()
+    try:
+        db = run_pipeline()
+    except SourceFailure as e:
+        # Re-log the concise per-source errors LAST: the Telegram failure
+        # message tails cron.log, so these lines are what the operator sees.
+        for err in e.errors:
+            logger.error("Source failure: %s", err)
+        logger.error(
+            "%d of the zone data sources failed — refusing to write output, "
+            "existing data left untouched",
+            len(e.errors),
+        )
+        sys.exit(1)
 
     prev_count = None
     if args.target_dir is not None:

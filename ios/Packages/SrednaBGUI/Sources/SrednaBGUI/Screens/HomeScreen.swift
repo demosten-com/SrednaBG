@@ -149,7 +149,7 @@ public struct HomeScreen: View {
 
             Spacer()
 
-            VStack(spacing: 8) {
+            VStack(spacing: 16) {
                 SpeedDisplay(
                     value: inZone.avgSpeed,
                     label: L10n.avgSpeedLabel,
@@ -179,7 +179,7 @@ public struct HomeScreen: View {
             Text(statusText)
                 .font(.title3.weight(.bold))
                 .foregroundStyle(swiftColor)
-                .frame(maxWidth: .infinity, alignment: .center)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(24)
         .background(swiftColor.opacity(0.15), in: RoundedRectangle(cornerRadius: 20))

@@ -1,6 +1,6 @@
 {
-  "version": "2026-06-25T22:11:30Z",
-  "hash": "sha256:e344717a5262a59526484fa9f48e68173e84939498f96535997e1c7f8a38644b",
+  "version": "2026-07-17T11:51:47Z",
+  "hash": "sha256:933e69a4424c596b2f2160ef20072743dede221c1c431e9eebd48ed9a6c0d434",
   "zones": [
     {
       "id": "europa-01-east",
@@ -9,20 +9,20 @@
       "direction": "east",
       "description": "м/у 18 и п.в.Илиянци – Чепинци",
       "start": {
-        "lat": 42.765501,
-        "lng": 23.297023,
+        "lat": 42.7653671,
+        "lng": 23.2969379,
         "km_marker": "50+427",
         "settlement": "м/у 18 и п.в.Илиянци",
         "settlement_latin": "Iliyantsi"
       },
       "end": {
-        "lat": 42.7197,
-        "lng": 23.4005,
+        "lat": 42.7196194,
+        "lng": 23.4004068,
         "km_marker": "60+705",
         "settlement": "Чепинци",
         "settlement_latin": "Chepintsi"
       },
-      "distance_m": 10276,
+      "distance_m": 10260,
       "speed_limits": {
         "car": 120,
         "truck": 90,
@@ -31,12 +31,8 @@
       },
       "centerline": [
         [
-          42.765501,
-          23.297023
-        ],
-        [
-          42.765374,
-          23.296963
+          42.7653671,
+          23.2969379
         ],
         [
           42.764194,
@@ -619,13 +615,13 @@
           23.400471
         ],
         [
-          42.7197,
-          23.4005
+          42.7196194,
+          23.4004068
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "europa-01-west",
@@ -634,20 +630,20 @@
       "direction": "west",
       "description": "Чепинци – м/у 18 и п.в.Илиянци",
       "start": {
-        "lat": 42.7197,
-        "lng": 23.4005,
+        "lat": 42.7197455,
+        "lng": 23.4005141,
         "km_marker": "60+705",
         "settlement": "Чепинци",
         "settlement_latin": "Chepintsi"
       },
       "end": {
-        "lat": 42.765501,
-        "lng": 23.297023,
+        "lat": 42.7654773,
+        "lng": 23.2970667,
         "km_marker": "50+427",
         "settlement": "м/у 18 и п.в.Илиянци",
         "settlement_latin": "Iliyantsi"
       },
-      "distance_m": 10276,
+      "distance_m": 10280,
       "speed_limits": {
         "car": 120,
         "truck": 90,
@@ -656,8 +652,8 @@
       },
       "centerline": [
         [
-          42.7197,
-          23.4005
+          42.7197455,
+          23.4005141
         ],
         [
           42.719634,
@@ -1244,13 +1240,13 @@
           23.296963
         ],
         [
-          42.765501,
-          23.297023
+          42.7654773,
+          23.2970667
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "maritsa-01-east",
@@ -1259,20 +1255,20 @@
       "direction": "east",
       "description": "Харманли – Любимец",
       "start": {
-        "lat": 41.957933,
-        "lng": 25.88258,
+        "lat": 41.9578625,
+        "lng": 25.882566,
         "km_marker": "62+476",
         "settlement": "Харманли",
         "settlement_latin": "Harmanli"
       },
       "end": {
-        "lat": 41.862737,
-        "lng": 26.087552,
+        "lat": 41.8627056,
+        "lng": 26.0874224,
         "km_marker": "83+554",
         "settlement": "Любимец",
         "settlement_latin": "Lyubimets"
       },
-      "distance_m": 20993,
+      "distance_m": 20973,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -1281,12 +1277,8 @@
       },
       "centerline": [
         [
-          41.957933,
-          25.88258
-        ],
-        [
-          41.957838,
-          25.882517
+          41.9578625,
+          25.882566
         ],
         [
           41.95781,
@@ -4213,13 +4205,13 @@
           26.087461
         ],
         [
-          41.862737,
-          26.087552
+          41.8627056,
+          26.0874224
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "maritsa-02-east",
@@ -4228,20 +4220,20 @@
       "direction": "east",
       "description": "Любимец – Момково",
       "start": {
-        "lat": 41.862737,
-        "lng": 26.087552,
+        "lat": 41.8627056,
+        "lng": 26.0874224,
         "km_marker": "83+554",
         "settlement": "Любимец",
         "settlement_latin": "Lyubimets"
       },
       "end": {
-        "lat": 41.832333,
-        "lng": 26.140588,
+        "lat": 41.8322714,
+        "lng": 26.1404443,
         "km_marker": "89+476",
         "settlement": "Момково",
         "settlement_latin": "Momkovo"
       },
-      "distance_m": 5931,
+      "distance_m": 5920,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -4250,8 +4242,8 @@
       },
       "centerline": [
         [
-          41.862737,
-          26.087552
+          41.8627056,
+          26.0874224
         ],
         [
           41.862541,
@@ -4942,13 +4934,13 @@
           26.140515
         ],
         [
-          41.832333,
-          26.140588
+          41.8322714,
+          26.1404443
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "maritsa-01-west",
@@ -4957,20 +4949,20 @@
       "direction": "west",
       "description": "Любимец – Харманли",
       "start": {
-        "lat": 41.862737,
-        "lng": 26.087552,
+        "lat": 41.8627375,
+        "lng": 26.0875511,
         "km_marker": "83+554",
         "settlement": "Любимец",
         "settlement_latin": "Lyubimets"
       },
       "end": {
-        "lat": 41.957933,
-        "lng": 25.88258,
+        "lat": 41.9579583,
+        "lng": 25.8826518,
         "km_marker": "62+476",
         "settlement": "Харманли",
         "settlement_latin": "Harmanli"
       },
-      "distance_m": 20993,
+      "distance_m": 20999,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -4979,8 +4971,8 @@
       },
       "centerline": [
         [
-          41.862737,
-          26.087552
+          41.8627375,
+          26.0875511
         ],
         [
           41.862541,
@@ -7911,13 +7903,13 @@
           25.882517
         ],
         [
-          41.957933,
-          25.88258
+          41.9579583,
+          25.8826518
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "maritsa-03-east",
@@ -7926,20 +7918,20 @@
       "direction": "east",
       "description": "Момково – Свиленград",
       "start": {
-        "lat": 41.832333,
-        "lng": 26.140588,
+        "lat": 41.8322714,
+        "lng": 26.1404443,
         "km_marker": "89+476",
         "settlement": "Момково",
         "settlement_latin": "Momkovo"
       },
       "end": {
-        "lat": 41.778829,
-        "lng": 26.217502,
+        "lat": 41.7787208,
+        "lng": 26.2173915,
         "km_marker": "98+481",
         "settlement": "Свиленград",
         "settlement_latin": "Svilengrad"
       },
-      "distance_m": 9003,
+      "distance_m": 8993,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -7948,8 +7940,8 @@
       },
       "centerline": [
         [
-          41.832333,
-          26.140588
+          41.8322714,
+          26.1404443
         ],
         [
           41.832178,
@@ -8720,13 +8712,13 @@
           26.217279
         ],
         [
-          41.778829,
-          26.217502
+          41.7787208,
+          26.2173915
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "maritsa-02-west",
@@ -8735,20 +8727,20 @@
       "direction": "west",
       "description": "Момково – Любимец",
       "start": {
-        "lat": 41.832333,
-        "lng": 26.140588,
+        "lat": 41.8323194,
+        "lng": 26.140573,
         "km_marker": "89+476",
         "settlement": "Момково",
         "settlement_latin": "Momkovo"
       },
       "end": {
-        "lat": 41.862737,
-        "lng": 26.087552,
+        "lat": 41.8627375,
+        "lng": 26.0875511,
         "km_marker": "83+554",
         "settlement": "Любимец",
         "settlement_latin": "Lyubimets"
       },
-      "distance_m": 5931,
+      "distance_m": 5929,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -8757,8 +8749,8 @@
       },
       "centerline": [
         [
-          41.832333,
-          26.140588
+          41.8323194,
+          26.140573
         ],
         [
           41.832178,
@@ -9449,13 +9441,13 @@
           26.087461
         ],
         [
-          41.862737,
-          26.087552
+          41.8627375,
+          26.0875511
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "maritsa-03-west",
@@ -9464,20 +9456,20 @@
       "direction": "west",
       "description": "Свиленград – Момково",
       "start": {
-        "lat": 41.778829,
-        "lng": 26.217502,
+        "lat": 41.7788328,
+        "lng": 26.2174559,
         "km_marker": "98+481",
         "settlement": "Свиленград",
         "settlement_latin": "Svilengrad"
       },
       "end": {
-        "lat": 41.832333,
-        "lng": 26.140588,
+        "lat": 41.8323194,
+        "lng": 26.140573,
         "km_marker": "89+476",
         "settlement": "Момково",
         "settlement_latin": "Momkovo"
       },
-      "distance_m": 9003,
+      "distance_m": 8997,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -9486,8 +9478,8 @@
       },
       "centerline": [
         [
-          41.778829,
-          26.217502
+          41.7788328,
+          26.2174559
         ],
         [
           41.778824,
@@ -10258,13 +10250,13 @@
           26.140515
         ],
         [
-          41.832333,
-          26.140588
+          41.8323194,
+          26.140573
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "struma-01-south",
@@ -10273,20 +10265,20 @@
       "direction": "south",
       "description": "София – Тунел \"Мало Бучино\"",
       "start": {
-        "lat": 42.710623,
-        "lng": 23.223023,
+        "lat": 42.7107118,
+        "lng": 23.2229304,
         "km_marker": "0+672",
         "settlement": "София",
-        "settlement_latin": "Sofia"
+        "settlement_latin": "Sofiya"
       },
       "end": {
-        "lat": 42.677867,
-        "lng": 23.152323,
+        "lat": 42.6779239,
+        "lng": 23.1522059,
         "km_marker": "8+226",
         "settlement": "Тунел \"Мало Бучино\"",
-        "settlement_latin": "Malo Buchino"
+        "settlement_latin": "Tunel Malo Buchino"
       },
-      "distance_m": 7543,
+      "distance_m": 7525,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -10295,8 +10287,8 @@
       },
       "centerline": [
         [
-          42.710623,
-          23.223023
+          42.7107118,
+          23.2229304
         ],
         [
           42.710719,
@@ -11395,17 +11387,13 @@
           23.152322
         ],
         [
-          42.677882,
-          23.15219
-        ],
-        [
-          42.677867,
-          23.152323
+          42.6779239,
+          23.1522059
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "struma-01-north",
@@ -11414,20 +11402,20 @@
       "direction": "north",
       "description": "Тунел \"Мало Бучино\" – София",
       "start": {
-        "lat": 42.677867,
-        "lng": 23.152323,
+        "lat": 42.6778292,
+        "lng": 23.1523347,
         "km_marker": "8+226",
         "settlement": "Тунел \"Мало Бучино\"",
-        "settlement_latin": "Malo Buchino"
+        "settlement_latin": "Tunel Malo Buchino"
       },
       "end": {
-        "lat": 42.710623,
-        "lng": 23.223023,
+        "lat": 42.7106014,
+        "lng": 23.2230163,
         "km_marker": "0+672",
         "settlement": "София",
-        "settlement_latin": "Sofia"
+        "settlement_latin": "Sofiya"
       },
-      "distance_m": 7543,
+      "distance_m": 7547,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -11436,8 +11424,8 @@
       },
       "centerline": [
         [
-          42.677867,
-          23.152323
+          42.6778292,
+          23.1523347
         ],
         [
           42.677882,
@@ -12540,13 +12528,13 @@
           23.223043
         ],
         [
-          42.710623,
-          23.223023
+          42.7106014,
+          23.2230163
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "struma-02-south",
@@ -12555,20 +12543,20 @@
       "direction": "south",
       "description": "Българчево – Покровник",
       "start": {
-        "lat": 42.011566,
-        "lng": 23.04487,
+        "lat": 42.0115024,
+        "lng": 23.0447459,
         "km_marker": "90+219",
         "settlement": "Българчево",
         "settlement_latin": "Balgarchevo"
       },
       "end": {
-        "lat": 41.99191,
-        "lng": 23.054068,
+        "lat": 41.9919051,
+        "lng": 23.0539083,
         "km_marker": "92+548",
         "settlement": "Покровник",
         "settlement_latin": "Pokrovnik"
       },
-      "distance_m": 2349,
+      "distance_m": 2334,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -12577,12 +12565,8 @@
       },
       "centerline": [
         [
-          42.011566,
-          23.04487
-        ],
-        [
-          42.011484,
-          23.044742
+          42.0115024,
+          23.0447459
         ],
         [
           42.009591,
@@ -12989,13 +12973,13 @@
           23.053808
         ],
         [
-          41.99191,
-          23.054068
+          41.9919051,
+          23.0539083
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "struma-02-north",
@@ -13004,20 +12988,20 @@
       "direction": "north",
       "description": "Покровник – Българчево",
       "start": {
-        "lat": 41.99191,
-        "lng": 23.054068,
+        "lat": 41.991937,
+        "lng": 23.0540586,
         "km_marker": "92+548",
         "settlement": "Покровник",
         "settlement_latin": "Pokrovnik"
       },
       "end": {
-        "lat": 42.011566,
-        "lng": 23.04487,
+        "lat": 42.0115183,
+        "lng": 23.0448747,
         "km_marker": "90+219",
         "settlement": "Българчево",
         "settlement_latin": "Balgarchevo"
       },
-      "distance_m": 2349,
+      "distance_m": 2343,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -13026,8 +13010,8 @@
       },
       "centerline": [
         [
-          41.99191,
-          23.054068
+          41.991937,
+          23.0540586
         ],
         [
           41.992595,
@@ -13438,13 +13422,13 @@
           23.044742
         ],
         [
-          42.011566,
-          23.04487
+          42.0115183,
+          23.0448747
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "struma-03-south",
@@ -13453,20 +13437,20 @@
       "direction": "south",
       "description": "Сандански – Дамяница",
       "start": {
-        "lat": 41.573084,
-        "lng": 23.239849,
+        "lat": 41.5730129,
+        "lng": 23.239646,
         "km_marker": "143+945",
         "settlement": "Сандански",
         "settlement_latin": "Sandanski"
       },
       "end": {
-        "lat": 41.514531,
-        "lng": 23.271574,
+        "lat": 41.5145224,
+        "lng": 23.2714462,
         "km_marker": "151+251",
         "settlement": "Дамяница",
         "settlement_latin": "Damyanitsa"
       },
-      "distance_m": 7359,
+      "distance_m": 7355,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -13475,8 +13459,8 @@
       },
       "centerline": [
         [
-          41.573084,
-          23.239849
+          41.5730129,
+          23.239646
         ],
         [
           41.573301,
@@ -14159,13 +14143,13 @@
           23.271428
         ],
         [
-          41.514531,
-          23.271574
+          41.5145224,
+          23.2714462
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "struma-04-south",
@@ -14174,20 +14158,20 @@
       "direction": "south",
       "description": "Дамяница – Марикостиново",
       "start": {
-        "lat": 41.514542,
-        "lng": 23.271568,
+        "lat": 41.5145224,
+        "lng": 23.2714462,
         "km_marker": "151+251",
         "settlement": "Дамяница",
         "settlement_latin": "Damyanitsa"
       },
       "end": {
-        "lat": 41.419074,
-        "lng": 23.333896,
+        "lat": 41.4190288,
+        "lng": 23.3336949,
         "km_marker": "163+488",
         "settlement": "Марикостиново",
         "settlement_latin": "Marikostinovo"
       },
-      "distance_m": 12228,
+      "distance_m": 12216,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -14196,8 +14180,8 @@
       },
       "centerline": [
         [
-          41.514542,
-          23.271568
+          41.5145224,
+          23.2714462
         ],
         [
           41.513625,
@@ -15944,13 +15928,13 @@
           23.333595
         ],
         [
-          41.419074,
-          23.333896
+          41.4190288,
+          23.3336949
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "struma-03-north",
@@ -15959,20 +15943,20 @@
       "direction": "north",
       "description": "Дамяница – Сандански",
       "start": {
-        "lat": 41.514531,
-        "lng": 23.271574,
+        "lat": 41.5145385,
+        "lng": 23.2715964,
         "km_marker": "151+251",
         "settlement": "Дамяница",
         "settlement_latin": "Damyanitsa"
       },
       "end": {
-        "lat": 41.573084,
-        "lng": 23.239849,
+        "lat": 41.5730611,
+        "lng": 23.2398176,
         "km_marker": "143+945",
         "settlement": "Сандански",
         "settlement_latin": "Sandanski"
       },
-      "distance_m": 7359,
+      "distance_m": 7360,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -15981,8 +15965,8 @@
       },
       "centerline": [
         [
-          41.514531,
-          23.271574
+          41.5145385,
+          23.2715964
         ],
         [
           41.514616,
@@ -16665,13 +16649,13 @@
           23.23961
         ],
         [
-          41.573084,
-          23.239849
+          41.5730611,
+          23.2398176
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "struma-04-north",
@@ -16680,20 +16664,20 @@
       "direction": "north",
       "description": "Марикостиново – Дамяница",
       "start": {
-        "lat": 41.419074,
-        "lng": 23.333896,
+        "lat": 41.419077,
+        "lng": 23.3338881,
         "km_marker": "163+488",
         "settlement": "Марикостиново",
         "settlement_latin": "Marikostinovo"
       },
       "end": {
-        "lat": 41.514542,
-        "lng": 23.271568,
+        "lat": 41.5145385,
+        "lng": 23.2715964,
         "km_marker": "151+251",
         "settlement": "Дамяница",
         "settlement_latin": "Damyanitsa"
       },
-      "distance_m": 12228,
+      "distance_m": 12227,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -16702,8 +16686,8 @@
       },
       "centerline": [
         [
-          41.419074,
-          23.333896
+          41.419077,
+          23.3338881
         ],
         [
           41.419169,
@@ -18450,13 +18434,13 @@
           23.271501
         ],
         [
-          41.514542,
-          23.271568
+          41.5145385,
+          23.2715964
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "trakiya-01-east",
@@ -18465,20 +18449,20 @@
       "direction": "east",
       "description": "Вакарел – Ихтиман",
       "start": {
-        "lat": 42.5504,
-        "lng": 23.7031,
+        "lat": 42.5502982,
+        "lng": 23.7030244,
         "km_marker": "24+288",
         "settlement": "Вакарел",
         "settlement_latin": "Vakarel"
       },
       "end": {
-        "lat": 42.4267,
-        "lng": 23.8545,
+        "lat": 42.4266719,
+        "lng": 23.8543653,
         "km_marker": "43+448",
         "settlement": "Ихтиман",
         "settlement_latin": "Ihtiman"
       },
-      "distance_m": 19243,
+      "distance_m": 19239,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -18487,8 +18471,8 @@
       },
       "centerline": [
         [
-          42.5504,
-          23.7031
+          42.5502982,
+          23.7030244
         ],
         [
           42.550487,
@@ -20579,13 +20563,13 @@
           23.854163
         ],
         [
-          42.4267,
-          23.8545
+          42.4266719,
+          23.8543653
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "trakiya-01-west",
@@ -20594,20 +20578,20 @@
       "direction": "west",
       "description": "Ихтиман – Вакарел",
       "start": {
-        "lat": 42.4267,
-        "lng": 23.8545,
+        "lat": 42.4267511,
+        "lng": 23.8544726,
         "km_marker": "43+448",
         "settlement": "Ихтиман",
         "settlement_latin": "Ihtiman"
       },
       "end": {
-        "lat": 42.5504,
-        "lng": 23.7031,
+        "lat": 42.5503615,
+        "lng": 23.7031317,
         "km_marker": "24+288",
         "settlement": "Вакарел",
         "settlement_latin": "Vakarel"
       },
-      "distance_m": 19243,
+      "distance_m": 19241,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -20616,8 +20600,8 @@
       },
       "centerline": [
         [
-          42.4267,
-          23.8545
+          42.4267511,
+          23.8544726
         ],
         [
           42.426994,
@@ -22708,13 +22692,13 @@
           23.702641
         ],
         [
-          42.5504,
-          23.7031
+          42.5503615,
+          23.7031317
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "trakiya-02-east",
@@ -22723,20 +22707,20 @@
       "direction": "east",
       "description": "Щърково – Цалапица",
       "start": {
-        "lat": 42.2949,
-        "lng": 24.2328,
+        "lat": 42.2947864,
+        "lng": 24.2327499,
         "km_marker": "82+263",
         "settlement": "Щърково",
         "settlement_latin": "Shtarkovo"
       },
       "end": {
-        "lat": 42.2051,
-        "lng": 24.5096,
+        "lat": 42.2049817,
+        "lng": 24.509511,
         "km_marker": "107+663",
         "settlement": "Цалапица",
         "settlement_latin": "Tsalapitsa"
       },
-      "distance_m": 25498,
+      "distance_m": 25494,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -22745,8 +22729,8 @@
       },
       "centerline": [
         [
-          42.2949,
-          24.2328
+          42.2947864,
+          24.2327499
         ],
         [
           42.295147,
@@ -25033,13 +25017,13 @@
           24.508573
         ],
         [
-          42.2051,
-          24.5096
+          42.2049817,
+          24.509511
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "trakiya-03-east",
@@ -25048,20 +25032,20 @@
       "direction": "east",
       "description": "Цалапица – Радиново",
       "start": {
-        "lat": 42.2051,
-        "lng": 24.5096,
+        "lat": 42.2049817,
+        "lng": 24.509511,
         "km_marker": "107+663",
         "settlement": "Цалапица",
         "settlement_latin": "Tsalapitsa"
       },
       "end": {
-        "lat": 42.198482,
-        "lng": 24.640653,
+        "lat": 42.1983374,
+        "lng": 24.6405745,
         "km_marker": "118+599",
         "settlement": "Радиново",
         "settlement_latin": "Radinovo"
       },
-      "distance_m": 11019,
+      "distance_m": 11000,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -25070,8 +25054,8 @@
       },
       "centerline": [
         [
-          42.2051,
-          24.5096
+          42.2049817,
+          24.509511
         ],
         [
           42.204985,
@@ -25934,13 +25918,13 @@
           24.640317
         ],
         [
-          42.198482,
-          24.640653
+          42.1983374,
+          24.6405745
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "trakiya-02-west",
@@ -25949,20 +25933,20 @@
       "direction": "west",
       "description": "Цалапица – Щърково",
       "start": {
-        "lat": 42.2051,
-        "lng": 24.5096,
+        "lat": 42.205093,
+        "lng": 24.5096397,
         "km_marker": "107+663",
         "settlement": "Цалапица",
         "settlement_latin": "Tsalapitsa"
       },
       "end": {
-        "lat": 42.2949,
-        "lng": 24.2328,
+        "lat": 42.2948657,
+        "lng": 24.2328143,
         "km_marker": "82+263",
         "settlement": "Щърково",
         "settlement_latin": "Shtarkovo"
       },
-      "distance_m": 25498,
+      "distance_m": 25504,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -25971,8 +25955,8 @@
       },
       "centerline": [
         [
-          42.2051,
-          24.5096
+          42.205093,
+          24.5096397
         ],
         [
           42.204985,
@@ -28259,13 +28243,13 @@
           24.232187
         ],
         [
-          42.2949,
-          24.2328
+          42.2948657,
+          24.2328143
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "trakiya-04-east",
@@ -28274,20 +28258,20 @@
       "direction": "east",
       "description": "Радиново – Царацово",
       "start": {
-        "lat": 42.198482,
-        "lng": 24.640653,
+        "lat": 42.1983374,
+        "lng": 24.6405745,
         "km_marker": "118+599",
         "settlement": "Радиново",
         "settlement_latin": "Radinovo"
       },
       "end": {
-        "lat": 42.2076,
-        "lng": 24.6875,
+        "lat": 42.2075089,
+        "lng": 24.6875024,
         "km_marker": "122+673",
         "settlement": "Царацово",
         "settlement_latin": "Tsaratsovo"
       },
-      "distance_m": 4106,
+      "distance_m": 4095,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -28296,8 +28280,8 @@
       },
       "centerline": [
         [
-          42.198482,
-          24.640653
+          42.1983374,
+          24.6405745
         ],
         [
           42.198347,
@@ -28616,13 +28600,13 @@
           24.68773
         ],
         [
-          42.2076,
-          24.6875
+          42.2075089,
+          24.6875024
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "trakiya-03-west",
@@ -28631,20 +28615,20 @@
       "direction": "west",
       "description": "Радиново – Цалапица",
       "start": {
-        "lat": 42.198482,
-        "lng": 24.640653,
+        "lat": 42.1984645,
+        "lng": 24.6406174,
         "km_marker": "118+599",
         "settlement": "Радиново",
         "settlement_latin": "Radinovo"
       },
       "end": {
-        "lat": 42.2051,
-        "lng": 24.5096,
+        "lat": 42.205093,
+        "lng": 24.5096397,
         "km_marker": "107+663",
         "settlement": "Цалапица",
         "settlement_latin": "Tsalapitsa"
       },
-      "distance_m": 11019,
+      "distance_m": 11018,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -28653,8 +28637,8 @@
       },
       "centerline": [
         [
-          42.198482,
-          24.640653
+          42.1984645,
+          24.6406174
         ],
         [
           42.198346,
@@ -29517,13 +29501,13 @@
           24.508573
         ],
         [
-          42.2051,
-          24.5096
+          42.205093,
+          24.5096397
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "trakiya-05-east",
@@ -29532,20 +29516,20 @@
       "direction": "east",
       "description": "Царацово – Трилистник",
       "start": {
-        "lat": 42.2076,
-        "lng": 24.6875,
+        "lat": 42.2075089,
+        "lng": 24.6875024,
         "km_marker": "122+673",
         "settlement": "Царацово",
         "settlement_latin": "Tsaratsovo"
       },
       "end": {
-        "lat": 42.2169,
-        "lng": 24.8595,
+        "lat": 42.216838,
+        "lng": 24.8594856,
         "km_marker": "137+007",
         "settlement": "Трилистник",
         "settlement_latin": "Trilistnik"
       },
-      "distance_m": 14346,
+      "distance_m": 14339,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -29554,8 +29538,8 @@
       },
       "centerline": [
         [
-          42.2076,
-          24.6875
+          42.2075089,
+          24.6875024
         ],
         [
           42.207546,
@@ -30630,13 +30614,13 @@
           24.859428
         ],
         [
-          42.2169,
-          24.8595
+          42.216838,
+          24.8594856
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "trakiya-04-west",
@@ -30645,20 +30629,20 @@
       "direction": "west",
       "description": "Царацово – Радиново",
       "start": {
-        "lat": 42.2076,
-        "lng": 24.6875,
+        "lat": 42.2076361,
+        "lng": 24.6875453,
         "km_marker": "122+673",
         "settlement": "Царацово",
         "settlement_latin": "Tsaratsovo"
       },
       "end": {
-        "lat": 42.198482,
-        "lng": 24.640653,
+        "lat": 42.1984645,
+        "lng": 24.6406174,
         "km_marker": "118+599",
         "settlement": "Радиново",
         "settlement_latin": "Radinovo"
       },
-      "distance_m": 4106,
+      "distance_m": 4101,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -30667,8 +30651,8 @@
       },
       "centerline": [
         [
-          42.2076,
-          24.6875
+          42.2076361,
+          24.6875453
         ],
         [
           42.207545,
@@ -30987,13 +30971,13 @@
           24.640341
         ],
         [
-          42.198482,
-          24.640653
+          42.1984645,
+          24.6406174
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "trakiya-06-east",
@@ -31002,15 +30986,15 @@
       "direction": "east",
       "description": "Трилистник – Опълченец",
       "start": {
-        "lat": 42.2169,
-        "lng": 24.8595,
+        "lat": 42.216838,
+        "lng": 24.8594856,
         "km_marker": "137+007",
         "settlement": "Трилистник",
         "settlement_latin": "Trilistnik"
       },
       "end": {
-        "lat": 42.1997,
-        "lng": 25.1212,
+        "lat": 42.1995773,
+        "lng": 25.121119,
         "km_marker": "159+028",
         "settlement": "Опълченец",
         "settlement_latin": "Opalchenets"
@@ -31024,8 +31008,8 @@
       },
       "centerline": [
         [
-          42.2169,
-          24.8595
+          42.216838,
+          24.8594856
         ],
         [
           42.216798,
@@ -33000,13 +32984,13 @@
           25.121087
         ],
         [
-          42.1997,
-          25.1212
+          42.1995773,
+          25.121119
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "trakiya-05-west",
@@ -33015,20 +32999,20 @@
       "direction": "west",
       "description": "Трилистник – Царацово",
       "start": {
-        "lat": 42.2169,
-        "lng": 24.8595,
+        "lat": 42.2169493,
+        "lng": 24.85955,
         "km_marker": "137+007",
         "settlement": "Трилистник",
         "settlement_latin": "Trilistnik"
       },
       "end": {
-        "lat": 42.2076,
-        "lng": 24.6875,
+        "lat": 42.2076361,
+        "lng": 24.6875453,
         "km_marker": "122+673",
         "settlement": "Царацово",
         "settlement_latin": "Tsaratsovo"
       },
-      "distance_m": 14346,
+      "distance_m": 14351,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -33037,8 +33021,8 @@
       },
       "centerline": [
         [
-          42.2169,
-          24.8595
+          42.2169493,
+          24.85955
         ],
         [
           42.216798,
@@ -34113,13 +34097,13 @@
           24.687731
         ],
         [
-          42.2076,
-          24.6875
+          42.2076361,
+          24.6875453
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "trakiya-07-east",
@@ -34128,20 +34112,20 @@
       "direction": "east",
       "description": "Опълченец – Чирпан",
       "start": {
-        "lat": 42.1997,
-        "lng": 25.1212,
+        "lat": 42.1995773,
+        "lng": 25.121119,
         "km_marker": "159+028",
         "settlement": "Опълченец",
         "settlement_latin": "Opalchenets"
       },
       "end": {
-        "lat": 42.2008,
-        "lng": 25.2808,
+        "lat": 42.20069,
+        "lng": 25.2807856,
         "km_marker": "172+447",
         "settlement": "Чирпан",
         "settlement_latin": "Chirpan"
       },
-      "distance_m": 13388,
+      "distance_m": 13379,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -34150,8 +34134,8 @@
       },
       "centerline": [
         [
-          42.1997,
-          25.1212
+          42.1995773,
+          25.121119
         ],
         [
           42.199602,
@@ -35166,13 +35150,13 @@
           25.28104
         ],
         [
-          42.2008,
-          25.2808
+          42.20069,
+          25.2807856
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "trakiya-06-west",
@@ -35181,20 +35165,20 @@
       "direction": "west",
       "description": "Опълченец – Трилистник",
       "start": {
-        "lat": 42.1997,
-        "lng": 25.1212,
+        "lat": 42.1997045,
+        "lng": 25.1211405,
         "km_marker": "159+028",
         "settlement": "Опълченец",
         "settlement_latin": "Opalchenets"
       },
       "end": {
-        "lat": 42.2169,
-        "lng": 24.8595,
+        "lat": 42.2169493,
+        "lng": 24.85955,
         "km_marker": "137+007",
         "settlement": "Трилистник",
         "settlement_latin": "Trilistnik"
       },
-      "distance_m": 22011,
+      "distance_m": 22013,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -35203,12 +35187,8 @@
       },
       "centerline": [
         [
-          42.1997,
-          25.1212
-        ],
-        [
-          42.199711,
-          25.121087
+          42.1997045,
+          25.1211405
         ],
         [
           42.199747,
@@ -37179,35 +37159,32 @@
           24.859428
         ],
         [
-          42.2169,
-          24.8595
+          42.2169493,
+          24.85955
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "trakiya-07-west",
       "road": "АМ Тракия",
-      "road_latin": "Trakiya",
       "direction": "west",
       "description": "Чирпан – Опълченец",
       "start": {
-        "lat": 42.2008,
-        "lng": 25.2808,
+        "lat": 42.200744,
+        "lng": 25.28104,
         "km_marker": "172+440",
-        "settlement": "Чирпан",
-        "settlement_latin": "Chirpan"
+        "settlement": "Чирпан"
       },
       "end": {
-        "lat": 42.1997,
-        "lng": 25.1212,
+        "lat": 42.1997045,
+        "lng": 25.1211405,
         "km_marker": "159+028",
-        "settlement": "Опълченец",
-        "settlement_latin": "Opalchenets"
+        "settlement": "Опълченец"
       },
-      "distance_m": 13388,
+      "distance_m": 13364,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -37215,10 +37192,6 @@
         "motorcycle": 140
       },
       "centerline": [
-        [
-          42.2008,
-          25.2808
-        ],
         [
           42.200744,
           25.28104
@@ -38232,13 +38205,13 @@
           25.121041
         ],
         [
-          42.1997,
-          25.1212
+          42.1997045,
+          25.1211405
         ]
       ],
       "road_type": "motorway",
-      "source": "tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "source": "kml",
+      "last_verified": "2026-07-17"
     },
     {
       "id": "trakiya-08-east",
@@ -38247,20 +38220,20 @@
       "direction": "east",
       "description": "Кръстина – Ветрен",
       "start": {
-        "lat": 42.5892,
-        "lng": 27.2261,
+        "lat": 42.5890778,
+        "lng": 27.2261596,
         "km_marker": "344+388",
         "settlement": "Кръстина",
         "settlement_latin": "Krastina"
       },
       "end": {
-        "lat": 42.593354,
-        "lng": 27.385793,
+        "lat": 42.5932325,
+        "lng": 27.3857617,
         "km_marker": "357+949",
         "settlement": "Ветрен",
         "settlement_latin": "Vetren"
       },
-      "distance_m": 13566,
+      "distance_m": 13554,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -38269,8 +38242,8 @@
       },
       "centerline": [
         [
-          42.5892,
-          27.2261
+          42.5890778,
+          27.2261596
         ],
         [
           42.589186,
@@ -39313,17 +39286,13 @@
           27.38571
         ],
         [
-          42.593242,
-          27.385713
-        ],
-        [
-          42.593354,
-          27.385793
+          42.5932325,
+          27.3857617
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "trakiya-08-west",
@@ -39332,20 +39301,20 @@
       "direction": "west",
       "description": "Ветрен – Кръстина",
       "start": {
-        "lat": 42.593354,
-        "lng": 27.385793,
+        "lat": 42.5933589,
+        "lng": 27.3857617,
         "km_marker": "357+949",
         "settlement": "Ветрен",
         "settlement_latin": "Vetren"
       },
       "end": {
-        "lat": 42.5892,
-        "lng": 27.2261,
+        "lat": 42.58922,
+        "lng": 27.2261596,
         "km_marker": "344+388",
         "settlement": "Кръстина",
         "settlement_latin": "Krastina"
       },
-      "distance_m": 13566,
+      "distance_m": 13561,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -39354,8 +39323,8 @@
       },
       "centerline": [
         [
-          42.593354,
-          27.385793
+          42.5933589,
+          27.3857617
         ],
         [
           42.593242,
@@ -40402,13 +40371,13 @@
           27.226441
         ],
         [
-          42.5892,
-          27.2261
+          42.58922,
+          27.2261596
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "hemus-01-east",
@@ -40417,20 +40386,20 @@
       "direction": "east",
       "description": "Горни Богров – Чурек",
       "start": {
-        "lat": 42.725046,
-        "lng": 23.527739,
+        "lat": 42.7250422,
+        "lng": 23.527801,
         "km_marker": "6+804",
         "settlement": "Горни Богров",
         "settlement_latin": "Gorni Bogrov"
       },
       "end": {
-        "lat": 42.778709,
-        "lng": 23.736126,
+        "lat": 42.7786926,
+        "lng": 23.7361121,
         "km_marker": "27+024",
         "settlement": "Чурек",
         "settlement_latin": "Churek"
       },
-      "distance_m": 20209,
+      "distance_m": 20205,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -40439,12 +40408,8 @@
       },
       "centerline": [
         [
-          42.725046,
-          23.527739
-        ],
-        [
-          42.725044,
-          23.527825
+          42.7250422,
+          23.527801
         ],
         [
           42.725152,
@@ -43935,13 +43900,13 @@
           23.736203
         ],
         [
-          42.778709,
-          23.736126
+          42.7786926,
+          23.7361121
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "hemus-01-west",
@@ -43950,20 +43915,20 @@
       "direction": "west",
       "description": "Чурек – Горни Богров",
       "start": {
-        "lat": 42.778709,
-        "lng": 23.736126,
+        "lat": 42.7787871,
+        "lng": 23.7360477,
         "km_marker": "27+024",
         "settlement": "Чурек",
         "settlement_latin": "Churek"
       },
       "end": {
-        "lat": 42.725046,
-        "lng": 23.527739,
+        "lat": 42.7251683,
+        "lng": 23.5277367,
         "km_marker": "6+804",
         "settlement": "Горни Богров",
         "settlement_latin": "Gorni Bogrov"
       },
-      "distance_m": 20209,
+      "distance_m": 20225,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -43972,8 +43937,8 @@
       },
       "centerline": [
         [
-          42.778709,
-          23.736126
+          42.7787871,
+          23.7360477
         ],
         [
           42.778729,
@@ -47468,13 +47433,13 @@
           23.527825
         ],
         [
-          42.725046,
-          23.527739
+          42.7251683,
+          23.5277367
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "hemus-02-east",
@@ -47483,20 +47448,20 @@
       "direction": "east",
       "description": "Белокопитово – Каспичан",
       "start": {
-        "lat": 43.3371,
-        "lng": 26.9003,
+        "lat": 43.3369151,
+        "lng": 26.9003677,
         "km_marker": "340+293",
         "settlement": "Белокопитово",
         "settlement_latin": "Belokopitovo"
       },
       "end": {
-        "lat": 43.3234,
-        "lng": 27.1497,
+        "lat": 43.3231796,
+        "lng": 27.1496201,
         "km_marker": "361+581",
         "settlement": "Каспичан",
         "settlement_latin": "Kaspichan"
       },
-      "distance_m": 21291,
+      "distance_m": 21284,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -47505,8 +47470,8 @@
       },
       "centerline": [
         [
-          43.3371,
-          26.9003
+          43.3369151,
+          26.9003677
         ],
         [
           43.337016,
@@ -49181,13 +49146,13 @@
           27.149176
         ],
         [
-          43.3234,
-          27.1497
+          43.3231796,
+          27.1496201
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "hemus-02-west",
@@ -49196,20 +49161,20 @@
       "direction": "west",
       "description": "Каспичан – Белокопитово",
       "start": {
-        "lat": 43.3234,
-        "lng": 27.1497,
+        "lat": 43.3234294,
+        "lng": 27.1496201,
         "km_marker": "361+581",
         "settlement": "Каспичан",
         "settlement_latin": "Kaspichan"
       },
       "end": {
-        "lat": 43.3371,
-        "lng": 26.9003,
+        "lat": 43.3371649,
+        "lng": 26.9003677,
         "km_marker": "340+293",
         "settlement": "Белокопитово",
         "settlement_latin": "Belokopitovo"
       },
-      "distance_m": 21291,
+      "distance_m": 21296,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -49218,8 +49183,8 @@
       },
       "centerline": [
         [
-          43.3234,
-          27.1497
+          43.3234294,
+          27.1496201
         ],
         [
           43.323189,
@@ -50894,13 +50859,13 @@
           26.90017
         ],
         [
-          43.3371,
-          26.9003
+          43.3371649,
+          26.9003677
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "hemus-03-east",
@@ -50909,20 +50874,20 @@
       "direction": "east",
       "description": "Девня – Игнатиево",
       "start": {
-        "lat": 43.22739,
-        "lng": 27.583597,
+        "lat": 43.2272877,
+        "lng": 27.5836444,
         "km_marker": "399+703",
         "settlement": "Девня",
         "settlement_latin": "Devnya"
       },
       "end": {
-        "lat": 43.240833,
-        "lng": 27.781276,
+        "lat": 43.2407166,
+        "lng": 27.7812481,
         "km_marker": "418+126",
         "settlement": "Игнатиево",
         "settlement_latin": "Ignatievo"
       },
-      "distance_m": 17872,
+      "distance_m": 17857,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -50931,8 +50896,8 @@
       },
       "centerline": [
         [
-          43.22739,
-          27.583597
+          43.2272877,
+          27.5836444
         ],
         [
           43.227289,
@@ -52951,17 +52916,13 @@
           27.781113
         ],
         [
-          43.240721,
-          27.781219
-        ],
-        [
-          43.240833,
-          27.781276
+          43.2407166,
+          27.7812481
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "hemus-03-west",
@@ -52970,20 +52931,20 @@
       "direction": "west",
       "description": "Игнатиево – Девня",
       "start": {
-        "lat": 43.240833,
-        "lng": 27.781276,
+        "lat": 43.2408417,
+        "lng": 27.7812266,
         "km_marker": "418+126",
         "settlement": "Игнатиево",
         "settlement_latin": "Ignatievo"
       },
       "end": {
-        "lat": 43.22739,
-        "lng": 27.583597,
+        "lat": 43.2273971,
+        "lng": 27.5836229,
         "km_marker": "399+703",
         "settlement": "Девня",
         "settlement_latin": "Devnya"
       },
-      "distance_m": 17872,
+      "distance_m": 17874,
       "speed_limits": {
         "car": 140,
         "truck": 90,
@@ -52992,8 +52953,8 @@
       },
       "centerline": [
         [
-          43.240833,
-          27.781276
+          43.2408417,
+          27.7812266
         ],
         [
           43.240721,
@@ -55016,13 +54977,13 @@
           27.583552
         ],
         [
-          43.22739,
-          27.583597
+          43.2273971,
+          27.5836229
         ]
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i1-01-south",
@@ -55031,20 +54992,20 @@
       "direction": "south",
       "description": "Жеглица – Срацимирово",
       "start": {
-        "lat": 43.878451,
-        "lng": 22.789216,
+        "lat": 43.8784072,
+        "lng": 22.789185,
         "km_marker": "23+485",
         "settlement": "Жеглица",
         "settlement_latin": "Zheglitsa"
       },
       "end": {
-        "lat": 43.820324,
-        "lng": 22.7575,
+        "lat": 43.820316,
+        "lng": 22.7575135,
         "km_marker": "34+751",
         "settlement": "Срацимирово",
         "settlement_latin": "Sratsimirovo"
       },
-      "distance_m": 7524,
+      "distance_m": 7530,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -55053,8 +55014,8 @@
       },
       "centerline": [
         [
-          43.878451,
-          22.789216
+          43.8784072,
+          22.789185
         ],
         [
           43.87851,
@@ -56309,13 +56270,13 @@
           22.757335
         ],
         [
-          43.820324,
-          22.7575
+          43.820316,
+          22.7575135
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i1-01-north",
@@ -56324,20 +56285,20 @@
       "direction": "north",
       "description": "Срацимирово – Жеглица",
       "start": {
-        "lat": 43.820324,
-        "lng": 22.7575,
+        "lat": 43.8203469,
+        "lng": 22.7575564,
         "km_marker": "34+751",
         "settlement": "Срацимирово",
         "settlement_latin": "Sratsimirovo"
       },
       "end": {
-        "lat": 43.878451,
-        "lng": 22.789216,
+        "lat": 43.8784381,
+        "lng": 22.789228,
         "km_marker": "23+485",
         "settlement": "Жеглица",
         "settlement_latin": "Zheglitsa"
       },
-      "distance_m": 7524,
+      "distance_m": 7530,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -56346,8 +56307,8 @@
       },
       "centerline": [
         [
-          43.820324,
-          22.7575
+          43.8203469,
+          22.7575564
         ],
         [
           43.820183,
@@ -57602,13 +57563,13 @@
           22.789281
         ],
         [
-          43.878451,
-          22.789216
+          43.8784381,
+          22.789228
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i1-02-south",
@@ -57617,20 +57578,20 @@
       "direction": "south",
       "description": "Слатино – Кочериновo",
       "start": {
-        "lat": 42.1578,
-        "lng": 23.0411,
+        "lat": 42.1577728,
+        "lng": 23.0411196,
         "km_marker": "343+292",
         "settlement": "Слатино",
         "settlement_latin": "Slatino"
       },
       "end": {
-        "lat": 42.0641,
-        "lng": 23.0385,
+        "lat": 42.0641412,
+        "lng": 23.0384803,
         "km_marker": "353+878",
         "settlement": "Кочериновo",
         "settlement_latin": "Kocherinovo"
       },
-      "distance_m": 10613,
+      "distance_m": 10625,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -57639,8 +57600,8 @@
       },
       "centerline": [
         [
-          42.1578,
-          23.0411
+          42.1577728,
+          23.0411196
         ],
         [
           42.157966,
@@ -59123,13 +59084,17 @@
           23.038462
         ],
         [
-          42.0641,
-          23.0385
+          42.064086,
+          23.038504
+        ],
+        [
+          42.0641412,
+          23.0384803
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i1-02-north",
@@ -59138,20 +59103,20 @@
       "direction": "north",
       "description": "Кочериновo – Слатино",
       "start": {
-        "lat": 42.0641,
-        "lng": 23.0385,
+        "lat": 42.0640934,
+        "lng": 23.0384803,
         "km_marker": "353+878",
         "settlement": "Кочериновo",
         "settlement_latin": "Kocherinovo"
       },
       "end": {
-        "lat": 42.1578,
-        "lng": 23.0411,
+        "lat": 42.1577728,
+        "lng": 23.0411196,
         "km_marker": "343+292",
         "settlement": "Слатино",
         "settlement_latin": "Slatino"
       },
-      "distance_m": 10613,
+      "distance_m": 10617,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -59160,8 +59125,8 @@
       },
       "centerline": [
         [
-          42.0641,
-          23.0385
+          42.0640934,
+          23.0384803
         ],
         [
           42.064218,
@@ -60644,13 +60609,13 @@
           23.041098
         ],
         [
-          42.1578,
-          23.0411
+          42.1577728,
+          23.0411196
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i2-01-east",
@@ -60659,20 +60624,20 @@
       "direction": "east",
       "description": "Струйно – Шумен",
       "start": {
-        "lat": 43.3621,
-        "lng": 26.851153,
+        "lat": 43.3620681,
+        "lng": 26.8511653,
         "km_marker": "104+733",
         "settlement": "Струйно",
         "settlement_latin": "Struyno"
       },
       "end": {
-        "lat": 43.317337,
-        "lng": 26.920191,
+        "lat": 43.317341,
+        "lng": 26.9201517,
         "km_marker": "112+381",
         "settlement": "Шумен",
         "settlement_latin": "Shumen"
       },
-      "distance_m": 7627,
+      "distance_m": 7621,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -60681,12 +60646,8 @@
       },
       "centerline": [
         [
-          43.3621,
-          26.851153
-        ],
-        [
-          43.362033,
-          26.851201
+          43.3620681,
+          26.8511653
         ],
         [
           43.36187,
@@ -61453,13 +61414,13 @@
           26.920023
         ],
         [
-          43.317337,
-          26.920191
+          43.317341,
+          26.9201517
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i2-01-west",
@@ -61468,20 +61429,20 @@
       "direction": "west",
       "description": "Шумен – Струйно",
       "start": {
-        "lat": 43.317337,
-        "lng": 26.920191,
+        "lat": 43.317341,
+        "lng": 26.9201517,
         "km_marker": "112+381",
         "settlement": "Шумен",
         "settlement_latin": "Shumen"
       },
       "end": {
-        "lat": 43.3621,
-        "lng": 26.851153,
+        "lat": 43.3620681,
+        "lng": 26.8511438,
         "km_marker": "104+733",
         "settlement": "Струйно",
         "settlement_latin": "Struyno"
       },
-      "distance_m": 7627,
+      "distance_m": 7622,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -61490,8 +61451,8 @@
       },
       "centerline": [
         [
-          43.317337,
-          26.920191
+          43.317341,
+          26.9201517
         ],
         [
           43.317417,
@@ -62262,13 +62223,13 @@
           26.851201
         ],
         [
-          43.3621,
-          26.851153
+          43.3620681,
+          26.8511438
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i3-01-south",
@@ -62277,20 +62238,20 @@
       "direction": "south",
       "description": "Пейчиново – Горна Студена",
       "start": {
-        "lat": 43.442104,
-        "lng": 25.610194,
+        "lat": 43.4420763,
+        "lng": 25.6102252,
         "km_marker": "3+997",
         "settlement": "Пейчиново",
         "settlement_latin": "Peychinovo"
       },
       "end": {
-        "lat": 43.416337,
-        "lng": 25.358012,
+        "lat": 43.4163175,
+        "lng": 25.3580332,
         "km_marker": "25+271",
         "settlement": "Горна Студена",
-        "settlement_latin": "Gorna Studena"
+        "settlement_latin": "Gorna studena"
       },
-      "distance_m": 21216,
+      "distance_m": 21215,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -62299,8 +62260,8 @@
       },
       "centerline": [
         [
-          43.442104,
-          25.610194
+          43.4420763,
+          25.6102252
         ],
         [
           43.441613,
@@ -63419,13 +63380,13 @@
           25.358751
         ],
         [
-          43.416337,
-          25.358012
+          43.4163175,
+          25.3580332
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i3-01-north",
@@ -63434,20 +63395,20 @@
       "direction": "north",
       "description": "Горна Студена – Пейчиново",
       "start": {
-        "lat": 43.416337,
-        "lng": 25.358012,
+        "lat": 43.4163175,
+        "lng": 25.3580546,
         "km_marker": "25+271",
         "settlement": "Горна Студена",
-        "settlement_latin": "Gorna Studena"
+        "settlement_latin": "Gorna studena"
       },
       "end": {
-        "lat": 43.442104,
-        "lng": 25.610194,
+        "lat": 43.4420452,
+        "lng": 25.6101608,
         "km_marker": "3+997",
         "settlement": "Пейчиново",
         "settlement_latin": "Peychinovo"
       },
-      "distance_m": 21216,
+      "distance_m": 21207,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -63456,8 +63417,8 @@
       },
       "centerline": [
         [
-          43.416337,
-          25.358012
+          43.4163175,
+          25.3580546
         ],
         [
           43.41632,
@@ -64576,13 +64537,13 @@
           25.609319
         ],
         [
-          43.442104,
-          25.610194
+          43.4420452,
+          25.6101608
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i3-02-south",
@@ -64591,20 +64552,20 @@
       "direction": "south",
       "description": "Долни Дъбник – Телиш",
       "start": {
-        "lat": 43.416152,
-        "lng": 24.470712,
+        "lat": 43.4162084,
+        "lng": 24.4706297,
         "km_marker": "100+471",
         "settlement": "Долни Дъбник",
         "settlement_latin": "Dolni Dabnik"
       },
       "end": {
-        "lat": 43.3261,
-        "lng": 24.2721,
+        "lat": 43.3261611,
+        "lng": 24.2721033,
         "km_marker": "122+349",
         "settlement": "Телиш",
         "settlement_latin": "Telish"
       },
-      "distance_m": 22021,
+      "distance_m": 22028,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -64613,8 +64574,8 @@
       },
       "centerline": [
         [
-          43.416152,
-          24.470712
+          43.4162084,
+          24.4706297
         ],
         [
           43.416307,
@@ -66153,13 +66114,13 @@
           24.271133
         ],
         [
-          43.3261,
-          24.2721
+          43.3261611,
+          24.2721033
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i3-02-north",
@@ -66168,20 +66129,20 @@
       "direction": "north",
       "description": "Телиш – Долни Дъбник",
       "start": {
-        "lat": 43.3261,
-        "lng": 24.2721,
+        "lat": 43.3261143,
+        "lng": 24.2720604,
         "km_marker": "122+349",
         "settlement": "Телиш",
         "settlement_latin": "Telish"
       },
       "end": {
-        "lat": 43.416152,
-        "lng": 24.470712,
+        "lat": 43.4161305,
+        "lng": 24.4706941,
         "km_marker": "100+471",
         "settlement": "Долни Дъбник",
         "settlement_latin": "Dolni Dabnik"
       },
-      "distance_m": 22021,
+      "distance_m": 22023,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -66190,8 +66151,8 @@
       },
       "centerline": [
         [
-          43.3261,
-          24.2721
+          43.3261143,
+          24.2720604
         ],
         [
           43.32526,
@@ -67730,13 +67691,13 @@
           24.470881
         ],
         [
-          43.416152,
-          24.470712
+          43.4161305,
+          24.4706941
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i4-01-east",
@@ -67745,20 +67706,20 @@
       "direction": "east",
       "description": "Български извор – Сопот",
       "start": {
-        "lat": 43.0384,
-        "lng": 24.2738,
+        "lat": 43.0383599,
+        "lng": 24.2738414,
         "km_marker": "13+536",
         "settlement": "Български извор",
         "settlement_latin": "Balgarski Izvor"
       },
       "end": {
-        "lat": 43.0342,
-        "lng": 24.382,
+        "lat": 43.0342037,
+        "lng": 24.3819451,
         "km_marker": "22+734",
         "settlement": "Сопот",
         "settlement_latin": "Sopot"
       },
-      "distance_m": 9153,
+      "distance_m": 9144,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -67767,12 +67728,8 @@
       },
       "centerline": [
         [
-          43.0384,
-          24.2738
-        ],
-        [
-          43.038354,
-          24.273874
+          43.0383599,
+          24.2738414
         ],
         [
           43.038316,
@@ -68651,13 +68608,13 @@
           24.381864
         ],
         [
-          43.0342,
-          24.382
+          43.0342037,
+          24.3819451
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i4-02-east",
@@ -68666,20 +68623,20 @@
       "direction": "east",
       "description": "Сопот – Голец",
       "start": {
-        "lat": 43.0342,
-        "lng": 24.382,
+        "lat": 43.0342037,
+        "lng": 24.3819451,
         "km_marker": "22+734",
         "settlement": "Сопот",
         "settlement_latin": "Sopot"
       },
       "end": {
-        "lat": 43.04297,
-        "lng": 24.597827,
+        "lat": 43.0429393,
+        "lng": 24.5977664,
         "km_marker": "40+670",
         "settlement": "Голец",
         "settlement_latin": "Golets"
       },
-      "distance_m": 17923,
+      "distance_m": 17922,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -68688,8 +68645,8 @@
       },
       "centerline": [
         [
-          43.0342,
-          24.382
+          43.0342037,
+          24.3819451
         ],
         [
           43.034266,
@@ -69984,13 +69941,13 @@
           24.596218
         ],
         [
-          43.04297,
-          24.597827
+          43.0429393,
+          24.5977664
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i4-01-west",
@@ -69999,20 +69956,20 @@
       "direction": "west",
       "description": "Сопот – Български извор",
       "start": {
-        "lat": 43.0342,
-        "lng": 24.382,
+        "lat": 43.0342194,
+        "lng": 24.3820524,
         "km_marker": "22+734",
         "settlement": "Сопот",
         "settlement_latin": "Sopot"
       },
       "end": {
-        "lat": 43.0384,
-        "lng": 24.2738,
+        "lat": 43.0383756,
+        "lng": 24.2737985,
         "km_marker": "13+536",
         "settlement": "Български извор",
         "settlement_latin": "Balgarski Izvor"
       },
-      "distance_m": 9153,
+      "distance_m": 9156,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -70021,8 +69978,12 @@
       },
       "centerline": [
         [
+          43.0342194,
+          24.3820524
+        ],
+        [
           43.0342,
-          24.382
+          24.381948
         ],
         [
           43.034187,
@@ -70905,13 +70866,13 @@
           24.273874
         ],
         [
-          43.0384,
-          24.2738
+          43.0383756,
+          24.2737985
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i4-02-west",
@@ -70920,20 +70881,20 @@
       "direction": "west",
       "description": "Голец – Сопот",
       "start": {
-        "lat": 43.04297,
-        "lng": 24.597827,
+        "lat": 43.0429549,
+        "lng": 24.5978308,
         "km_marker": "40+670",
         "settlement": "Голец",
         "settlement_latin": "Golets"
       },
       "end": {
-        "lat": 43.0342,
-        "lng": 24.382,
+        "lat": 43.0342194,
+        "lng": 24.3820524,
         "km_marker": "22+734",
         "settlement": "Сопот",
         "settlement_latin": "Sopot"
       },
-      "distance_m": 17923,
+      "distance_m": 17936,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -70942,8 +70903,8 @@
       },
       "centerline": [
         [
-          43.04297,
-          24.597827
+          43.0429549,
+          24.5978308
         ],
         [
           43.042503,
@@ -72239,12 +72200,16 @@
         ],
         [
           43.0342,
-          24.382
+          24.381948
+        ],
+        [
+          43.0342194,
+          24.3820524
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i4-03-east",
@@ -72253,20 +72218,20 @@
       "direction": "east",
       "description": "Ряховците – Богатово",
       "start": {
-        "lat": 43.033136,
-        "lng": 25.010787,
+        "lat": 43.0331371,
+        "lng": 25.010848,
         "km_marker": "76+135",
         "settlement": "Ряховците",
         "settlement_latin": "Ryahovtsite"
       },
       "end": {
-        "lat": 43.042712,
-        "lng": 25.215298,
+        "lat": 43.0427197,
+        "lng": 25.2152538,
         "km_marker": "93+155",
         "settlement": "Богатово",
         "settlement_latin": "Bogatovo"
       },
-      "distance_m": 16953,
+      "distance_m": 16964,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -72275,8 +72240,8 @@
       },
       "centerline": [
         [
-          43.033136,
-          25.010787
+          43.0331371,
+          25.010848
         ],
         [
           43.033196,
@@ -73251,13 +73216,17 @@
           25.213727
         ],
         [
-          43.042712,
-          25.215298
+          43.042697,
+          25.215309
+        ],
+        [
+          43.0427197,
+          25.2152538
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i4-04-east",
@@ -73266,20 +73235,20 @@
       "direction": "east",
       "description": "Богатово – Момин сбор",
       "start": {
-        "lat": 43.042712,
-        "lng": 25.215298,
+        "lat": 43.0427197,
+        "lng": 25.2152538,
         "km_marker": "93+155",
         "settlement": "Богатово",
         "settlement_latin": "Bogatovo"
       },
       "end": {
-        "lat": 43.088924,
-        "lng": 25.485965,
+        "lat": 43.0888865,
+        "lng": 25.4859638,
         "km_marker": "116+900",
         "settlement": "Момин сбор",
-        "settlement_latin": "Momin Sbor"
+        "settlement_latin": "Momin sbor"
       },
-      "distance_m": 23649,
+      "distance_m": 23652,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -73288,8 +73257,12 @@
       },
       "centerline": [
         [
-          43.042712,
-          25.215298
+          43.0427197,
+          25.2152538
+        ],
+        [
+          43.042697,
+          25.215309
         ],
         [
           43.04278,
@@ -74944,13 +74917,13 @@
           25.485893
         ],
         [
-          43.088924,
-          25.485965
+          43.0888865,
+          25.4859638
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i4-03-west",
@@ -74959,20 +74932,20 @@
       "direction": "west",
       "description": "Богатово – Ряховците",
       "start": {
-        "lat": 43.042712,
-        "lng": 25.215298,
+        "lat": 43.0427354,
+        "lng": 25.2153182,
         "km_marker": "93+155",
         "settlement": "Богатово",
         "settlement_latin": "Bogatovo"
       },
       "end": {
-        "lat": 43.033136,
-        "lng": 25.010787,
+        "lat": 43.0331528,
+        "lng": 25.0108051,
         "km_marker": "76+135",
         "settlement": "Ряховците",
         "settlement_latin": "Ryahovtsite"
       },
-      "distance_m": 16953,
+      "distance_m": 16956,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -74981,8 +74954,8 @@
       },
       "centerline": [
         [
-          43.042712,
-          25.215298
+          43.0427354,
+          25.2153182
         ],
         [
           43.042547,
@@ -75957,13 +75930,13 @@
           25.010443
         ],
         [
-          43.033136,
-          25.010787
+          43.0331528,
+          25.0108051
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i4-04-west",
@@ -75972,20 +75945,20 @@
       "direction": "west",
       "description": "Момин сбор – Богатово",
       "start": {
-        "lat": 43.088924,
-        "lng": 25.485965,
+        "lat": 43.0889022,
+        "lng": 25.485878,
         "km_marker": "116+900",
         "settlement": "Момин сбор",
-        "settlement_latin": "Momin Sbor"
+        "settlement_latin": "Momin sbor"
       },
       "end": {
-        "lat": 43.042712,
-        "lng": 25.215298,
+        "lat": 43.0427354,
+        "lng": 25.2153182,
         "km_marker": "93+155",
         "settlement": "Богатово",
         "settlement_latin": "Bogatovo"
       },
-      "distance_m": 23649,
+      "distance_m": 23639,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -75994,12 +75967,8 @@
       },
       "centerline": [
         [
-          43.088924,
-          25.485965
-        ],
-        [
-          43.088895,
-          25.485893
+          43.0889022,
+          25.485878
         ],
         [
           43.089005,
@@ -77650,13 +77619,13 @@
           25.216197
         ],
         [
-          43.042712,
-          25.215298
+          43.0427354,
+          25.2153182
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i4-05-east",
@@ -77665,20 +77634,20 @@
       "direction": "east",
       "description": "Омуртаг – Пролаз",
       "start": {
-        "lat": 43.118189,
-        "lng": 26.414995,
+        "lat": 43.1182302,
+        "lng": 26.4150596,
         "km_marker": "204+539",
         "settlement": "Омуртаг",
         "settlement_latin": "Omurtag"
       },
       "end": {
-        "lat": 43.196736,
-        "lng": 26.502551,
+        "lat": 43.1967293,
+        "lng": 26.502564,
         "km_marker": "217+988",
         "settlement": "Пролаз",
         "settlement_latin": "Prolaz"
       },
-      "distance_m": 13403,
+      "distance_m": 13396,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -77687,12 +77656,8 @@
       },
       "centerline": [
         [
-          43.118189,
-          26.414995
-        ],
-        [
-          43.118226,
-          26.415038
+          43.1182302,
+          26.4150596
         ],
         [
           43.118515,
@@ -79435,13 +79400,13 @@
           26.502367
         ],
         [
-          43.196736,
-          26.502551
+          43.1967293,
+          26.502564
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i4-05-west",
@@ -79450,20 +79415,20 @@
       "direction": "west",
       "description": "Пролаз – Омуртаг",
       "start": {
-        "lat": 43.196736,
-        "lng": 26.502551,
+        "lat": 43.1967136,
+        "lng": 26.5024781,
         "km_marker": "217+988",
         "settlement": "Пролаз",
         "settlement_latin": "Prolaz"
       },
       "end": {
-        "lat": 43.118189,
-        "lng": 26.414995,
+        "lat": 43.1182145,
+        "lng": 26.4149737,
         "km_marker": "204+539",
         "settlement": "Омуртаг",
         "settlement_latin": "Omurtag"
       },
-      "distance_m": 13403,
+      "distance_m": 13396,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -79472,8 +79437,8 @@
       },
       "centerline": [
         [
-          43.196736,
-          26.502551
+          43.1967136,
+          26.5024781
         ],
         [
           43.196674,
@@ -81220,13 +81185,13 @@
           26.415038
         ],
         [
-          43.118189,
-          26.414995
+          43.1182145,
+          26.4149737
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i5-01-south",
@@ -81235,20 +81200,20 @@
       "direction": "south",
       "description": "Одяланик – Тръстеник",
       "start": {
-        "lat": 43.756431,
-        "lng": 25.906611,
+        "lat": 43.756434,
+        "lng": 25.9065771,
         "km_marker": "11+382",
         "settlement": "Одяланик",
         "settlement_latin": "Odyalanik"
       },
       "end": {
-        "lat": 43.63975,
-        "lng": 25.872482,
+        "lat": 43.6397711,
+        "lng": 25.8724809,
         "km_marker": "25+914",
         "settlement": "Тръстеник",
         "settlement_latin": "Trastenik"
       },
-      "distance_m": 14589,
+      "distance_m": 14586,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -81257,8 +81222,8 @@
       },
       "centerline": [
         [
-          43.756431,
-          25.906611
+          43.756434,
+          25.9065771
         ],
         [
           43.756627,
@@ -82377,13 +82342,13 @@
           25.872474
         ],
         [
-          43.63975,
-          25.872482
+          43.6397711,
+          25.8724809
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i5-02-south",
@@ -82392,20 +82357,20 @@
       "direction": "south",
       "description": "Тръстеник – Обретеник",
       "start": {
-        "lat": 43.63975,
-        "lng": 25.872482,
+        "lat": 43.6397711,
+        "lng": 25.8724809,
         "km_marker": "25+914",
         "settlement": "Тръстеник",
         "settlement_latin": "Trastenik"
       },
       "end": {
-        "lat": 43.571851,
-        "lng": 25.82212,
+        "lat": 43.5719343,
+        "lng": 25.821991,
         "km_marker": "34+704",
         "settlement": "Обретеник",
         "settlement_latin": "Obretenik"
       },
-      "distance_m": 8694,
+      "distance_m": 8690,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -82414,8 +82379,8 @@
       },
       "centerline": [
         [
-          43.63975,
-          25.872482
+          43.6397711,
+          25.8724809
         ],
         [
           43.639818,
@@ -82986,13 +82951,13 @@
           25.822123
         ],
         [
-          43.571851,
-          25.82212
+          43.5719343,
+          25.821991
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i5-01-north",
@@ -83001,20 +82966,20 @@
       "direction": "north",
       "description": "Тръстеник – Одяланик",
       "start": {
-        "lat": 43.63975,
-        "lng": 25.872482,
+        "lat": 43.6398022,
+        "lng": 25.8724594,
         "km_marker": "25+914",
         "settlement": "Тръстеник",
         "settlement_latin": "Trastenik"
       },
       "end": {
-        "lat": 43.756431,
-        "lng": 25.906611,
+        "lat": 43.756372,
+        "lng": 25.9065986,
         "km_marker": "11+382",
         "settlement": "Одяланик",
         "settlement_latin": "Odyalanik"
       },
-      "distance_m": 14589,
+      "distance_m": 14590,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -83023,12 +82988,8 @@
       },
       "centerline": [
         [
-          43.63975,
-          25.872482
-        ],
-        [
-          43.639818,
-          25.872474
+          43.6398022,
+          25.8724594
         ],
         [
           43.639947,
@@ -84143,13 +84104,13 @@
           25.906525
         ],
         [
-          43.756431,
-          25.906611
+          43.756372,
+          25.9065986
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i5-02-north",
@@ -84158,20 +84119,20 @@
       "direction": "north",
       "description": "Обретеник – Тръстеник",
       "start": {
-        "lat": 43.571851,
-        "lng": 25.82212,
+        "lat": 43.5719343,
+        "lng": 25.821991,
         "km_marker": "34+704",
         "settlement": "Обретеник",
         "settlement_latin": "Obretenik"
       },
       "end": {
-        "lat": 43.63975,
-        "lng": 25.872482,
+        "lat": 43.6398022,
+        "lng": 25.8724594,
         "km_marker": "25+914",
         "settlement": "Тръстеник",
         "settlement_latin": "Trastenik"
       },
-      "distance_m": 8694,
+      "distance_m": 8685,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -84180,8 +84141,8 @@
       },
       "centerline": [
         [
-          43.571851,
-          25.82212
+          43.5719343,
+          25.821991
         ],
         [
           43.571969,
@@ -84748,17 +84709,13 @@
           25.872472
         ],
         [
-          43.639818,
-          25.872474
-        ],
-        [
-          43.63975,
-          25.872482
+          43.6398022,
+          25.8724594
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i5-03-south",
@@ -84767,15 +84724,15 @@
       "direction": "south",
       "description": "Полски Тръмбеш – Поликраище",
       "start": {
-        "lat": 43.371908,
-        "lng": 25.644403,
+        "lat": 43.37188,
+        "lng": 25.6443858,
         "km_marker": "68+946",
         "settlement": "Полски Тръмбеш",
         "settlement_latin": "Polski Trambesh"
       },
       "end": {
-        "lat": 43.189126,
-        "lng": 25.621867,
+        "lat": 43.1891577,
+        "lng": 25.6218338,
         "km_marker": "89+971",
         "settlement": "Поликраище",
         "settlement_latin": "Polikraishte"
@@ -84789,8 +84746,8 @@
       },
       "centerline": [
         [
-          43.371908,
-          25.644403
+          43.37188,
+          25.6443858
         ],
         [
           43.371962,
@@ -85849,13 +85806,13 @@
           25.621893
         ],
         [
-          43.189126,
-          25.621867
+          43.1891577,
+          25.6218338
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i5-04-south",
@@ -85864,20 +85821,20 @@
       "direction": "south",
       "description": "Поликраище – Самоводене",
       "start": {
-        "lat": 43.189126,
-        "lng": 25.621867,
+        "lat": 43.1891577,
+        "lng": 25.6218338,
         "km_marker": "89+971",
         "settlement": "Поликраище",
         "settlement_latin": "Polikraishte"
       },
       "end": {
-        "lat": 43.134184,
-        "lng": 25.613275,
+        "lat": 43.1342199,
+        "lng": 25.6132293,
         "km_marker": "96+514",
         "settlement": "Самоводене",
         "settlement_latin": "Samovodene"
       },
-      "distance_m": 6606,
+      "distance_m": 6607,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -85886,8 +85843,8 @@
       },
       "centerline": [
         [
-          43.189126,
-          25.621867
+          43.1891577,
+          25.6218338
         ],
         [
           43.189641,
@@ -86478,13 +86435,13 @@
           25.613258
         ],
         [
-          43.134184,
-          25.613275
+          43.1342199,
+          25.6132293
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i5-03-north",
@@ -86493,20 +86450,20 @@
       "direction": "north",
       "description": "Поликраище – Полски Тръмбеш",
       "start": {
-        "lat": 43.189126,
-        "lng": 25.621867,
+        "lat": 43.1890951,
+        "lng": 25.6218338,
         "km_marker": "89+971",
         "settlement": "Поликраище",
         "settlement_latin": "Polikraishte"
       },
       "end": {
-        "lat": 43.371908,
-        "lng": 25.644403,
+        "lat": 43.37188,
+        "lng": 25.6443858,
         "km_marker": "68+946",
         "settlement": "Полски Тръмбеш",
         "settlement_latin": "Polski Trambesh"
       },
-      "distance_m": 21045,
+      "distance_m": 21052,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -86515,8 +86472,8 @@
       },
       "centerline": [
         [
-          43.189126,
-          25.621867
+          43.1890951,
+          25.6218338
         ],
         [
           43.189641,
@@ -87575,13 +87532,13 @@
           25.644388
         ],
         [
-          43.371908,
-          25.644403
+          43.37188,
+          25.6443858
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i5-04-north",
@@ -87590,20 +87547,20 @@
       "direction": "north",
       "description": "Самоводене – Поликраище",
       "start": {
-        "lat": 43.134184,
-        "lng": 25.613275,
+        "lat": 43.1341886,
+        "lng": 25.6132507,
         "km_marker": "96+514",
         "settlement": "Самоводене",
         "settlement_latin": "Samovodene"
       },
       "end": {
-        "lat": 43.189126,
-        "lng": 25.621867,
+        "lat": 43.1890951,
+        "lng": 25.6218338,
         "km_marker": "89+971",
         "settlement": "Поликраище",
         "settlement_latin": "Polikraishte"
       },
-      "distance_m": 6606,
+      "distance_m": 6610,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -87612,8 +87569,8 @@
       },
       "centerline": [
         [
-          43.134184,
-          25.613275
+          43.1341886,
+          25.6132507
         ],
         [
           43.134132,
@@ -88204,13 +88161,13 @@
           25.621893
         ],
         [
-          43.189126,
-          25.621867
+          43.1890951,
+          25.6218338
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i5-05-south",
@@ -88219,20 +88176,20 @@
       "direction": "south",
       "description": "Казанлък – Ягода",
       "start": {
-        "lat": 42.61359,
-        "lng": 25.435381,
+        "lat": 42.6135121,
+        "lng": 25.4353452,
         "km_marker": "199+527",
         "settlement": "Казанлък",
         "settlement_latin": "Kazanlak"
       },
       "end": {
-        "lat": 42.547605,
-        "lng": 25.559374,
+        "lat": 42.5476267,
+        "lng": 25.5593705,
         "km_marker": "212+716",
         "settlement": "Ягода",
         "settlement_latin": "Yagoda"
       },
-      "distance_m": 13212,
+      "distance_m": 13214,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -88241,12 +88198,8 @@
       },
       "centerline": [
         [
-          42.61359,
-          25.435381
-        ],
-        [
-          42.613507,
-          25.435354
+          42.6135121,
+          25.4353452
         ],
         [
           42.612963,
@@ -88885,13 +88838,17 @@
           25.558626
         ],
         [
-          42.547605,
-          25.559374
+          42.547572,
+          25.559396
+        ],
+        [
+          42.5476267,
+          25.5593705
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i5-05-north",
@@ -88900,20 +88857,20 @@
       "direction": "north",
       "description": "Ягода – Казанлък",
       "start": {
-        "lat": 42.547605,
-        "lng": 25.559374,
+        "lat": 42.5476267,
+        "lng": 25.5593491,
         "km_marker": "212+716",
         "settlement": "Ягода",
         "settlement_latin": "Yagoda"
       },
       "end": {
-        "lat": 42.61359,
-        "lng": 25.435381,
+        "lat": 42.6135752,
+        "lng": 25.435431,
         "km_marker": "199+527",
         "settlement": "Казанлък",
         "settlement_latin": "Kazanlak"
       },
-      "distance_m": 13212,
+      "distance_m": 13224,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -88922,8 +88879,12 @@
       },
       "centerline": [
         [
-          42.547605,
-          25.559374
+          42.5476267,
+          25.5593491
+        ],
+        [
+          42.547572,
+          25.559396
         ],
         [
           42.548135,
@@ -89566,13 +89527,13 @@
           25.435354
         ],
         [
-          42.61359,
-          25.435381
+          42.6135752,
+          25.435431
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i6-01-east",
@@ -89581,20 +89542,20 @@
       "direction": "east",
       "description": "Беланица – Радомир",
       "start": {
-        "lat": 42.487608,
-        "lng": 22.927018,
+        "lat": 42.4879855,
+        "lng": 22.9278231,
         "km_marker": "60+643",
         "settlement": "Беланица",
         "settlement_latin": "Belanitsa"
       },
       "end": {
-        "lat": 42.555023,
-        "lng": 22.965195,
+        "lat": 42.5549771,
+        "lng": 22.9653311,
         "km_marker": "69+047",
         "settlement": "Радомир",
         "settlement_latin": "Radomir"
       },
-      "distance_m": 8414,
+      "distance_m": 8492,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -89603,8 +89564,12 @@
       },
       "centerline": [
         [
-          42.487608,
-          22.927018
+          42.4879855,
+          22.9278231
+        ],
+        [
+          42.487577,
+          22.927025
         ],
         [
           42.487678,
@@ -90399,13 +90364,13 @@
           22.965325
         ],
         [
-          42.555023,
-          22.965195
+          42.5549771,
+          22.9653311
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "i6-01-west",
@@ -90414,20 +90379,20 @@
       "direction": "west",
       "description": "Радомир – Беланица",
       "start": {
-        "lat": 42.555023,
-        "lng": 22.965195,
+        "lat": 42.5550245,
+        "lng": 22.9651809,
         "km_marker": "69+047",
         "settlement": "Радомир",
         "settlement_latin": "Radomir"
       },
       "end": {
-        "lat": 42.487608,
-        "lng": 22.927018,
+        "lat": 42.4879855,
+        "lng": 22.9278231,
         "km_marker": "60+643",
         "settlement": "Беланица",
         "settlement_latin": "Belanitsa"
       },
-      "distance_m": 8414,
+      "distance_m": 8496,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -90436,8 +90401,8 @@
       },
       "centerline": [
         [
-          42.555023,
-          22.965195
+          42.5550245,
+          22.9651809
         ],
         [
           42.555053,
@@ -91232,13 +91197,17 @@
           22.927248
         ],
         [
-          42.487608,
-          22.927018
+          42.487577,
+          22.927025
+        ],
+        [
+          42.4879855,
+          22.9278231
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "ii55-01-south",
@@ -91247,20 +91216,20 @@
       "direction": "south",
       "description": "Килифарево – Въглевци",
       "start": {
-        "lat": 42.999631,
-        "lng": 25.614879,
+        "lat": 42.9996098,
+        "lng": 25.6147957,
         "km_marker": "5+140",
         "settlement": "Килифарево",
         "settlement_latin": "Kilifarevo"
       },
       "end": {
-        "lat": 42.907075,
-        "lng": 25.649476,
+        "lat": 42.9070756,
+        "lng": 25.6494713,
         "km_marker": "18+395",
         "settlement": "Въглевци",
         "settlement_latin": "Vaglevtsi"
       },
-      "distance_m": 13281,
+      "distance_m": 13274,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -91269,12 +91238,8 @@
       },
       "centerline": [
         [
-          42.999631,
-          25.614879
-        ],
-        [
-          42.999615,
-          25.614786
+          42.9996098,
+          25.6147957
         ],
         [
           42.999595,
@@ -92797,13 +92762,13 @@
           25.649435
         ],
         [
-          42.907075,
-          25.649476
+          42.9070756,
+          25.6494713
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     },
     {
       "id": "ii55-01-north",
@@ -92812,20 +92777,20 @@
       "direction": "north",
       "description": "Въглевци – Килифарево",
       "start": {
-        "lat": 42.907075,
-        "lng": 25.649476,
+        "lat": 42.9071228,
+        "lng": 25.6494713,
         "km_marker": "18+395",
         "settlement": "Въглевци",
         "settlement_latin": "Vaglevtsi"
       },
       "end": {
-        "lat": 42.999631,
-        "lng": 25.614879,
+        "lat": 42.9996412,
+        "lng": 25.6149673,
         "km_marker": "5+140",
         "settlement": "Килифарево",
         "settlement_latin": "Kilifarevo"
       },
-      "distance_m": 13281,
+      "distance_m": 13294,
       "speed_limits": {
         "car": 90,
         "truck": 80,
@@ -92834,8 +92799,8 @@
       },
       "centerline": [
         [
-          42.907075,
-          25.649476
+          42.9071228,
+          25.6494713
         ],
         [
           42.906827,
@@ -94362,13 +94327,13 @@
           25.614786
         ],
         [
-          42.999631,
-          25.614879
+          42.9996412,
+          25.6149673
         ]
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-06-25"
+      "last_verified": "2026-07-17"
     }
   ]
 }

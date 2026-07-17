@@ -36,11 +36,17 @@ class ZoneEndpoint(BaseModel):
 
 
 class SpeedLimits(BaseModel):
-    """Speed limits by vehicle type in km/h."""
+    """Speed limits by vehicle type in km/h.
+
+    ``truck``/``bus`` are optional at the *source* level — TollTracker's
+    vector tiles carry only a single (car) limit. Published merged zones are
+    still expected to carry all three (KML/BG TOLL provide the per-category
+    values); ``validator.validate()`` warns when one is missing.
+    """
 
     car: int
-    truck: int
-    bus: int
+    truck: int | None = None
+    bus: int | None = None
     motorcycle: int | None = None
 
 

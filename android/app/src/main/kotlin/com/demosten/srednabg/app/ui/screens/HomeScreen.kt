@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -47,11 +48,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -62,8 +65,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.demosten.srednabg.R
 import com.demosten.srednabg.app.permissions.PermissionState
 import com.demosten.srednabg.app.ui.theme.warningAmber
-import com.demosten.srednabg.app.ui.theme.SpeedGreen
-import com.demosten.srednabg.app.ui.theme.SpeedRed
+import com.demosten.srednabg.app.ui.theme.SpeedRedLight
+import com.demosten.srednabg.app.ui.theme.speedGreen
+import com.demosten.srednabg.app.ui.theme.speedRed
 import com.demosten.srednabg.app.ui.util.orDash
 import com.demosten.srednabg.app.ui.components.exitVerdictOverLimit
 import com.demosten.srednabg.app.ui.viewmodel.HomeViewModel
@@ -172,9 +176,12 @@ private fun StartStopButton(isTracking: Boolean, onStart: () -> Unit, onStop: ()
             .fillMaxWidth()
             .height(72.dp),
         colors = if (isTracking) {
+            // Solid red fill with white content, matching the iOS Stop button
+            // (`.borderedProminent` tinted `Theme.statusRed`) instead of the pale
+            // Material errorContainer.
             ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.errorContainer,
-                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                containerColor = SpeedRedLight,
+                contentColor = Color.White,
             )
         } else {
             ButtonDefaults.buttonColors()
@@ -183,11 +190,20 @@ private fun StartStopButton(isTracking: Boolean, onStart: () -> Unit, onStop: ()
         Icon(
             imageVector = if (isTracking) Icons.Default.Stop else Icons.Default.PlayArrow,
             contentDescription = null,
+            // Match the iOS button, where the SF Symbol scales with the
+            // `.title3` label font; the Compose default (24dp) reads small next
+            // to the 20sp label.
+            modifier = Modifier.size(28.dp),
         )
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = buttonLabel,
+            // Match the iOS Start/Stop button (`.title3.weight(.semibold)` ≈
+            // 20pt SemiBold); the Material `titleMedium` default (16sp) read too
+            // small next to it.
             style = MaterialTheme.typography.titleMedium,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.SemiBold,
         )
     }
 }
@@ -245,7 +261,7 @@ private fun PermissionCard(
 
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = SpeedRed.copy(alpha = 0.15f)),
+        colors = CardDefaults.cardColors(containerColor = speedRed().copy(alpha = 0.15f)),
     ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(24.dp),
@@ -263,7 +279,7 @@ private fun PermissionCard(
                     Icon(
                         imageVector = Icons.Default.LocationOff,
                         contentDescription = null,
-                        tint = SpeedRed,
+                        tint = speedRed(),
                     )
                     Text(
                         text = title,
@@ -430,6 +446,9 @@ private fun NotTrackingCard(modifier: Modifier) {
                     text = stringResource(R.string.tap_to_start_hint),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    // Center the wrapped hint, matching iOS's
+                    // `.multilineTextAlignment(.center)`.
+                    textAlign = TextAlign.Center,
                 )
             }
         }
@@ -491,11 +510,11 @@ private fun InZoneCard(
     // so the badge must show the same number, not the car default.
     val limit = vehicleType.limit(state.zone.speedLimits)
     val statusColor = when {
-        state.speedStatus.isOverLimit -> SpeedRed
+        state.speedStatus.isOverLimit -> speedRed()
         // Amber tier is deliberately car-relative (matches core zoneStatusColor
         // and the iOS surfaces); red comes from the vehicle-aware isOverLimit.
         currentSpeedKmh != null && currentSpeedKmh > state.zone.speedLimits.car -> warningAmber()
-        else -> SpeedGreen
+        else -> speedGreen()
     }
     val statusText = if (state.speedStatus.isOverLimit) {
         stringResource(R.string.status_over_limit)
@@ -540,7 +559,9 @@ private fun InZoneCard(
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    // Extra gap so the current-speed line reads as a separate
+                    // value, not part of the average block above it.
+                    Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = stringResource(R.string.status_now_speed, currentSpeedKmh.orDash()),
                         style = MaterialTheme.typography.titleLarge,
@@ -587,7 +608,7 @@ private fun ExitingCard(
     currentSpeedKmh: Double?,
     vehicleType: VehicleType,
 ) {
-    val color = if (exitVerdictOverLimit(state, vehicleType)) SpeedRed else SpeedGreen
+    val color = if (exitVerdictOverLimit(state, vehicleType)) speedRed() else speedGreen()
     val semanticDescription = stringResource(
         R.string.accessibility_exiting,
         state.finalAvgSpeed.orDash(),

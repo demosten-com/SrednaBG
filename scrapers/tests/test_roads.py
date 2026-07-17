@@ -21,6 +21,7 @@ from src.roads import (
     normalize_road,
     opposite_direction,
     road_slug,
+    to_latin,
 )
 
 
@@ -120,6 +121,20 @@ class TestNames:
         assert (
             normalize_road('АМ "Европа" (Северна скоростна тангента)') == "АМ Европа"
         )
+
+    def test_normalize_bare_motorway_names(self):
+        # TollTracker tile titles carry bare motorway names
+        assert normalize_road("Тракия") == "АМ Тракия"
+        assert normalize_road("Европа") == "АМ Европа"
+
+    def test_to_latin(self):
+        assert to_latin("Чепинци") == "Chepintsi"
+        assert to_latin("Любимец") == "Lyubimets"
+        assert to_latin("Харманли") == "Harmanli"
+        assert to_latin("Горна студена") == "Gorna studena"
+        assert to_latin("Европа") == "Evropa"
+        assert to_latin("Тракия") == "Trakiya"
+        assert to_latin("I-3") == "I-3"  # Latin passes through
 
     def test_road_slug(self):
         assert road_slug("АМ Тракия") == "trakiya"
