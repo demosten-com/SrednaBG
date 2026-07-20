@@ -39,6 +39,12 @@ class AudioAlertManager @Inject constructor(
         const val MIN_ANNOUNCE_SPEED_KMH = 10.0
         const val TRANSIENT_EXIT_WINDOW_MS = 5_000L
         const val PERIODIC_INTERVAL_MS = 30_000L
+        // Cold-start lead-in: after a fresh audio-focus grant the output route
+        // (Android Auto / Bluetooth) needs a moment to duck the other app and
+        // open our stream — speech synthesized in that window is swallowed, so
+        // messages started with their first words clipped. Lead with this much
+        // silence in the same TTS queue before the first words.
+        const val ROUTE_WARMUP_SILENCE_MS = 400L
     }
 
     // Written on Main, read in the TTS init binder callback; @Volatile gives the
@@ -62,14 +68,19 @@ class AudioAlertManager @Inject constructor(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     private val audioManager by lazy { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
+    // Shared by the focus request AND the TTS engine itself: without
+    // setAudioAttributes the engine speaks as default USAGE_MEDIA while our
+    // focus claims navigation guidance — over Android Auto the media route is
+    // the slower one to open, which clipped message starts alongside Waze.
+    private val speechAudioAttributes by lazy {
+        AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+            .build()
+    }
     private val audioFocusRequest by lazy {
         AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
-            .setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                    .build()
-            )
+            .setAudioAttributes(speechAudioAttributes)
             .build()
     }
 
@@ -81,6 +92,7 @@ class AudioAlertManager @Inject constructor(
                 // must not be marked initialized or speak() would request audio
                 // focus that no utterance callback ever releases.
                 if (tts == null) return@TextToSpeech
+                tts?.setAudioAttributes(speechAudioAttributes)
                 tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                     // These callbacks arrive on a TTS binder thread; hop to Main
                     // so pendingUtterances is only ever mutated on one thread.
@@ -273,13 +285,33 @@ class AudioAlertManager @Inject constructor(
             Log.d(TAG, "speak: TTS not initialized, dropping: \"$text\"")
             return
         }
-        Log.d(TAG, "speak: \"$text\"")
         audioManager.requestAudioFocus(audioFocusRequest)
+        // A cold focus session (nothing queued or speaking) needs the
+        // ROUTE_WARMUP_SILENCE_MS lead-in before the words, or the route-open
+        // delay clips the message start. A warm queue is already routed — no
+        // lead-in, and the silence must not apply when queueMode is QUEUE_ADD
+        // chaining onto live speech.
+        val coldStart = pendingUtterances == 0
         // QUEUE_FLUSH wipes anything still queued, so reset the outstanding count;
         // QUEUE_ADD appends, so add to it. The shared utterance id is fine — the
         // listener counts onDone/onError callbacks, not ids.
-        pendingUtterances = if (queueMode == TextToSpeech.QUEUE_FLUSH) 1 else pendingUtterances + 1
-        val result = tts?.speak(text, queueMode, null, "srednabg_alert")
+        if (queueMode == TextToSpeech.QUEUE_FLUSH) pendingUtterances = 0
+        pendingUtterances += if (coldStart) 2 else 1
+        // Log order mirrors enqueue order (lead-in, then words) — the QA
+        // parser orders TtsLeadIn before TtsSpeak on it.
+        if (coldStart) {
+            Log.d(TAG, "speak: cold start, ${ROUTE_WARMUP_SILENCE_MS}ms lead-in")
+            val silence = tts?.playSilentUtterance(ROUTE_WARMUP_SILENCE_MS, queueMode, "srednabg_lead_in")
+            if (silence != TextToSpeech.SUCCESS) {
+                Log.w(TAG, "speak: lead-in enqueue failed (result=$silence)")
+                onUtteranceFinished()
+            }
+        }
+        Log.d(TAG, "speak: \"$text\"")
+        // On a cold start the lead-in already carried the caller's queueMode
+        // (flushing if asked to); the speech itself must chain after it.
+        val speechMode = if (coldStart) TextToSpeech.QUEUE_ADD else queueMode
+        val result = tts?.speak(text, speechMode, null, "srednabg_alert")
         if (result != TextToSpeech.SUCCESS) {
             // A rejected enqueue never reaches the utterance listener, so undo
             // its count here or the audio focus stays held (other apps ducked).

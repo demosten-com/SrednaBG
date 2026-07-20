@@ -129,7 +129,7 @@ fixtures (committed under `qa/fixtures/gpx-xcode/`):
 - YAML for "drive zone X at speed Y" variations.
 - Python under `qa/scenarios/edge/` for mid-trip changes (dropout, U-turn, etc.) — register the module in `EDGE_SCENARIOS` in `qa/srednabg_qa.py`.
 - Use `pump()` / `device.current().feed_point(...)` and `qa.settings` / `qa.sync` (not `qa.adb` directly) so the scenario runs on both platforms.
-- User-reported bugs land with a reproducing scenario (e.g. `stop_silences_tts.py` — Stop must silence in-flight TTS; `dense_centerline.py` — short-segment zones don't false-exit/re-enter).
+- User-reported bugs land with a reproducing scenario (e.g. `stop_silences_tts.py` — Stop must silence in-flight TTS; `dense_centerline.py` — short-segment zones don't false-exit/re-enter; `tts_cold_start_leadin.py` — Android-only: a cold audio-focus session must prepend silent lead-in so the AA/Bluetooth route-open delay can't clip announcement starts).
 
 ## Manual zone feeding + full-zone direction validation (Android, debug build)
 

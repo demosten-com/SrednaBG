@@ -23,6 +23,7 @@ from qa.events import (
     LocationUpdate,
     SettingChanged,
     SyncResult,
+    TtsLeadIn,
     TtsSpeak,
     UnparsedLog,
     ZoneStateChange,
@@ -142,6 +143,14 @@ class TtsTests(unittest.TestCase):
         ev = parsers.parse_threadtime_line(line("SrednaBG.TTS", 'speak: "hello \\"q\\""'))
         self.assertIsInstance(ev, TtsSpeak)
         self.assertTrue(ev.text.endswith('"'))
+
+    def test_speak_cold_start_lead_in(self):
+        # The unquoted diagnostic must parse as TtsLeadIn, never as TtsSpeak —
+        # the edge.tts_cold_start_leadin scenario orders on the distinction.
+        ev = parsers.parse_threadtime_line(line(
+            "SrednaBG.TTS", "speak: cold start, 400ms lead-in"))
+        self.assertIsInstance(ev, TtsLeadIn)
+        self.assertEqual(ev.lead_in_ms, 400)
 
 
 class SyncTests(unittest.TestCase):

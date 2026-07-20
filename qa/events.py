@@ -81,6 +81,14 @@ class TtsDropped(Event):
 
 
 @dataclass(frozen=True)
+class TtsLeadIn(Event):
+    """Android-only: a cold audio-focus session prepended silent lead-in before
+    the words, so the AA/Bluetooth route-open delay can't clip the message start
+    (AudioAlertManager.kt `speak: cold start, …ms lead-in`)."""
+    lead_in_ms: int
+
+
+@dataclass(frozen=True)
 class TtsSuppressed(Event):
     """Exit TTS suppressed because entry was <5s ago (transient glitch guard)."""
     entry_age_ms: int

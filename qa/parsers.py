@@ -40,6 +40,7 @@ from .events import (
     SettingChanged,
     SyncResult,
     TtsDropped,
+    TtsLeadIn,
     TtsSpeak,
     TtsSuppressed,
     UnparsedLog,
@@ -78,6 +79,7 @@ STATE_RE = re.compile(
 
 SPEAK_RE = re.compile(r'^speak: "(?P<text>.*)"$')
 SPEAK_DROPPED_RE = re.compile(r'^speak: TTS not initialized, dropping: "(?P<text>.*)"$')
+LEAD_IN_RE = re.compile(r"^speak: cold start, (?P<ms>\d+)ms lead-in$")
 SUPPRESS_RE = re.compile(r"suppressing exit TTS — entry was (?P<age>\d+)ms ago")
 ZONES_RE = re.compile(r"zones changed \(n=(?P<n>\d+)\)")
 INTERVAL_RE = re.compile(r"requestLocationWithInterval intervalMs=(?P<i>\d+)")
@@ -187,6 +189,9 @@ def parse_message(tag: str, msg: str, raw: str) -> Optional[Event]:
         msd = SPEAK_DROPPED_RE.match(msg)
         if msd:
             return TtsDropped(monotonic_ms=ts, raw=raw, text=msd.group("text"))
+        mli = LEAD_IN_RE.match(msg)
+        if mli:
+            return TtsLeadIn(monotonic_ms=ts, raw=raw, lead_in_ms=int(mli.group("ms")))
         msp = SPEAK_RE.match(msg)
         if msp:
             return TtsSpeak(monotonic_ms=ts, raw=raw, text=msp.group("text"))

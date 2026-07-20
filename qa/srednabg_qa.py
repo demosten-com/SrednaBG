@@ -68,6 +68,7 @@ EDGE_SCENARIOS = [
     "speed_decay_after_stop",
     "auto_stop",
     "stop_silences_tts",
+    "tts_cold_start_leadin",
     "dense_centerline",
     "noisy_fix_rejected",
 ]
@@ -83,7 +84,11 @@ EDGE_SCENARIOS = [
 #     reproduce the Android FLP cached-last-known cold start. The scenario's own
 #     anti-vacuous guard (`assert_signal_observed`) flags the missing diagnostic
 #     stream on iOS instead of passing vacuously.
-_ANDROID_ONLY_EDGE = {"noisy_fix_rejected", "cold_start_spike"}
+#   - `tts_cold_start_leadin` guards the Android `AudioAlertManager.kt`
+#     silent-lead-in fix (audio-focus route warmup over Android Auto /
+#     Bluetooth); iOS speaks through AVAudioSession with different activation
+#     mechanics and emits no `speak: cold start` line.
+_ANDROID_ONLY_EDGE = {"noisy_fix_rejected", "cold_start_spike", "tts_cold_start_leadin"}
 HISTORY_SCENARIOS = [
     "retention_roundtrip",
     "records_traversal",

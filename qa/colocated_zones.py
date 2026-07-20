@@ -270,6 +270,15 @@ def evaluate(a_id, b_id, events):
         announced = False
         for e in events[enter_b_idx + 1:]:
             if e[0] == "state":
+                # The announcement coroutine suspends on settings reads between
+                # the state log and the speak log, so when the harness feeds
+                # fixes ms apart the NEXT fix's InZone->InZone continuation
+                # line (still zone B) can land in between — tolerate those.
+                # Any other state line (a sibling blip's different zone id, an
+                # exit, Outside) still breaks the correlation, keeping the
+                # anti-sibling-blip strictness.
+                if e[2] == "InZone" and e[3] == b_id:
+                    continue
                 break
             if e[0] == "entry":
                 announced = True
