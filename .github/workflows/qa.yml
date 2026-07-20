@@ -149,8 +149,11 @@ jobs:
               --reports-dir qa/reports/ios > qa-ios.log 2>&1 & I=$!
             echo "iOS QA started (pid $I)"
           fi
-          [ -n "$A" ] && { wait "$A"; ra=$?; echo "Android QA exit=$ra"; }
-          [ -n "$I" ] && { wait "$I"; ri=$?; echo "iOS QA exit=$ri"; }
+          # `|| ra=$?` keeps a failing wait from tripping the shell's -e mode,
+          # which would kill the step here — before the exit-code echoes, the
+          # log tails below, and the wait for the other platform.
+          [ -n "$A" ] && { wait "$A" || ra=$?; echo "Android QA exit=$ra"; }
+          [ -n "$I" ] && { wait "$I" || ri=$?; echo "iOS QA exit=$ri"; }
           echo "===== Android log (tail) ====="; tail -n 60 qa-android.log 2>/dev/null || true
           echo "===== iOS log (tail) ====="; tail -n 60 qa-ios.log 2>/dev/null || true
           # Fail the job if either platform that ran failed.

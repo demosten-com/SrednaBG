@@ -40,6 +40,7 @@ from ...ui import UiRecorder
 
 ACTION_SEED_HISTORY = "com.demosten.srednabg.debug.SEED_HISTORY"
 BUTTON_RESOURCE_ID = "history-show-on-map"
+ROW_RESOURCE_ID = "history-row"
 POLL_TIMEOUT_S = 20.0
 
 
@@ -107,11 +108,16 @@ def build() -> Scenario:
         time.sleep(1.5)
         _tap_node(_dump_ui(), "tab-history", "History tab")
         time.sleep(1.5)
-        # Rows carry no test tags; the first "avg km/h" caption sits inside the
-        # newest record's row, so tapping it opens that record's detail.
-        root = _dump_ui()
-        row = next((n for n in root.iter("node")
-                    if n.attrib.get("text") == "avg km/h"), None)
+        # Rows carry the `history-row` test tag (matching by display text broke
+        # when the translatable caption was reworded); the first tagged node is
+        # the newest record's row, so tapping it opens that record's detail.
+        # Poll a little — the seeded rows land via a Room Flow emission.
+        deadline = time.monotonic() + 10.0
+        row = None
+        while row is None and time.monotonic() < deadline:
+            row = _find_by_resource_id(_dump_ui(), ROW_RESOURCE_ID)
+            if row is None:
+                time.sleep(1.0)
         if row is None:
             raise AssertionFailure("no history rows visible after SEED_HISTORY")
         x, y = _bounds_center(row)

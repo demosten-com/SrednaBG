@@ -24,9 +24,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -45,6 +49,7 @@ import com.demosten.srednabg.core.ZONE_COLOR_RED
  * the round posted-limit badge, and the driver's average tinted green (within)
  * or red (over) — the same verdict colours used on the exit chip.
  */
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 internal fun HistoryItemCard(
     item: HistoryListItem,
@@ -54,7 +59,12 @@ internal fun HistoryItemCard(
     val color = historyVerdictColor(item.isOverLimit)
     Card(
         onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
+        // The QA harness locates rows by this tag (uiautomator resource-id) —
+        // row text is translatable and must stay free to change.
+        modifier = modifier
+            .fillMaxWidth()
+            .semantics { testTagsAsResourceId = true }
+            .testTag("history-row"),
         // Base surface matches the in-zone/exit chip; the verdict tint composites
         // over it (below) so the row reads green/red consistently in both themes
         // instead of the default surfaceContainerLow (faint green in light,
