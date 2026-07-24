@@ -44,13 +44,25 @@ ROW_RESOURCE_ID = "history-row"
 POLL_TIMEOUT_S = 20.0
 
 
-def _dump_ui() -> ET.Element:
-    adb.shell("uiautomator dump /sdcard/window_dump.xml")
-    raw = subprocess.run(
-        [shutil.which("adb"), "exec-out", "cat", "/sdcard/window_dump.xml"],
-        capture_output=True, text=True, check=True, timeout=10,
-    ).stdout
-    return ET.fromstring(raw)
+def _dump_ui(timeout_s: float = 10.0) -> ET.Element:
+    """uiautomator dump, retried until it yields parseable XML.
+    `uiautomator dump` intermittently produces nothing while the UI is
+    animating (seen on API 36); a single failed attempt must not abort
+    the scenario."""
+    deadline = time.monotonic() + timeout_s
+    while True:
+        adb.shell("uiautomator dump /sdcard/window_dump.xml")
+        raw = subprocess.run(
+            [shutil.which("adb"), "exec-out", "cat", "/sdcard/window_dump.xml"],
+            capture_output=True, text=True, check=False, timeout=10,
+        ).stdout
+        try:
+            return ET.fromstring(raw)
+        except ET.ParseError:
+            if time.monotonic() >= deadline:
+                raise AssertionFailure(
+                    f"uiautomator dump produced no parseable XML for {timeout_s:.0f}s")
+            time.sleep(1.0)
 
 
 def _find_by_resource_id(root: ET.Element, resource_id: str) -> ET.Element | None:

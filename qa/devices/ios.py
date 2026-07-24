@@ -268,6 +268,19 @@ class IosDevice(Device):
         # trip returning only after the handler has emitted.
         self._debug_get("/history", {"action": "dump"}, retries=2)
 
+    def seed_history(self, count: int) -> None:
+        self._debug_get("/history", {"action": "seed", "count": str(count)},
+                        retries=2)
+
+    def ensure_history_list(self) -> None:
+        # No-op by construction: every shot flips `app_language`, which rebuilds
+        # the language-keyed `RootTabs` — the NavigationStack comes back at its
+        # root and `debugDetailRecord` resets to nil.
+        return
+
+    def open_history_detail(self, select: str = "newest") -> None:
+        self._debug_get("/history", {"action": "open", "select": select}, retries=2)
+
     # ── network gating ──────────────────────────────────────────────────────
     def go_offline(self) -> None:
         # `simctl status_bar` flips the carrier glyph but doesn't gate the

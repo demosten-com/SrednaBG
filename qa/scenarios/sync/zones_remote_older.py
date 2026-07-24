@@ -65,9 +65,17 @@ def build() -> Scenario:
     def teardown(ctx: RunContext) -> None:
         # Belt and braces: if a step failed mid-way the device could be left
         # with the future version pinned — reset and re-sync (unasserted) so
-        # the rest of the suite runs against real server state.
+        # the rest of the suite runs against real server state. Wait for the
+        # result (swallowing a timeout) — an in-flight sync leaking past this
+        # scenario is read as a stale result by the next one (zones_offline
+        # saw this teardown's UpToDate instead of its own Failed).
         settings.set_setting("cached_zone_version", "")
+        ctx.obs.clear()
         sync.force_sync_zones()
+        try:
+            sync.wait_for_sync(ctx.obs, "SYNC_ZONES", timeout_s=20)
+        except TimeoutError:
+            pass  # restore is best-effort; asserting here would double-fail
         expect_crash_free(ctx.obs)
 
     return Scenario(

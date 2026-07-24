@@ -99,12 +99,21 @@ class CueChannel:
 
 
 # Fallback bottom-nav coordinates for headless Android runs (no Claude session).
-# Pixel 8a 1080×2400 portrait — same numbers the existing smoke_walk uses.
+# Pixel 8a 1080×2400 portrait. The bar has FOUR tabs (Home | Map | History |
+# Settings), so each occupies 270 px — centers at 135 / 405 / 675 / 945. (The
+# old three-tab numbers put Map at x=540, which lands on the Map/History seam
+# and silently missed, capturing Home instead — see git history.)
 ANDROID_TAB_COORDS = {
-    "home": (180, 2253),
-    "map": (540, 2253),
-    "settings": (900, 2253),
+    "home": (135, 2253),
+    "map": (405, 2253),
+    "history": (675, 2253),
+    "settings": (945, 2253),
 }
+
+# Curated-history fill for the History-tab shot. Four records → two recent days
+# with exactly one over-limit (red) traversal, so the shot showcases the
+# traffic-light verdict without a wall of red. See HistorySeeder (both platforms).
+HISTORY_SEED_COUNT = 4
 
 
 def navigate_tab(tab: str, channel: CueChannel, *, allow_adb_fallback: bool) -> None:
@@ -371,9 +380,28 @@ def main(argv: list[str]) -> int:
                 device.set_setting("app_language", lang)
                 wait_locale_applied(device)
                 apply_shot_settings(device, shot, run_theme=args.theme)
+                if shot.tab == "history":
+                    # Fill the DB before landing on the tab so the list renders
+                    # populated (deterministic set — re-seeding per language is a
+                    # harmless idempotent wipe+refill).
+                    device.seed_history(HISTORY_SEED_COUNT)
                 navigate_tab(shot.tab, channel,
                              allow_adb_fallback=args.allow_adb_fallback)
                 time.sleep(0.5)  # UI settle
+                if shot.tab == "history":
+                    # Pop a detail page left open by an earlier shot/language so
+                    # the list shot never captures a detail and the rows stay
+                    # addressable for the detail shot.
+                    device.ensure_history_list()
+                if shot.open_detail:
+                    # iOS's back-channel is a fire-and-forget notification, so
+                    # the History list must be mounted (and its observer
+                    # subscribed) before it fires — NotificationCenter doesn't
+                    # replay. Android's tap polls for the row, so the wait is
+                    # belt-and-braces there.
+                    time.sleep(1.5)
+                    device.open_history_detail(shot.open_detail)
+                    time.sleep(1.0)  # detail push animation
                 drive_band_for_shot(seq, shot)
                 settle_for_screenshot()
                 dest = out_root / (

@@ -119,8 +119,16 @@ public enum HistorySeeder {
     }
 
     /// Entry/exit epoch-ms for a traversal on the target local calendar day at the
-    /// target time. Clamped so a traversal never lands in the future (matters for
-    /// `dayOffset == 0` when "now" is earlier in the day than the scripted hour).
+    /// target time, stepped back by whole calendar days until it is fully in the
+    /// past (matters for `dayOffset == 0` when "now" is earlier in the day than
+    /// the scripted hour).
+    ///
+    /// Shifting by **days** rather than clamping the offset to `now` is what keeps
+    /// the fill realistic: it preserves each scenario's scripted time-of-day, so a
+    /// morning and an evening run of the same road stay hours apart. The old clamp
+    /// slid every future-scripted traversal onto `now - 1 min`, which collapsed
+    /// them onto a single timestamp — seeding just after midnight then showed the
+    /// same road driven East and West at the very same minute.
     private static func traversalBounds(
         nowMs: Int64,
         dayOffset: Int,
@@ -131,16 +139,16 @@ public enum HistorySeeder {
         let cal = Calendar.current
         let now = Date(timeIntervalSince1970: Double(nowMs) / 1000)
         let startOfToday = cal.startOfDay(for: now)
-        let day = cal.date(byAdding: .day, value: -dayOffset, to: startOfToday) ?? startOfToday
-        let entryDate = cal.date(byAdding: .second, value: hour * 3600 + minute * 60, to: day) ?? day
-        var entryMs = Int64(entryDate.timeIntervalSince1970 * 1000)
-        var exitMs = entryMs + Int64(durationSec) * 1000
-        if exitMs > nowMs {
-            let shift = exitMs - nowMs + 60_000
-            entryMs -= shift
-            exitMs -= shift
+        var day = cal.date(byAdding: .day, value: -dayOffset, to: startOfToday) ?? startOfToday
+        while true {
+            let entryDate = cal.date(byAdding: .second, value: hour * 3600 + minute * 60, to: day) ?? day
+            let entryMs = Int64(entryDate.timeIntervalSince1970 * 1000)
+            let exitMs = entryMs + Int64(durationSec) * 1000
+            if exitMs <= nowMs {
+                return (entryMs, exitMs)
+            }
+            day = cal.date(byAdding: .day, value: -1, to: day) ?? day.addingTimeInterval(-86_400)
         }
-        return (entryMs, exitMs)
     }
 
     /// A plausible speed-over-time series at 1 Hz: an entry acceleration ramp, a

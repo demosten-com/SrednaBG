@@ -140,8 +140,16 @@ internal object HistorySeeder {
 
     /**
      * Entry/exit epoch-ms for a traversal on the target local calendar day at the
-     * target time. Clamped so a traversal never lands in the future (matters for
-     * `dayOffset == 0` when "now" is earlier in the day than the scripted hour).
+     * target time, stepped back by whole calendar days until it is fully in the
+     * past (matters for `dayOffset == 0` when "now" is earlier in the day than
+     * the scripted hour).
+     *
+     * Shifting by **days** rather than clamping the offset to `now` is what keeps
+     * the fill realistic: it preserves each scenario's scripted time-of-day, so a
+     * morning and an evening run of the same road stay hours apart. The old clamp
+     * slid every future-scripted traversal onto `now - 1 min`, which collapsed
+     * them onto a single timestamp — seeding just after midnight then showed the
+     * same road driven East and West at the very same minute.
      */
     private fun traversalBounds(
         nowMs: Long,
@@ -151,16 +159,16 @@ internal object HistorySeeder {
         durationSec: Int,
     ): Pair<Long, Long> {
         val zone = ZoneId.systemDefault()
-        val day = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate().minusDays(dayOffset.toLong())
-        val entryInstant = day.atStartOfDay(zone).plusSeconds((hour * 3600 + minute * 60).toLong()).toInstant()
-        var entryMs = entryInstant.toEpochMilli()
-        var exitMs = entryMs + durationSec * 1000L
-        if (exitMs > nowMs) {
-            val shift = exitMs - nowMs + 60_000L
-            entryMs -= shift
-            exitMs -= shift
+        var day = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate().minusDays(dayOffset.toLong())
+        while (true) {
+            val entryMs = day.atStartOfDay(zone)
+                .plusSeconds((hour * 3600 + minute * 60).toLong())
+                .toInstant()
+                .toEpochMilli()
+            val exitMs = entryMs + durationSec * 1000L
+            if (exitMs <= nowMs) return entryMs to exitMs
+            day = day.minusDays(1)
         }
-        return entryMs to exitMs
     }
 
     /**

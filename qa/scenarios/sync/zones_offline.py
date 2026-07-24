@@ -23,11 +23,13 @@ def build() -> Scenario:
         sync.go_offline()
         try:
             sync.force_sync_zones()
-            result = sync.wait_for_sync(ctx.obs, "SYNC_ZONES", timeout_s=30)
-            if result.outcome != "Failed":
-                raise AssertionFailure(
-                    f"expected Failed while offline, got {result.outcome} (detail={result.detail})"
-                )
+            # A previous scenario's restore-sync can land its UpToDate after
+            # the clear() above, so the first SYNC_ZONES event may be stale —
+            # accept only Failed and let the timeout name anything else seen.
+            try:
+                sync.wait_for_sync_outcome(ctx.obs, "SYNC_ZONES", "Failed", timeout_s=30)
+            except TimeoutError as exc:
+                raise AssertionFailure(f"expected Failed while offline: {exc}") from exc
         finally:
             sync.go_online()
 

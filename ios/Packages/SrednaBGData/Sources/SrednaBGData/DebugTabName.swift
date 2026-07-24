@@ -30,3 +30,26 @@ public enum DebugTabName {
         all.contains(which)
     }
 }
+
+/// Back-channel for opening the History **detail** page of the newest record.
+///
+/// `DebugActionRouter` accepts `/history?action=open` and posts
+/// `openNotification`; `HistoryScreen` (under `#if DEBUG`) observes it and
+/// pushes the detail view. Android's screenshot harness taps the `history-row`
+/// node instead — the Simulator has no synthetic-tap path, same split as
+/// `DebugTabName`.
+public enum DebugHistoryOpen {
+
+    public static let openNotification = Notification.Name(
+        "bg.srednabg.debug.openHistoryDetail"
+    )
+    /// `userInfo` key carrying which record to open — see `select`.
+    public static let selectUserInfoKey = "select"
+
+    /// Newest record (default).
+    public static let newest = "newest"
+    /// First record within its limit.
+    public static let green = "green"
+    /// First record over its limit.
+    public static let red = "red"
+}

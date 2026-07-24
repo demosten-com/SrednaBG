@@ -31,8 +31,6 @@
     <string name="no_zones_loaded">Няма заредени зони — свържете се с интернет</string>
     <string name="map_zoom_in">Приближаване</string>
     <string name="map_zoom_out">Отдалечаване</string>
-    <string name="map_user_position">Текущо местоположение</string>
-    <string name="map_recenter">Центрирай</string>
     <string name="map_follow_user_on">Следване включено</string>
     <string name="map_follow_user_off">Следване изключено</string>
     <string name="map_orientation_north_up">Ориентация: север</string>

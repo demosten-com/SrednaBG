@@ -12,8 +12,10 @@ class here just gives the runner / scenarios a platform-agnostic surface.
 
 from __future__ import annotations
 
+import re
 import subprocess
 import time
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from qa import adb
@@ -34,6 +36,14 @@ ACTION_STOP_TRACKING = "com.demosten.srednabg.debug.STOP_TRACKING"
 ACTION_SYNC_MAP = "com.demosten.srednabg.debug.SYNC_MAP"
 ACTION_SYNC_ZONES = "com.demosten.srednabg.debug.SYNC_ZONES"
 ACTION_FEED_POINT = "com.demosten.srednabg.debug.FEED_POINT"
+ACTION_SEED_HISTORY = "com.demosten.srednabg.debug.SEED_HISTORY"
+
+# Compose testTag surfaced as a resource-id (the list's parent sets
+# `testTagsAsResourceId`); the QA `ui.history_show_on_map` scenario uses the same.
+HISTORY_ROW_RESOURCE_ID = "history-row"
+# Only the detail screen carries the "Show on map" toolbar action — used to tell
+# "detail is open" from "list is showing".
+HISTORY_DETAIL_RESOURCE_ID = "history-show-on-map"
 
 PROD_VERSION_URL = "https://srednabg.com/api/version"
 
@@ -118,6 +128,120 @@ class AndroidDevice(Device):
 
     def dump_history(self) -> None:
         adb.dump_history()
+
+    def seed_history(self, count: int) -> None:
+        adb.broadcast(ACTION_SEED_HISTORY, DEBUG_CONTROL_RECEIVER,
+                      extras={"count": str(count)})
+
+    def ensure_history_list(self) -> None:
+        # The detail screen is identified by its "Show on map" toolbar action;
+        # the list has no such node. Back out (at most a couple of levels) so the
+        # rows are addressable again.
+        for _ in range(3):
+            if self._find_node_by_resource_id(HISTORY_DETAIL_RESOURCE_ID) is None:
+                return
+            adb.shell("input keyevent 4")  # KEYCODE_BACK
+            time.sleep(1.0)
+        raise RuntimeError(
+            "History detail still showing after 3 back presses — cannot reach the list"
+        )
+
+    def open_history_detail(self, select: str = "newest") -> None:
+        # Rows carry the `history-row` test tag, surfaced as a resource-id
+        # because the list's parent sets `testTagsAsResourceId`. Matching by tag
+        # (not by the translatable row caption) keeps this locale-independent.
+        # Poll — seeded rows arrive via a Room Flow emission a beat after the
+        # tab switch.
+        deadline = time.monotonic() + 15.0
+        rows: list[tuple[tuple[int, int], int, int]] = []
+        while time.monotonic() < deadline:
+            rows = self._history_rows()
+            if rows:
+                break
+            time.sleep(1.0)
+        if not rows:
+            raise RuntimeError(
+                f"no {HISTORY_ROW_RESOURCE_ID!r} rows in the UI — is the History "
+                f"tab showing and seeded?"
+            )
+        target = self._pick_history_row(rows, select)
+        if target is None:
+            raise RuntimeError(
+                f"no history row matching select={select!r} among "
+                f"{[(lim, avg) for _, lim, avg in rows]} (limit, average)"
+            )
+        x, y = target
+        adb.shell(f"input tap {x} {y}")
+        time.sleep(1.5)  # let the detail screen push + settle
+
+    @staticmethod
+    def _pick_history_row(
+        rows: list[tuple[tuple[int, int], int, int]], select: str
+    ) -> tuple[int, int] | None:
+        """Centre of the row matching `select` — see VALID_OPEN_DETAIL."""
+        if select == "newest":
+            return rows[0][0]
+        for center, limit, avg in rows:
+            over = avg > limit
+            if (select == "red") == over:
+                return center
+        return None
+
+    def _history_rows(self) -> list[tuple[tuple[int, int], int, int]]:
+        """[(centre, limit_kmh, avg_kmh)] per visible row, in list order.
+
+        Both numbers are read as bare digits out of the row subtree — the badge
+        limit comes first in document order, then the average. Digits are
+        locale-independent, so this works in EN and BG without touching the
+        translatable caption text.
+        """
+        root = self._dump_ui()
+        if root is None:
+            return []
+        out: list[tuple[tuple[int, int], int, int]] = []
+        for node in root.iter("node"):
+            if node.attrib.get("resource-id") != HISTORY_ROW_RESOURCE_ID:
+                continue
+            center = self._bounds_center(node)
+            nums = [
+                int(t) for t in (d.attrib.get("text", "") for d in node.iter("node"))
+                if t.isdigit()
+            ]
+            if center is None or len(nums) < 2:
+                continue
+            out.append((center, nums[0], nums[1]))
+        return out
+
+    @staticmethod
+    def _dump_ui() -> "ET.Element | None":
+        """Parsed accessibility tree, or None if the dump was unusable."""
+        adb.shell("uiautomator dump /sdcard/window_dump.xml")
+        raw = subprocess.run(
+            [adb._adb(), "exec-out", "cat", "/sdcard/window_dump.xml"],
+            capture_output=True, text=True, check=True, timeout=10,
+        ).stdout
+        try:
+            return ET.fromstring(raw)
+        except ET.ParseError:
+            return None
+
+    @staticmethod
+    def _bounds_center(node: "ET.Element") -> tuple[int, int] | None:
+        m = re.match(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
+        if not m:
+            return None
+        left, top, right, bottom = (int(g) for g in m.groups())
+        return (left + right) // 2, (top + bottom) // 2
+
+    def _find_node_by_resource_id(self, resource_id: str) -> tuple[int, int] | None:
+        """Center (x, y) of the first node with `resource_id`, or None."""
+        root = self._dump_ui()
+        if root is None:
+            return None
+        for node in root.iter("node"):
+            if node.attrib.get("resource-id") == resource_id:
+                return self._bounds_center(node)
+        return None
 
     # ── network gating ──────────────────────────────────────────────────────
     def _device_online(self) -> bool:

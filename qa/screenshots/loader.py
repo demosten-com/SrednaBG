@@ -22,9 +22,13 @@ SHOTS_YAML = Path(__file__).resolve().parent / "shots.yaml"
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCREENSHOTS_ROOT = REPO_ROOT / "web" / "screenshots"
 
-VALID_TABS = ("home", "map", "settings")
+VALID_TABS = ("home", "map", "history", "settings")
 VALID_BANDS = ("outside", "green", "yellow", "red", "none")
 VALID_MAP_THEMES = ("light", "dark", "auto")
+# Which History record the detail shot opens. `green`/`red` name the verdict
+# (within / over the limit) using the same vocabulary as `band` above, so the
+# shot survives a reseed that reorders records — unlike a positional index.
+VALID_OPEN_DETAIL = ("newest", "green", "red")
 VALID_PLATFORMS = ("android", "ios")
 
 
@@ -80,6 +84,10 @@ class Shot:
     # marketing shots like the Home idle "Start tracking" screen and the
     # map overview without a user-location arrow.
     tracking_active: bool = True
+    # Screenshot-only: after landing on the History tab, open a record's detail
+    # page (the per-trip speed graph). Requires tab=history. One of
+    # VALID_OPEN_DETAIL; None → stay on the list.
+    open_detail: Optional[str] = None
     frame: Optional[FrameSpec] = None
 
 
@@ -178,6 +186,17 @@ def load(path: Path = SHOTS_YAML) -> ShotConfig:
             raise ValueError(
                 f"{path}: shot {name!r} tracking_active=false requires band=none"
             )
+        open_detail_raw = sr.get("open_detail")
+        if open_detail_raw is not None:
+            if open_detail_raw not in VALID_OPEN_DETAIL:
+                raise ValueError(
+                    f"{path}: shot {name!r} open_detail={open_detail_raw!r} "
+                    f"not in {VALID_OPEN_DETAIL}"
+                )
+            if tab != "history":
+                raise ValueError(
+                    f"{path}: shot {name!r} open_detail requires tab=history"
+                )
         shots.append(Shot(
             nn=i,
             name=name,
@@ -190,6 +209,7 @@ def load(path: Path = SHOTS_YAML) -> ShotConfig:
             map_zoom_override=_as_float_or_none(sr.get("map_zoom_override")),
             max_now_override=_as_int_or_none(sr.get("max_now_override")),
             tracking_active=tracking_active_raw,
+            open_detail=open_detail_raw,
             frame=_parse_frame_spec(sr, name, palette_keys, path),
         ))
 

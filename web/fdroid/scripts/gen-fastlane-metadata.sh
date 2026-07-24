@@ -14,7 +14,7 @@
 #     changelogs/<versionCode>.txt
 #     images/icon.png
 #     images/featureGraphic.png
-#     images/phoneScreenshots/01..06.png
+#     images/phoneScreenshots/01..08.png
 #
 # `web/fdroid/` stays the single source of truth for the listing copy; this
 # script derives the Fastlane tree from it plus the design assets, so the two
@@ -47,10 +47,11 @@ for f in "$ICON_SRC" "$FEATURE_SRC"; do
     fi
 done
 
-# Listing order (becomes phoneScreenshots/01..06.png) — identical to
-# stage-fdroiddata.sh: 04-light, 05-dark, 07-light, 01-light, 02-light, 08-dark.
-EN_SHOTS=(04-light-en.png 05-dark-en.png 07-light-en.png 01-light-en.png 02-light-en.png 08-dark-en.png)
-BG_SHOTS=(04-light-bg.png 05-dark-bg.png 07-light-bg.png 01-light-bg.png 02-light-bg.png 08-dark-bg.png)
+# Listing order (becomes phoneScreenshots/01..08.png): 04-light, 05-dark,
+# 07-light, 01-light, 02-light, 11-light (history list), 12-dark (history
+# detail), 08-dark (settings).
+EN_SHOTS=(04-light-en.png 05-dark-en.png 07-light-en.png 01-light-en.png 02-light-en.png 11-light-en.png 12-dark-en.png 08-dark-en.png)
+BG_SHOTS=(04-light-bg.png 05-dark-bg.png 07-light-bg.png 01-light-bg.png 02-light-bg.png 11-light-bg.png 12-dark-bg.png 08-dark-bg.png)
 
 gen_locale() {
     local locale="$1"

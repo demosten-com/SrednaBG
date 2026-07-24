@@ -24,6 +24,12 @@ public struct HistoryScreen: View {
     @Query(sort: \ZoneTraversalRecord.exitTimeMs, order: .reverse)
     private var records: [ZoneTraversalRecord]
 
+    #if DEBUG
+    /// Set by the `/history?action=open` debug back-channel to push the newest
+    /// record's detail page for the store screenshot. Never set in release.
+    @State private var debugDetailRecord: ZoneTraversalRecord?
+    #endif
+
     public init(
         settings: SettingsStore,
         tracking: ZoneTrackingService,
@@ -53,6 +59,32 @@ public struct HistoryScreen: View {
             }
         }
         .navigationTitle(L10n.navHistory)
+        #if DEBUG
+        // Screenshot-harness back-channel: `/history?action=open` pushes the
+        // newest record's detail. Coexists with the rows' own NavigationLinks —
+        // real taps still go through those.
+        .navigationDestination(item: $debugDetailRecord) { record in
+            HistoryDetailView(
+                record: record,
+                locale: locale,
+                tracking: tracking,
+                mapSession: mapSession,
+                onShowOnMap: onShowOnMap
+            )
+        }
+        .onReceive(
+            NotificationCenter.default.publisher(for: DebugHistoryOpen.openNotification)
+        ) { note in
+            switch note.userInfo?[DebugHistoryOpen.selectUserInfoKey] as? String {
+            case DebugHistoryOpen.green:
+                debugDetailRecord = records.first { !$0.isOverLimit }
+            case DebugHistoryOpen.red:
+                debugDetailRecord = records.first { $0.isOverLimit }
+            default:
+                debugDetailRecord = records.first
+            }
+        }
+        #endif
     }
 
     private var list: some View {

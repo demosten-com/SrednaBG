@@ -32,6 +32,8 @@ MAPPING=(
   "05 10 dark"    # map-overview            — Bulgaria-wide overview, dark theme
   "06 04 light"   # map-north-green        — Map green normal heading, light
   "07 08 dark"    # settings-top            — Settings tab
+  "08 11 light"   # history-tab            — History tab
+  "09 12 dark"    # history-details        — History details
 )
 
 PLATFORMS=(android ios)

@@ -463,6 +463,37 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
         hasCenteredOnUser = true
     }
 
+    // Zoom override set with no active zone AND no live position: the Bulgaria-
+    // wide "map overview" shot. None of the follow / zone-fit / center-on-user
+    // effects above fire (they all need a position or an active zone), so the
+    // freshly-remembered MapView would keep the seeded snapshot (a zoomed-in,
+    // possibly heading-up-rotated camera left by an earlier in-zone session).
+    // Pin it to the override zoom over Bulgaria, north-up. Gated on the absence
+    // of any position so it never fights the follow camera on in-zone shots.
+    LaunchedEffect(mapZoomOverride, activeZoneId, displayPosition, currentPosition, styleEpoch) {
+        val overrideZoom = mapZoomOverride?.toDouble() ?: return@LaunchedEffect
+        if (activeZoneId != null) return@LaunchedEffect
+        if (displayPosition != null || currentPosition != null) return@LaunchedEffect
+        mapView.getMapAsync { map ->
+            map.animateCamera(
+                CameraUpdateFactory.newCameraPosition(
+                    CameraPosition.Builder()
+                        .target(LatLng(42.7339, 25.4858))
+                        .zoom(overrideZoom)
+                        .bearing(0.0)
+                        .tilt(0.0)
+                        .build(),
+                ),
+            )
+        }
+    }
+
+    // First follow with no override (and no restored camera) snaps to
+    // USER_FOLLOW_ZOOM rather than the Bulgaria-wide seed zoom (~7); afterwards
+    // the user's current zoom is preserved. Mirrors iOS applyFollowCamera's
+    // `didFollowOnce`. Without this, follow-by-default would center the user but
+    // leave the map zoomed out to the seed level.
+    var hasFollowedOnce by remember { mutableStateOf(initialCameraSnapshot != null) }
     LaunchedEffect(displayPosition, isFollowing, mapHeadingUp, effectiveBearing, mapZoomOverride) {
         if (!isFollowing) return@LaunchedEffect
         val point = displayPosition ?: return@LaunchedEffect
@@ -470,8 +501,8 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
         mapView.getMapAsync { map ->
             val bearing = if (mapHeadingUp) normalizeBearing(effectiveBearing) else 0.0
             val zoom = overrideZoom
-                ?: map.cameraPosition.zoom.takeIf { it > 0.0 }
-                ?: USER_FOLLOW_ZOOM
+                ?: if (!hasFollowedOnce) USER_FOLLOW_ZOOM
+                else map.cameraPosition.zoom.takeIf { it > 0.0 } ?: USER_FOLLOW_ZOOM
             val target = CameraPosition.Builder()
                 .target(LatLng(point.lat, point.lng))
                 .zoom(zoom)
@@ -479,6 +510,7 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
                 .tilt(0.0)
                 .build()
             map.moveCamera(CameraUpdateFactory.newCameraPosition(target))
+            hasFollowedOnce = true
         }
     }
 

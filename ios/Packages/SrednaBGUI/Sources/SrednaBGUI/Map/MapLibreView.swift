@@ -49,6 +49,10 @@ struct MapLibreView: UIViewRepresentable {
     /// Mirrors Android's `USER_FOLLOW_ZOOM` constant in `ZoneMapScreen.kt`.
     static let userFollowZoom: Double = 14.0
 
+    /// Bulgaria centroid — the empty-state / overview camera target (same point
+    /// Android's overview effect uses in `ZoneMapScreen.kt`).
+    static let bulgariaCenter = CLLocationCoordinate2D(latitude: 42.7339, longitude: 25.4858)
+
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
     }
@@ -94,8 +98,7 @@ struct MapLibreView: UIViewRepresentable {
         } else {
             // First Map mount this process: center over Bulgaria until the
             // first GPS point or active-zone fit takes over.
-            let bulgariaCenter = CLLocationCoordinate2D(latitude: 42.7339, longitude: 25.4858)
-            mapView.setCenter(bulgariaCenter, zoomLevel: 9, animated: false)
+            mapView.setCenter(Self.bulgariaCenter, zoomLevel: 9, animated: false)
         }
         context.coordinator.mapView = mapView
         return mapView
@@ -163,6 +166,29 @@ struct MapLibreView: UIViewRepresentable {
         if highlightUser == nil, mapSession.isFollowing,
            let position = displayPosition ?? currentPosition {
             applyFollowCamera(uiView: uiView, position: position, coordinator: coord)
+        } else if let override = zoomOverride, activeZoneId == nil,
+                  currentPosition == nil, displayPosition == nil {
+            // Bulgaria-wide "map overview" shot: no live position and no active
+            // zone, so no follow/fit path recenters. A camera snapshot restored
+            // across a language rebuild leaves the target on the previous in-zone
+            // location (northern BG), pushing the country to the bottom of the
+            // frame. Pin center + zoom to the Bulgaria overview, north-up — the
+            // `.zoomTo` command only sets zoom and keeps the stale center.
+            let c = uiView.centerCoordinate
+            let atTarget = abs(uiView.zoomLevel - override) < 0.05
+                && uiView.direction == 0
+                && abs(c.latitude - Self.bulgariaCenter.latitude) < 0.05
+                && abs(c.longitude - Self.bulgariaCenter.longitude) < 0.05
+            if !atTarget {
+                uiView.setCenter(Self.bulgariaCenter, zoomLevel: override,
+                                 direction: 0, animated: false)
+            }
+        } else if !headingUp, uiView.direction != 0 {
+            // North-up mode must render north-up even when we're NOT following —
+            // a camera snapshot restored across a language rebuild can otherwise
+            // carry a leftover heading-up bearing (makeUIView restores
+            // `snap.bearing`). While following, applyFollowCamera forces 0.
+            uiView.direction = 0
         }
 
         if let command = pendingCommand {

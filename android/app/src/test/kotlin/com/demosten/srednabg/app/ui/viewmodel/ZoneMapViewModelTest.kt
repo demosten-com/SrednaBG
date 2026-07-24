@@ -90,11 +90,11 @@ class ZoneMapViewModelTest {
 
         val viewModel = ZoneMapViewModel(zoneRepository, settingsRepository, mapRepository, MapHighlightStore())
 
-        assertEquals(false, viewModel.isFollowing.value)
-        viewModel.setFollowing(true)
         assertEquals(true, viewModel.isFollowing.value)
         viewModel.setFollowing(false)
         assertEquals(false, viewModel.isFollowing.value)
+        viewModel.setFollowing(true)
+        assertEquals(true, viewModel.isFollowing.value)
     }
 
     @Test

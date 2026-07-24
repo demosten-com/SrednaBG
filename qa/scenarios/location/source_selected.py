@@ -26,8 +26,10 @@ On tracking start the flavor's `createLocationSource()` logs
 
 from __future__ import annotations
 
+import time
 from typing import Optional
 
+from ... import device as device_mod
 from ... import settings
 from ...assertions import AssertionFailure, expect, expect_crash_free
 from ...events import LocationSourceSelected
@@ -38,6 +40,14 @@ def build(expected: Optional[str] = None) -> Scenario:
     """`expected` is "system", "fused", or None (record-only / auto)."""
 
     def go(ctx: RunContext) -> None:
+        # Foreground the app before issuing start-tracking (same as
+        # scenario_setup in edge/_helpers.py). Android denies a background
+        # foreground-service start from the debug broadcast on a fresh
+        # install — this scenario only ever passed on devices where a prior
+        # UI-suite run had left the SYSTEM_ALERT_WINDOW appop granted, which
+        # exempts the app from that restriction.
+        device_mod.current().start_main()
+        time.sleep(2.0)
         ctx.obs.clear()
         settings.start_tracking()
         ev = expect(

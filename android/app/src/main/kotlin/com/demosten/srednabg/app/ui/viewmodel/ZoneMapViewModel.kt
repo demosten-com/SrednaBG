@@ -162,8 +162,12 @@ class ZoneMapViewModel @Inject constructor(
     // long-pressing the recenter FAB). Lives in the VM — like cameraSnapshot —
     // so an enabled follow survives leaving the Map tab and app backgrounding
     // instead of silently resetting when the disposed ZoneMapScreen drops its
-    // local Compose state. Process death legitimately resets it to false.
-    private val _isFollowing = MutableStateFlow(false)
+    // local Compose state. Process death legitimately resets it.
+    // Defaults to ON so the map centres on the user while tracking regardless of
+    // heading mode (north-up used to fall through to a whole-zone fit that parked
+    // the user arrow at the frame edge) — matching iOS, whose MapSessionStore
+    // also defaults isFollowing = true. Manual off still persists across tabs.
+    private val _isFollowing = MutableStateFlow(true)
     val isFollowing: StateFlow<Boolean> = _isFollowing.asStateFlow()
 
     fun setFollowing(following: Boolean) {

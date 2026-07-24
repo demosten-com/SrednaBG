@@ -138,6 +138,37 @@ class Device(abc.ABC):
         line shape is identical across platforms (Android `DUMP_HISTORY`
         broadcast; iOS `/history?action=dump`)."""
 
+    @abc.abstractmethod
+    def ensure_history_list(self) -> None:
+        """Normalize the History tab to its list root, popping a detail page left
+        open by an earlier shot.
+
+        Android's Compose back stack survives the `app_language` activity
+        recreation, so a detail opened for one language is still showing for the
+        next — this backs out of it. iOS needs nothing: `RootTabs` is keyed on
+        the language, so the flip rebuilds the NavigationStack at its root.
+        """
+
+    @abc.abstractmethod
+    def open_history_detail(self, select: str = "newest") -> None:
+        """From the History tab, open one record's detail page.
+
+        `select` is 'newest', 'green' (first within-limit) or 'red' (first
+        over-limit) — named by verdict so it survives a reseed that reorders
+        records. Android taps the matching `history-row` node found in the
+        accessibility tree (never by translatable row text); iOS has no
+        synthetic-tap path, so it drives the same navigation over the debug
+        listener (`/history?action=open`) — the same split as `select_tab`.
+        """
+
+    @abc.abstractmethod
+    def seed_history(self, count: int) -> None:
+        """Wipe the History DB and refill it with `count` curated, deterministic
+        sample traversals (within-limit vs over-limit, spread across days) so the
+        History tab / detail graph can be browsed or screenshotted without driving
+        every zone. Same generator on both platforms (Android `SEED_HISTORY`
+        broadcast; iOS `/history?action=seed&count=N`)."""
+
     # ── network gating ──────────────────────────────────────────────────────
     @abc.abstractmethod
     def go_offline(self) -> None: ...

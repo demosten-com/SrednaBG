@@ -56,6 +56,35 @@ def wait_for_sync(obs: LogObserver, action_suffix: str, *, timeout_s: float = 30
     raise TimeoutError(f"no DebugSync result for {action_suffix} within {timeout_s}s")
 
 
+def wait_for_sync_outcome(
+    obs: LogObserver, action_suffix: str, outcome: str, *, timeout_s: float = 30.0
+) -> SyncResult:
+    """Block until a `DebugSync` event for the action reports `outcome`.
+
+    Unlike `wait_for_sync`, a result with a *different* outcome is skipped
+    (and remembered), not returned: a prior scenario's in-flight sync can
+    complete after this scenario cleared the buffer — app-side async plus
+    log-stream latency — so the first event seen may be stale. A genuinely
+    wrong outcome still fails loudly: the TimeoutError names every outcome
+    that was observed instead.
+    """
+    seen: list[str] = []
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        try:
+            ev = obs.queue.get(timeout=0.5)
+        except queue.Empty:
+            continue
+        if isinstance(ev, SyncResult) and ev.action == action_suffix:
+            if ev.outcome == outcome:
+                return ev
+            seen.append(f"{ev.outcome}({ev.detail})" if ev.detail else ev.outcome)
+    raise TimeoutError(
+        f"no DebugSync {action_suffix} with outcome {outcome} within {timeout_s:g}s "
+        f"(saw: {', '.join(seen) if seen else 'nothing'})"
+    )
+
+
 # ──────────────────────────── network toggles ────────────────────────────
 
 

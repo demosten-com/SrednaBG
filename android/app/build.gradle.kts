@@ -11,18 +11,18 @@ plugins {
 
 android {
     namespace = "com.demosten.srednabg"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.demosten.srednabg"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         // Literal defaults so F-Droid's checkupdates can statically parse the
         // version (a computed expression yields "no version information"). The
         // android-release.yml workflow overrides these from the git tag for
         // GitHub/Play builds; F-Droid builds use the literals as-is.
-        versionCode = 10100
-        versionName = "1.1.0"
+        versionCode = 20000
+        versionName = "2.0.0"
         (project.findProperty("SREDNABG_VERSION_CODE") as String?)?.let { versionCode = it.toInt() }
         (project.findProperty("SREDNABG_VERSION_NAME") as String?)?.let { versionName = it }
         resourceConfigurations += listOf("bg", "en")

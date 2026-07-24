@@ -190,6 +190,7 @@ public final class DebugActionRouter {
     ///     traversals so a developer can browse History scenarios without driving
     ///     every zone (the iOS peer of Android's QA-driven History fill).
     ///   - `clear` — wipe the store.
+    ///   - `open` — push the newest record's detail page (screenshot harness).
     private func history(_ params: [String: String]) -> Result {
         switch params["action"] {
         case "dump":
@@ -202,8 +203,19 @@ public final class DebugActionRouter {
         case "clear":
             handlers.clearHistory()
             return Result(status: 200, body: "cleared")
+        case "open":
+            // Push a record's detail page — the screenshot harness's peer of
+            // Android tapping the matching `history-row` node. `select` picks
+            // newest (default) / first within-limit / first over-limit.
+            let select = params["select"] ?? DebugHistoryOpen.newest
+            NotificationCenter.default.post(
+                name: DebugHistoryOpen.openNotification,
+                object: nil,
+                userInfo: [DebugHistoryOpen.selectUserInfoKey: select]
+            )
+            return Result(status: 200, body: "ok")
         default:
-            return Result(status: 400, body: "history requires action in {dump,seed,clear}")
+            return Result(status: 400, body: "history requires action in {dump,seed,clear,open}")
         }
     }
 }
