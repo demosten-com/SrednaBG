@@ -40,10 +40,34 @@ struct GeneratedGpxDetectionTests {
         }) ?? -1
         #expect(firstInZoneIdx >= 0, "Zone \(zoneId) was never entered during playback")
 
-        // Entry must fire no later than the explicit zone-start sample.
+        // The inZone *flip* now trails the zone start: a traversal only opens
+        // once the match has held over `ZoneDetector.entryConfirmDistanceM` of
+        // travel along the centerline, so a neighbouring road that merely clips
+        // the on-road band can't open one. What must NOT slip is the recorded
+        // entry — the traversal is back-dated to the first confirming fix, so
+        // the reported entryTime still lands at or before the zone-start sample
+        // (`ZoneDetector.entryDistanceM` lets the approach count).
+        guard case .inZone(let firstInZone) = states[firstInZoneIdx] else {
+            Issue.record("Zone \(zoneId) first inZone index did not hold an inZone state")
+            return
+        }
         #expect(
-            firstInZoneIdx <= zoneStartIdx,
-            "Zone \(zoneId) entry fired at GPX index \(firstInZoneIdx), AFTER the explicit zone-start sample at \(zoneStartIdx) — detector lost the transition"
+            firstInZone.entryTime <= gpxPoints[zoneStartIdx].timestamp,
+            "Zone \(zoneId) recorded entryTime \(firstInZone.entryTime) is AFTER the zone-start sample at \(gpxPoints[zoneStartIdx].timestamp) — the traversal was not back-dated to the approach"
+        )
+
+        // And the flip itself must land inside the confirmation window, not deep
+        // inside the zone — a genuinely lost transition shows up as a much larger
+        // lag than the window can explain.
+        let lagM = (zoneStartIdx..<firstInZoneIdx).reduce(0.0) { acc, i in
+            acc + haversineDistance(
+                gpxPoints[i].lat, gpxPoints[i].lng,
+                gpxPoints[i + 1].lat, gpxPoints[i + 1].lng
+            )
+        }
+        #expect(
+            lagM <= ZoneDetector.entryConfirmDistanceM * 1.5,
+            "Zone \(zoneId) entry fired \(Int(lagM)) m past the zone start (GPX index \(firstInZoneIdx) vs \(zoneStartIdx)) — more than the confirmation window explains, so the detector lost the transition"
         )
 
         let exited = states.contains(where: { state in

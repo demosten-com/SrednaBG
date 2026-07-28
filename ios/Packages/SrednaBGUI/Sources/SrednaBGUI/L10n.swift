@@ -35,6 +35,8 @@ public enum L10n {
     public static var statusTrackingOutside: String { loc("statusTrackingOutside") }
     public static var statusInZone: String { loc("statusInZone") }                       // "%@"
     public static var statusExiting: String { loc("statusExiting") }                     // "%@"
+    public static var statusUnmeasured: String { loc("statusUnmeasured") }
+    public static var statusUnmeasuredReason: String { loc("statusUnmeasuredReason") }
     public static var statusOverLimit: String { loc("statusOverLimit") }
     public static var statusWithinLimit: String { loc("statusWithinLimit") }
     public static var statusNowSpeed: String { loc("statusNowSpeed") }                   // "%@"

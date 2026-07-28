@@ -77,6 +77,7 @@ import com.demosten.srednabg.core.MapTheme
 import com.demosten.srednabg.core.Zone
 import com.demosten.srednabg.core.ZoneState
 import com.demosten.srednabg.core.ZONE_COLOR_GREEN
+import com.demosten.srednabg.core.ZONE_COLOR_NEUTRAL
 import com.demosten.srednabg.core.ZONE_COLOR_RED
 import com.demosten.srednabg.core.bearingBetween
 import com.demosten.srednabg.core.zoneStatusColor
@@ -355,6 +356,9 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
                 else -> when (val s = zoneState) {
                     is ZoneState.InZone -> zoneStatusColor(s, currentPosition?.speed)
                     is ZoneState.Exiting -> ZONE_COLOR_RED
+                    // Neutral: the traffic-light palette is a verdict on the
+                    // driver, and an unwitnessed entry earns no verdict.
+                    is ZoneState.Unmeasured -> ZONE_COLOR_NEUTRAL
                     ZoneState.Outside -> ZONE_COLOR_RED
                 }
             }

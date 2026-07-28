@@ -78,6 +78,14 @@ public struct ZoneMapScreen: View {
                     )
                         .padding(.horizontal, 12)
                         .padding(.top, 12)
+                } else if case .unmeasured(let unmeasured) = tracking.zoneState {
+                    UnmeasuredChip(
+                        unmeasured: unmeasured,
+                        currentSpeedKmh: tracking.currentPosition?.speed,
+                        limitKmh: settings.vehicleType.limit(unmeasured.zone.speedLimits)
+                    )
+                        .padding(.horizontal, 12)
+                        .padding(.top, 12)
                 }
                 Spacer()
                 if styleURL != nil {
@@ -298,6 +306,9 @@ public struct ZoneMapScreen: View {
         switch tracking.zoneState {
         case .inZone(let inZone): return inZone.zone.id
         case .exiting(let exiting): return exiting.zone.id
+        // We know exactly which zone we're in even when we can't measure it, so
+        // it still gets highlighted — just in the neutral colour.
+        case .unmeasured(let unmeasured): return unmeasured.zone.id
         case .outside: return effectiveHighlight?.zone.id
         }
     }

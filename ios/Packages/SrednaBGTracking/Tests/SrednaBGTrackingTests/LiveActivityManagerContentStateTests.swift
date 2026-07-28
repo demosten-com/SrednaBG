@@ -9,8 +9,17 @@ import Testing
 @testable import SrednaBGTracking
 import SrednaBGCore
 
+// NOT `@available(iOS 16.2, *)`: the `@Suite` / `@Test` macros reject an
+// availability-narrowed declaration ("Attribute 'Suite' cannot be applied to
+// this structure because it has been marked '@available'"), which silently kept
+// this whole file from ever compiling. The annotation was redundant anyway —
+// Package.swift floors iOS at 17, so `LiveActivityManager`'s own 16.2 gate is
+// always satisfied here. The file stays `#if os(iOS)` because ActivityKit's
+// core symbols don't exist on macOS, so `swift test` (macOS) skips it; run it
+// with:
+//   xcodebuild test -workspace . -scheme SrednaBG-Package \
+//       -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
 @Suite("LiveActivityManager.contentState")
-@available(iOS 16.2, *)
 struct LiveActivityManagerContentStateTests {
 
     private static let zone = Zone(
@@ -88,6 +97,53 @@ struct LiveActivityManagerContentStateTests {
             limitKmh: nil
         )
         #expect(content.speedLimitKmh == 140)
+    }
+
+    @Test("Unmeasured projects the road's facts with no verdict anywhere")
+    func unmeasuredCarriesNoVerdict() {
+        let content = LiveActivityManager.contentState(
+            from: ZoneState.Unmeasured(zone: Self.zone, distanceRemaining: 15_159.4),
+            currentSpeedKmh: 132.7,
+            limitKmh: 140
+        )
+        #expect(content.phase == .unmeasured)
+        #expect(content.roadName == "АМ Тракия")
+        #expect(content.currentSpeedKmh == 133)
+        #expect(content.speedLimitKmh == 140)
+        #expect(content.zoneTotalM == 19_160)
+        #expect(content.distanceRemainingM == 15_159)
+        // The whole point of the phase: no average, no over-limit claim, and a
+        // neutral tint — the traffic light is a verdict, and an entry we never
+        // witnessed earns none.
+        #expect(content.avgSpeedKmh == nil)
+        #expect(content.isOverLimit == false)
+        #expect(content.statusColorPacked == zoneColorNeutral)
+        #expect(content.statusColorPacked != zoneColorGreen)
+        #expect(content.statusColorPacked != zoneColorYellow)
+        #expect(content.statusColorPacked != zoneColorRed)
+    }
+
+    @Test("Unmeasured resolves the vehicle limit, falls back to car, floors distance at 0")
+    func unmeasuredLimitAndDistanceEdges() {
+        let truck = LiveActivityManager.contentState(
+            from: ZoneState.Unmeasured(zone: Self.zone, distanceRemaining: 1_000),
+            currentSpeedKmh: 80,
+            limitKmh: VehicleType.truck.limit(Self.zone.speedLimits)
+        )
+        #expect(truck.speedLimitKmh == 90)
+
+        // Nil limit falls back to the car limit so the projection stays total,
+        // and a negative remainder (projection overshoot past the exit camera)
+        // can never render as a negative distance.
+        let fallback = LiveActivityManager.contentState(
+            from: ZoneState.Unmeasured(zone: Self.zone, distanceRemaining: -5),
+            currentSpeedKmh: nil,
+            limitKmh: nil
+        )
+        #expect(fallback.speedLimitKmh == 140)
+        #expect(fallback.currentSpeedKmh == nil)
+        #expect(fallback.distanceRemainingM == 0)
+        #expect(fallback.avgSpeedKmh == nil)
     }
 
     @Test("trackingPlaceholder uses .tracking phase with no zone fields")

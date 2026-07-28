@@ -56,6 +56,7 @@ class ModelsTest {
             ZoneState.Outside,
             ZoneState.InZone(TRAKIYA_T10, EPOCH_BASE, 0.0,
                 SpeedStatus(0.0, 140.0, 19160.0, 492.0, false), 19160.0),
+            ZoneState.Unmeasured(TRAKIYA_T10, 8000.0),
             ZoneState.Exiting(TRAKIYA_T10, 135.0),
         )
 
@@ -63,10 +64,11 @@ class ModelsTest {
             when (state) {
                 is ZoneState.Outside -> "outside"
                 is ZoneState.InZone -> "inzone"
+                is ZoneState.Unmeasured -> "unmeasured"
                 is ZoneState.Exiting -> "exiting"
             }
         }
-        assertEquals(listOf("outside", "inzone", "exiting"), names)
+        assertEquals(listOf("outside", "inzone", "unmeasured", "exiting"), names)
     }
 
     @Test

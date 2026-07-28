@@ -54,6 +54,8 @@ public struct HomeScreen: View {
                 outsideCard
             case .inZone(let inZone):
                 inZoneCard(inZone)
+            case .unmeasured(let unmeasured):
+                unmeasuredCard(unmeasured)
             case .exiting(let exiting):
                 exitingCard(exiting)
             }
@@ -185,6 +187,60 @@ public struct HomeScreen: View {
         .background(swiftColor.opacity(0.15), in: RoundedRectangle(cornerRadius: 20))
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("home-in-zone-card")
+    }
+
+    /// Inside an average-speed zone whose entry we never saw. Shows the road's own
+    /// facts — which zone, its limit, how much is left — plus the live speed, and
+    /// deliberately nothing else: no average, no max-for-remainder, no elapsed
+    /// time. Those are the "help" we cannot honestly give here, and the neutral
+    /// colouring says so, because green/amber/red is a verdict on the driver.
+    ///
+    /// See `ZoneDetector.startWitnessArcM`.
+    private func unmeasuredCard(_ unmeasured: ZoneState.Unmeasured) -> some View {
+        let neutral = statusSwiftUIColor(zoneColorNeutral)
+
+        return VStack(alignment: .leading, spacing: 12) {
+            Text(String(format: L10n.statusInZone, unmeasured.zone.road))
+                .font(.headline)
+
+            Spacer()
+
+            // The hero slot is the live speed, not an average: it is the one
+            // number we can still state truthfully.
+            VStack(spacing: 16) {
+                SpeedDisplay(
+                    value: tracking.currentPosition?.speed,
+                    label: L10n.currentSpeedLabel,
+                    statusColor: .primary
+                )
+                Text(L10n.statusUnmeasuredReason)
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+
+            Spacer()
+
+            HStack {
+                infoItem(label: L10n.speedLimit,
+                         value: String(settings.vehicleType.limit(unmeasured.zone.speedLimits)))
+                Spacer()
+                infoItem(
+                    label: L10n.remaining,
+                    value: String(format: "%.1f km", locale: Locale(identifier: "en_US_POSIX"),
+                                  unmeasured.distanceRemaining / 1000)
+                )
+            }
+
+            Text(L10n.statusUnmeasured)
+                .font(.title3.weight(.bold))
+                .foregroundStyle(neutral)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(24)
+        .background(neutral.opacity(0.15), in: RoundedRectangle(cornerRadius: 20))
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("home-unmeasured-card")
     }
 
     private func exitingCard(_ exiting: ZoneState.Exiting) -> some View {

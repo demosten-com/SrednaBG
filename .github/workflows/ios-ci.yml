@@ -40,6 +40,12 @@ jobs:
         working-directory: ios
         run: swift test
 
+      # The Live Activity widget keeps its own string catalogue, so a wording
+      # change in one target can leave the Lock Screen and the app describing the
+      # same state differently. Only the deliberately-paired keys are checked.
+      - name: Live Activity / in-app wording parity
+        run: python3 ios/scripts/check-l10n-parity.py
+
       # The app target's "Map Bundle" build phase requires the offline bundle on
       # disk (same dependency as the Android build). swift test above doesn't
       # need it — only the xcodebuild app-shell build does.

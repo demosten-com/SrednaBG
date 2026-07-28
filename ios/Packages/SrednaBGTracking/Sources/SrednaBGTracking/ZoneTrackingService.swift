@@ -334,14 +334,22 @@ public final class ZoneTrackingService {
         switch state {
         case .outside: return nil
         case .inZone(let inZone): return vehicleType.limit(inZone.zone.speedLimits)
+        // The limit is a fact about the road, known even when the traversal isn't
+        // measurable. HistoryRecorder ignores it for `.unmeasured` (it records
+        // nothing), but reporting nil here would be simply wrong.
+        case .unmeasured(let unmeasured): return vehicleType.limit(unmeasured.zone.speedLimits)
         case .exiting(let exiting): return vehicleType.limit(exiting.zone.speedLimits)
         }
     }
 
+    // These two feed the `onZoneStateChanged prev=… new=… zone=…` QA log line
+    // that `qa/parsers.py` reads — the names must stay in sync with the Kotlin
+    // class names (`ZoneState.Unmeasured::class.simpleName`).
     private static func stateName(_ s: ZoneState) -> String {
         switch s {
         case .outside: return "Outside"
         case .inZone: return "InZone"
+        case .unmeasured: return "Unmeasured"
         case .exiting: return "Exiting"
         }
     }
@@ -350,6 +358,8 @@ public final class ZoneTrackingService {
         switch state {
         case .outside: return "-"
         case .inZone(let inZone): return inZone.zone.id
+        // We know which zone it is even when we can't measure it.
+        case .unmeasured(let unmeasured): return unmeasured.zone.id
         case .exiting(let exiting): return exiting.zone.id
         }
     }

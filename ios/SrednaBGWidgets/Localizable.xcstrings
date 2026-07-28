@@ -1,0 +1,150 @@
+{
+  "sourceLanguage" : "bg",
+  "strings" : {
+    "liveActivityAvgLabel" : {
+      "comment" : "Live Activity: caption under the running-average figure. Keep it short — it sits in a three-up row on the Lock Screen.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "средна"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "avg"
+          }
+        }
+      }
+    },
+    "liveActivityAvgUnit" : {
+      "comment" : "Live Activity: caption under the running-average figure in the Dynamic Island, where the unit fits too.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "средна km/h"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "avg km/h"
+          }
+        }
+      }
+    },
+    "liveActivityAwaitingZone" : {
+      "comment" : "Live Activity: tracking session started, no zone reached yet.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изчаква зона"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Awaiting zone"
+          }
+        }
+      }
+    },
+    "liveActivityLeftLabel" : {
+      "comment" : "Live Activity: caption under the distance still to drive inside the zone.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "остават"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "left"
+          }
+        }
+      }
+    },
+    "liveActivityNowLabel" : {
+      "comment" : "Live Activity: caption under the instantaneous speed figure.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "текуща"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "now"
+          }
+        }
+      }
+    },
+    "liveActivitySpeedUnit" : {
+      "comment" : "Live Activity: caption under the instantaneous speed in the Unmeasured phase, where there is no average to label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "km/h"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "km/h"
+          }
+        }
+      }
+    },
+    "liveActivityUnmeasured" : {
+      "comment" : "Live Activity: inside an average-speed zone whose entry we never witnessed. Mirrors SrednaBGUI's statusUnmeasured.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не се измерва"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not measured"
+          }
+        }
+      }
+    },
+    "liveActivityZoneComplete" : {
+      "comment" : "Live Activity: frozen recap chip pushed once on zone exit.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зоната завърши"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zone complete"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

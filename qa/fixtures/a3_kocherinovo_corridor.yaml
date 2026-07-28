@@ -1,0 +1,127 @@
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: 2026 SrednaBG Contributors
+#
+# SrednaBG — qa
+#
+# Northbound A3 "Струма" motorway past the Кочериново interchange, where it
+# sweeps alongside the start of the I-1 average-speed zone `i1-02-north`.
+# Real OSM geometry (way ref "A 3"), resampled to ~20 m and ordered in the
+# direction of travel (Greece -> Sofia).
+#
+# This is a road the driver is NOT on the zone for: the motorway is a separate
+# carriageway that merely passes close by. The app used to open a full phantom
+# traversal of the 10.6 km zone here — see qa/scenarios/edge/parallel_motorway.py.
+#
+# To refresh, re-query Overpass for way["ref"="A 3"] in the zone's bbox.
+
+zone_id: i1-02-north
+# The on-road band the corridor has to get inside for the zone to match at all
+# (RoadMatcher.DEFAULT_MAX_DISTANCE_M — i1-02-north is a `road`, not a motorway).
+# The corridor's closest approach is ~7 m, so the band gate is cleared easily;
+# the scenario re-derives that rather than trusting a number pinned here.
+on_road_band_m: 100
+speed_kmh: 110
+
+# Course-over-ground bias, degrees, added to every synthesized fix heading.
+#
+# The band gate is cleared by the raw geometry with room to spare (7 m at the
+# closest approach). The *heading* gate is what sits on a knife edge: along the
+# in-band stretch the chord between consecutive OSM vertices runs 45.3-47.5° off
+# the zone's end-to-end bearing, i.e. 0.3-2.5° the safe side of the old 45°
+# tolerance. A noiseless replay of the idealised chord therefore squeaks past the
+# old gate — while the real drive, on a receiver whose course-over-ground wanders
+# several degrees fix to fix, did not.
+#
+# So model that receiver explicitly rather than pretending the chord is what the
+# phone reported: a fixed (deterministic, no RNG) bias toward north. At +8° the
+# old gates match 7 consecutive fixes spanning 156 m of zone arc — a phantom
+# traversal — while the fixed engine sees at most 109 m of direction-matching
+# travel, comfortably under its 300 m ENTRY_CONFIRM_DISTANCE_M. The scenario
+# asserts the "old gates would have matched" premise, so this can't rot into a
+# vacuous pass.
+course_bias_deg: 8
+points:
+  - [42.0609461, 23.0442733]
+  - [42.0647161, 23.0408375]
+  - [42.0649546, 23.0406228]
+  - [42.0651927, 23.0404053]
+  - [42.0653508, 23.0402566]
+  - [42.0655801, 23.0400441]
+  - [42.0657952, 23.0398388]
+  - [42.0659847, 23.0396472]
+  - [42.0661939, 23.0394185]
+  - [42.0664038, 23.0391709]
+  - [42.0665673, 23.0389758]
+  - [42.0667838, 23.0386985]
+  - [42.0669810, 23.0384306]
+  - [42.0671683, 23.0381662]
+  - [42.0673596, 23.0379030]
+  - [42.0675590, 23.0376421]
+  - [42.0678250, 23.0372944]
+  - [42.0680958, 23.0369205]
+  - [42.0684383, 23.0364650]
+  - [42.0688678, 23.0359751]
+  - [42.0693003, 23.0354772]
+  - [42.0700241, 23.0347474]
+  - [42.0706024, 23.0342736]
+  - [42.0709557, 23.0340088]
+  - [42.0712123, 23.0338421]
+  - [42.0713854, 23.0337365]
+  - [42.0715562, 23.0336394]
+  - [42.0718123, 23.0334937]
+  - [42.0721601, 23.0333360]
+  - [42.0724299, 23.0332371]
+  - [42.0729044, 23.0331062]
+  - [42.0731995, 23.0330359]
+  - [42.0736208, 23.0329645]
+  - [42.0741128, 23.0329140]
+  - [42.0745794, 23.0328836]
+  - [42.0748915, 23.0328946]
+  - [42.0750995, 23.0329020]
+  - [42.0753234, 23.0329186]
+  - [42.0755474, 23.0329352]
+  - [42.0757369, 23.0329724]
+  - [42.0759264, 23.0330097]
+  - [42.0762106, 23.0330656]
+  - [42.0764001, 23.0331028]
+  - [42.0765832, 23.0331556]
+  - [42.0769494, 23.0332612]
+  - [42.0773155, 23.0333668]
+  - [42.0776817, 23.0334724]
+  - [42.0781394, 23.0336044]
+  - [42.0786175, 23.0337430]
+  - [42.0789760, 23.0338488]
+  - [42.0793345, 23.0339547]
+  - [42.0796930, 23.0340605]
+  - [42.0801411, 23.0341928]
+  - [42.0805893, 23.0343250]
+  - [42.0808581, 23.0344044]
+  - [42.0811270, 23.0344838]
+  - [42.0813959, 23.0345631]
+  - [42.0815747, 23.0346154]
+  - [42.0818423, 23.0346928]
+  - [42.0821098, 23.0347702]
+  - [42.0822882, 23.0348219]
+  - [42.0823774, 23.0348477]
+  - [42.0824666, 23.0348735]
+  - [42.0825558, 23.0348993]
+  - [42.0826450, 23.0349251]
+  - [42.0827342, 23.0349509]
+  - [42.0829125, 23.0350025]
+  - [42.0830017, 23.0350283]
+  - [42.0831801, 23.0350799]
+  - [42.0833585, 23.0351315]
+  - [42.0835369, 23.0351831]
+  - [42.0837153, 23.0352347]
+  - [42.0838936, 23.0352864]
+  - [42.0840720, 23.0353380]
+  - [42.0843396, 23.0354154]
+  - [42.0845180, 23.0354670]
+  - [42.0846964, 23.0355186]
+  - [42.0848747, 23.0355702]
+  - [42.0850531, 23.0356218]
+  - [42.0852315, 23.0356734]
+  - [42.0854099, 23.0357250]
+  - [42.0855883, 23.0357767]
+  - [42.0857666, 23.0358283]
+  - [42.0859450, 23.0358799]

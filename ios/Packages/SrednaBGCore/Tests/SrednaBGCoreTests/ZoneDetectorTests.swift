@@ -27,6 +27,8 @@ struct ZoneDetectorTests {
             switch state {
             case .outside:
                 sawOutside = true
+            case .unmeasured:
+                Issue.record("A trace approaching from before the entry camera is a witnessed entry — it must never degrade to .unmeasured")
             case .inZone(let inZone):
                 sawInZone = true
                 #expect(!inZone.speedStatus.isOverLimit, "Should not be over limit at 130 km/h")
@@ -133,23 +135,39 @@ struct ZoneDetectorTests {
     }
 
     @Test
-    func coldStartMidZoneEntersWithReducedEffectiveDistance() throws {
+    func coldStartMidZoneIsUnmeasuredNeverAMeasuredTraversal() throws {
+        // Simulates opening the app while already deep inside a zone. We never saw
+        // the entry camera, so there is nothing trustworthy to average: a running
+        // average over the remainder alone matches nothing BG TOLL computes, yet
+        // used to be rendered in the same chip, spoken in the same phrase and
+        // stored in the same History row as a real traversal (the junk 24 km/h
+        // record, real drive 2026-07-26). The reason we missed the entry is
+        // deliberately irrelevant — see `ZoneDetector.startWitnessArcM`.
         var detector = ZoneDetector(zones: [TRAKIYA_T10, HEMUS_H12, I4_10])
-        let midBearing = try #require(polylineBearing(TRAKIYA_T10.centerline))
-        let midPoint = GpsPoint(
-            lat: 42.510, lng: 23.770, speed: 130.0,
-            timestamp: epochBase, bearing: midBearing
+        let midArc = arcLengthOnPolyline(42.510, 23.770, TRAKIYA_T10.centerline)
+        let states = collectAlongCenterline(
+            &detector, TRAKIYA_T10,
+            fromArcM: midArc,
+            metres: ZoneDetector.entryConfirmDistanceM * 2
         )
-
-        let state = detector.update(midPoint)
-        guard case .inZone(let inZone) = state else {
-            Issue.record("Should enter zone from mid-point cold-start, got \(state)")
+        #expect(!states.contains { if case .inZone = $0 { return true } else { return false } },
+                "A mid-zone cold start must never open a measured traversal")
+        let state = try #require(states.last)
+        guard case .unmeasured(let unmeasured) = state else {
+            Issue.record("Should be .unmeasured mid-zone, got \(state)")
             return
         }
-        #expect(inZone.distanceRemaining < Double(TRAKIYA_T10.distanceM),
-                "Effective remaining distance \(inZone.distanceRemaining) should be less than full zone \(TRAKIYA_T10.distanceM)")
-        #expect(inZone.distanceRemaining > 1000,
-                "Mid-zone cold-start should still have meaningful distance remaining (\(inZone.distanceRemaining))")
+        #expect(unmeasured.zone.id == TRAKIYA_T10.id)
+        // distanceRemaining is polyline arc-length to zone.end — a fact about the
+        // road, true regardless of when we joined, so it is one of the two things
+        // this state may show (with the zone's speed limit).
+        #expect(unmeasured.distanceRemaining < Double(TRAKIYA_T10.distanceM),
+                """
+                Polyline-remaining \(unmeasured.distanceRemaining) should be less than \
+                full zone \(TRAKIYA_T10.distanceM)
+                """)
+        #expect(unmeasured.distanceRemaining > 1000,
+                "Mid-zone join should still have meaningful distance remaining (\(unmeasured.distanceRemaining))")
     }
 
     @Test
@@ -213,8 +231,9 @@ struct ZoneDetectorTests {
         var detector = ZoneDetector(zones: [TRAKIYA_T10, HEMUS_H12, I4_10])
         let trace = generateGpsTrace(zone: TRAKIYA_T10, speedKmh: 130.0)
 
+        // Feed enough points to clear the entry-confirmation window and enter.
         var enteredZone = false
-        for point in trace.prefix(10) {
+        for point in trace.prefix(25) {
             let state = detector.update(point)
             if case .inZone = state {
                 enteredZone = true
@@ -265,7 +284,7 @@ struct ZoneDetectorTests {
         if exitingIdx + 1 < trace.count {
             let state = detector.update(trace[exitingIdx + 1])
             switch state {
-            case .outside, .inZone: break
+            case .outside, .inZone, .unmeasured: break
             case .exiting:
                 Issue.record("After Exiting, should be Outside or in new zone, got \(state)")
             }
@@ -287,7 +306,15 @@ struct ZoneDetectorTests {
     }
 
     @Test
-    func reentryAlwaysStartsFresh() {
+    func rejoiningMidZoneAfterAnOffRoadExitIsUnmeasured() {
+        // Drive into the zone through its entry camera, leave the road (which
+        // finalizes that traversal), then rejoin the road 30 % in.
+        //
+        // The rejoin does not cross the entry camera, so it cannot be measured: it
+        // used to open a *second* traversal whose average covered only the
+        // remainder, producing a junk History row on top of the real one. Now it
+        // is unmeasured — the first traversal is still recorded exactly as before,
+        // and the rejoin adds nothing.
         let trace = generateReentryTrace(
             zone: TRAKIYA_T10,
             speedKmh: 130.0,
@@ -298,6 +325,8 @@ struct ZoneDetectorTests {
         var det = ZoneDetector(zones: [TRAKIYA_T10])
         var entrySnapshots: [ZoneState.InZone] = []
         var prevEntryTime: Int64?
+        var exits = 0
+        var sawUnmeasuredAfterExit = false
 
         for point in trace {
             let state = det.update(point)
@@ -309,17 +338,19 @@ struct ZoneDetectorTests {
                 }
             default:
                 prevEntryTime = nil
+                if case .exiting = state { exits += 1 }
+                if case .unmeasured = state, exits > 0 { sawUnmeasuredAfterExit = true }
             }
         }
 
-        #expect(entrySnapshots.count >= 2,
-                "Should have entered zone twice (initial + re-entry), got \(entrySnapshots.count)")
-        let first = entrySnapshots.first!
-        let reentry = entrySnapshots.last!
-        #expect(reentry.entryTime > first.entryTime,
-                "Re-entry time \(reentry.entryTime) should be after initial \(first.entryTime)")
-        #expect(reentry.distanceTraveled < 5.0,
-                "Re-entry should start with ~0 distanceTraveled, got \(reentry.distanceTraveled)")
+        #expect(entrySnapshots.count == 1,
+                """
+                The rejoin never crossed the entry camera, so exactly one measured \
+                traversal must exist, got \(entrySnapshots.count)
+                """)
+        #expect(exits == 1, "Exactly one traversal should have been finalized")
+        #expect(sawUnmeasuredAfterExit,
+                "Rejoining the road mid-zone must surface as .unmeasured, not silence")
     }
 
     @Test
@@ -365,8 +396,12 @@ struct ZoneDetectorTests {
         let rewoundDist = try #require(rewoundInitialDistance)
         #expect(rewoundEntry < firstEntry,
                 "Rewound entry time \(rewoundEntry) should be before original \(firstEntry)")
-        #expect(rewoundDist < 5.0,
-                "Re-entry after rewind should start with ~0 distance, got \(rewoundDist)")
+        // Starts from its own confirmation window (see `reentryAlwaysStartsFresh`),
+        // never resuming phase 1's progress.
+        #expect(rewoundDist <= ZoneDetector.entryConfirmDistanceM * 1.5,
+                "Re-entry after rewind should start from its own confirmation window, got \(rewoundDist)")
+        #expect(rewoundDist < firstMaxDistance,
+                "Re-entry after rewind must not resume phase 1's progress (\(rewoundDist) vs \(firstMaxDistance))")
     }
 
     @Test

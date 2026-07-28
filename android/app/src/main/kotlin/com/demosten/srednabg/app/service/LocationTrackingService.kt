@@ -266,6 +266,10 @@ class LocationTrackingService : LifecycleService() {
         val limitKmh = when (newState) {
             is ZoneState.InZone -> currentVehicleType.limit(newState.zone.speedLimits)
             is ZoneState.Exiting -> currentVehicleType.limit(newState.zone.speedLimits)
+            // The limit is a fact about the road, known even when the traversal
+            // isn't measurable. HistoryRecorder ignores it for Unmeasured (it
+            // records nothing), but reporting 0 here would be simply wrong.
+            is ZoneState.Unmeasured -> currentVehicleType.limit(newState.zone.speedLimits)
             else -> 0
         }
         historyRecorder.onZoneStateChanged(point, previousState, newState, currentVehicleType, limitKmh)
@@ -433,7 +437,14 @@ class LocationTrackingService : LifecycleService() {
 
     private fun adjustGpsInterval(state: ZoneState, point: GpsPoint) {
         val desiredInterval = when {
-            state is ZoneState.InZone || state is ZoneState.Exiting -> INTERVAL_IN_ZONE_MS
+            // Unmeasured polls at the in-zone rate too. No averaging is happening,
+            // but we still want a prompt drop to Outside at the zone end and a
+            // prompt open of a co-located successor — whose entry camera *is*
+            // crossed, so that next zone is genuinely measurable and must not be
+            // missed by a coarse fix.
+            state is ZoneState.InZone ||
+                state is ZoneState.Unmeasured ||
+                state is ZoneState.Exiting -> INTERVAL_IN_ZONE_MS
             isNearAnyZone(point) -> INTERVAL_NEAR_ZONE_MS
             else -> INTERVAL_FAR_MS
         }

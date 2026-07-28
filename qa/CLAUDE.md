@@ -33,7 +33,7 @@ Android depends on `android/`'s debug-only `DebugSyncReceiver` and `DebugControl
 ```bash
 python qa/srednabg_qa.py --suite smoke           # ~5 min — 1 zone + 1 sync + parser self-test
 python qa/srednabg_qa.py --suite representative  # ~30 min — 6 hand-picked zones × 4 settings combos + sync set
-python qa/srednabg_qa.py --suite scenarios       # ~20 min — edge cases (stop, dropout, off-ramp, U-turn, swap, auto-stop, dense-centerline, stop-silences-TTS, noisy-fix-rejected, …)
+python qa/srednabg_qa.py --suite scenarios       # ~20 min — edge cases (stop, dropout, off-ramp, U-turn, swap, auto-stop, dense-centerline, stop-silences-TTS, noisy-fix-rejected, parallel-motorway, mid-zone-join, …)
 python qa/srednabg_qa.py --suite history         # ~7 min — History: records a traversal, retention=none records nothing, retention key round-trips (cross-platform)
 python qa/srednabg_qa.py --suite sync            # ~5 min — zones happy + toggle-off + freshness + remote-older (recency gate) + offline; map disabled-gate
 python qa/srednabg_qa.py --suite ui              # ~1 min — phone UI walk + font-scale cards + History "Show on map" gating
@@ -129,7 +129,13 @@ fixtures (committed under `qa/fixtures/gpx-xcode/`):
 - YAML for "drive zone X at speed Y" variations.
 - Python under `qa/scenarios/edge/` for mid-trip changes (dropout, U-turn, etc.) — register the module in `EDGE_SCENARIOS` in `qa/srednabg_qa.py`.
 - Use `pump()` / `device.current().feed_point(...)` and `qa.settings` / `qa.sync` (not `qa.adb` directly) so the scenario runs on both platforms.
-- User-reported bugs land with a reproducing scenario (e.g. `stop_silences_tts.py` — Stop must silence in-flight TTS; `dense_centerline.py` — short-segment zones don't false-exit/re-enter; `tts_cold_start_leadin.py` — Android-only: a cold audio-focus session must prepend silent lead-in so the AA/Bluetooth route-open delay can't clip announcement starts).
+- User-reported bugs land with a reproducing scenario:
+  - `stop_silences_tts.py` — Stop must silence in-flight TTS.
+  - `dense_centerline.py` — short-segment zones don't false-exit/re-enter.
+  - `tts_cold_start_leadin.py` — Android-only: a cold audio-focus session must prepend silent lead-in so the AA/Bluetooth route-open delay can't clip announcement starts.
+  - `parallel_motorway.py` — driving the A3 past Кочериново must not open a phantom traversal of the I-1 zone beside it, replayed from the real OSM geometry in `qa/fixtures/a3_kocherinovo_corridor.yaml`. Carries an anti-vacuous guard that re-derives the *old* engine's entry gates and fails loudly if the geometry ever stops tripping them — the fixture was verified to FAIL against a temporarily-reverted engine and PASS against the fix, so it genuinely discriminates. It forbids `Unmeasured` as well as `InZone`, since the third zone state made the failure *softer* (quiet, no History row) but no less wrong on a road the car was never on.
+  - `mid_zone_join.py` — start feeding fixes 5.8 km into `trakiya-01-east`, never crossing its entry camera, and assert the full `ZoneState.Unmeasured` contract end-to-end: the state is reached, no measured traversal ever opens, nothing is spoken, and `DUMP_HISTORY` reports no new row.
+  - `jog_start_measured.py` — the positive-path companion to the above on `i3-02-north`, an ISSUE-001 zone whose centerline opens with a ~121 m backwards jog. A genuine approach there projects past 100 m of arc on its first matching fix, so it must still be **measured**: the run asserts `InZone` opens and `Unmeasured` never appears. Pairs with the core unit test `ZoneUnmeasuredTest."a zone whose centerline starts with a backwards jog is still measurable"`, which covers the same path at unit level.
 
 ## Manual zone feeding + full-zone direction validation (Android, debug build)
 

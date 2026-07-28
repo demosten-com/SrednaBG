@@ -148,6 +148,9 @@ class AudioAlertManager @Inject constructor(
             val zoneId = when (newState) {
                 is ZoneState.InZone -> newState.zone.id
                 is ZoneState.Exiting -> newState.zone.id
+                // We know which zone it is even when we can't measure it, and the
+                // QA harness reads this line — don't report "-" for it.
+                is ZoneState.Unmeasured -> newState.zone.id
                 else -> "-"
             }
             Log.d(
@@ -160,12 +163,33 @@ class AudioAlertManager @Inject constructor(
             if ((currentSpeedKmh ?: 0.0) < MIN_ANNOUNCE_SPEED_KMH) return@launch
 
             when {
+                // Every transition into or out of Unmeasured is silent, and that
+                // is a decision rather than an unmatched pair falling off the end
+                // of this `when` — see [isUnmeasuredTransition]. Placed first so
+                // no later branch can accidentally claim one of these pairs.
+                //
+                // "First" is about this `when` only — it is not coupled to the
+                // MIN_ANNOUNCE_SPEED_KMH guard above. A stopped driver is already
+                // silent by suppression, so neither moving that guard below this
+                // branch nor moving this branch below it would break the contract;
+                // the silence holds either way.
+                isUnmeasuredTransition(previousState, newState) -> Unit
                 previousState is ZoneState.Outside && newState is ZoneState.InZone -> {
                     val limit = getSpeedLimit(newState)
                     val now = System.currentTimeMillis()
                     lastEntryTime = now
                     lastAnnouncementTime = now
                     speak(getEntryMessage(newState.zone.road, limit))
+                    // A traversal can now open *already* over the limit: entry is
+                    // confirmed over ENTRY_CONFIRM_DISTANCE_M and then back-dated to
+                    // the first confirming fix, so the very first InZone state can
+                    // carry a few hundred metres of speeding. The over-limit branch
+                    // below only fires on a false -> true flip between two InZone
+                    // states, so without this the warning is silently dropped for
+                    // exactly the driver who most needs it. QUEUE_ADD (see the
+                    // co-located branch) so it plays after the entry line rather
+                    // than cutting it off.
+                    announceEntryOverLimit(newState)
                 }
                 previousState is ZoneState.InZone && newState is ZoneState.InZone -> {
                     val isOver = newState.speedStatus.isOverLimit
@@ -230,9 +254,29 @@ class AudioAlertManager @Inject constructor(
                     lastEntryTime = now
                     lastAnnouncementTime = now
                     speak(getEntryMessage(newState.zone.road, limit), TextToSpeech.QUEUE_ADD)
+                    announceEntryOverLimit(newState)
                 }
             }
         }
+    }
+
+    /**
+     * Warn when a traversal *opens* already over the limit.
+     *
+     * The InZone→InZone branch only reacts to a false→true flip in
+     * [SpeedStatus.isOverLimit], which assumed a traversal always starts at ~0
+     * average and climbs. That stopped being true once entry gained a
+     * confirmation window (ZoneDetector.ENTRY_CONFIRM_DISTANCE_M) that is
+     * back-dated to the first confirming fix: the first InZone state now carries
+     * a few hundred metres of real driving, so a driver who was already speeding
+     * enters *over* the limit and would never produce a flip to react to.
+     * Regression: qa/scenarios/edge/vehicle_type_limit_badge.py.
+     */
+    private suspend fun announceEntryOverLimit(state: ZoneState.InZone) {
+        if (!state.speedStatus.isOverLimit) return
+        val avgSpeed = state.avgSpeed?.toInt() ?: return
+        lastAnnouncementTime = System.currentTimeMillis()
+        speak(getOverLimitMessage(avgSpeed), TextToSpeech.QUEUE_ADD)
     }
 
     private suspend fun getSpeedLimit(state: ZoneState.InZone): Int {
@@ -338,3 +382,20 @@ class AudioAlertManager @Inject constructor(
         }
     }
 }
+
+/**
+ * Is this a transition into or out of [ZoneState.Unmeasured]?
+ *
+ * Every such pair is announced as **nothing**, and that is a decision rather
+ * than an unmatched pair falling off the end of the `when` in
+ * [AudioAlertManager.onZoneStateChanged]. We never saw the entry camera, so
+ * there is no entry to announce, no average to warn about and no exit to sum up
+ * — saying anything would imply we are measuring. See
+ * `ZoneDetector.START_WITNESS_ARC_M`.
+ *
+ * Lifted out of the `when` head so the rule is named and assertable without a
+ * TTS engine; pinned by `AudioAlertSilenceTest`. iOS peer: the guard above the
+ * pair switch in `AnnouncementPolicy.decide`.
+ */
+internal fun isUnmeasuredTransition(previousState: ZoneState, newState: ZoneState): Boolean =
+    previousState is ZoneState.Unmeasured || newState is ZoneState.Unmeasured

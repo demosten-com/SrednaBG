@@ -54,8 +54,12 @@ class DisplaySpeed(Event):
 class ZoneStateChange(Event):
     """Fires on every detector update — derived from AudioAlertManager.kt:75.
 
-    `prev` and `new` are short class names: Outside, InZone, Exiting.
-    `zone` is the zone id when new is InZone/Exiting, "-" when Outside.
+    `prev` and `new` are short class names: Outside, InZone, Unmeasured,
+    Exiting. Unmeasured means "inside a zone whose entry we never witnessed" —
+    it is silent (no TTS), records no History row, and can never be followed by
+    Exiting (it drops straight to Outside). See ZoneDetector.START_WITNESS_ARC_M.
+    `zone` is the zone id when new is InZone/Unmeasured/Exiting, "-" when
+    Outside.
     `speed_kmh` may be None if the detector hadn't seen a fix yet.
     """
     prev: str

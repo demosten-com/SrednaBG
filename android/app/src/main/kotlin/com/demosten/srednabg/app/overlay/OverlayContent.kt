@@ -39,7 +39,13 @@ internal fun OverlayContent(
     Box(modifier = modifier) {
         when (state) {
             is ZoneState.Outside -> ZoneStatusPill(currentSpeedKmh = speed)
-            else -> ZoneStatusChip(
+            // Unmeasured expands to the full chip like the other in-zone states:
+            // the driver still needs to know which average-speed zone they are in
+            // and what its limit is. The chip itself renders that neutrally.
+            is ZoneState.Unmeasured,
+            is ZoneState.InZone,
+            is ZoneState.Exiting,
+            -> ZoneStatusChip(
                 state = state,
                 currentSpeedKmh = speed,
                 vehicleType = vehicleType,

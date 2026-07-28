@@ -55,7 +55,23 @@ public struct AnnouncementInputs: Sendable, Equatable {
 /// `clockUpdate` to update its retained timestamps before issuing TTS.
 public struct AnnouncementDecision: Sendable, Equatable {
     public let event: AnnouncementEvent?
+    /// A second utterance to queue *after* `event`, when one transition warrants
+    /// two things being said. Only used for "entered a zone already over the
+    /// limit" — see the `(.outside, .inZone)` case in `decide`. `AVSpeechSynthesizer`
+    /// enqueues rather than clobbers, so speaking both in order needs no extra
+    /// coordination (Android has to pass QUEUE_ADD explicitly).
+    public let followUp: AnnouncementEvent?
     public let clockUpdate: ClockUpdate
+
+    public init(
+        event: AnnouncementEvent?,
+        followUp: AnnouncementEvent? = nil,
+        clockUpdate: ClockUpdate
+    ) {
+        self.event = event
+        self.followUp = followUp
+        self.clockUpdate = clockUpdate
+    }
 
     public enum ClockUpdate: Sendable, Equatable {
         case none
@@ -75,13 +91,42 @@ public enum AnnouncementPolicy {
         guard input.voiceEnabled else { return .silent }
         guard (input.currentSpeedKmh ?? 0) >= minAnnounceSpeedKmh else { return .silent }
 
+        // Every transition into or out of `.unmeasured` is silent, and that is a
+        // decision rather than a pair falling through to the `default` below. We
+        // never saw the entry camera, so there is no entry to announce, no average
+        // to warn about and no exit to sum up — saying anything would imply we are
+        // measuring. Checked before the pair switch so no later case can claim one
+        // of these transitions. Mirrors `AudioAlertManager.onZoneStateChanged` on
+        // Android.
+        //
+        // "First" is about the pair switch only — it is not coupled to the speed
+        // guard above. A stopped driver is already silent by suppression, so
+        // neither moving that guard below this check nor moving this check below
+        // it would break the contract; the silence holds either way. Pinned by
+        // `AnnouncementPolicyTests.everyUnmeasuredTransitionIsSilent`, which
+        // drives every pair at 100 km/h so the speed guard can't be what passes it.
+        if case .unmeasured = input.previousState { return .silent }
+        if case .unmeasured = input.newState { return .silent }
+
         switch (input.previousState, input.newState) {
 
-        // Outside → InZone: always announce entry.
+        // Outside → InZone: always announce entry, plus an immediate over-limit
+        // warning when the traversal *opens* already over.
+        //
+        // The (.inZone, .inZone) branch below only reacts to a false→true flip in
+        // isOverLimit, which assumed a traversal always starts at ~0 average and
+        // climbs. That stopped being true once entry gained a confirmation window
+        // (ZoneDetector.entryConfirmDistanceM) that is back-dated to the first
+        // confirming fix: the first .inZone state now carries a few hundred metres
+        // of real driving, so a driver who was already speeding enters *over* the
+        // limit and there is no flip left to react to. Mirrors
+        // `AudioAlertManager.announceEntryOverLimit` on Android; regression
+        // `qa/scenarios/edge/vehicle_type_limit_badge.py`.
         case (.outside, .inZone(let inZone)):
             let limit = input.vehicleType.limit(inZone.zone.speedLimits)
             return .init(
                 event: .entry(road: inZone.zone.road, limit: limit),
+                followUp: entryOverLimitEvent(inZone),
                 clockUpdate: .markEntryAndAnnouncement
             )
 
@@ -139,12 +184,21 @@ public enum AnnouncementPolicy {
             let limit = input.vehicleType.limit(new.zone.speedLimits)
             return .init(
                 event: .entry(road: new.zone.road, limit: limit),
+                followUp: entryOverLimitEvent(new),
                 clockUpdate: .markEntryAndAnnouncement
             )
 
         default:
             return .silent
         }
+    }
+
+    /// The over-limit warning to queue behind an entry announcement, when the
+    /// traversal opens already over the limit. Nil otherwise.
+    private static func entryOverLimitEvent(_ inZone: ZoneState.InZone) -> AnnouncementEvent? {
+        guard inZone.speedStatus.isOverLimit, let avg = inZone.avgSpeed.map({ Int($0) })
+        else { return nil }
+        return .overLimit(avgSpeedKmh: avg)
     }
 }
 

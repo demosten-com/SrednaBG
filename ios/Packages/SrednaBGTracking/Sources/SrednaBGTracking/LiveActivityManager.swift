@@ -18,6 +18,9 @@ import SrednaBGCore
 /// tracking. While the session is active we cycle the `phase`:
 ///   - `.tracking`     — no zone visited yet, minimal placeholder.
 ///   - `.inZone`       — live updates throttled to ≤1 / second.
+///   - `.unmeasured`   — inside a zone we never saw entered; same throttle as
+///                       `.inZone`, but no average, no verdict, and it clears
+///                       the cached snapshot so no stale recap can follow it.
 ///   - `.zoneComplete` — pushed once on zone exit; the greyed cached chip
 ///                       stays frozen on screen until the next zone-entry
 ///                       (or `sessionStop`) — saves the iOS background-update
@@ -102,6 +105,20 @@ public actor LiveActivityManager {
             let content = Self.contentState(from: inZone, currentSpeedKmh: currentSpeedKmh, limitKmh: limitKmh)
             self.lastZoneContent = content
             await pushInZone(content: content)
+        case .unmeasured(let unmeasured):
+            // Deliberately not cached into lastZoneContent — *and* the previous
+            // zone's snapshot is dropped. That cache is what pushOutsidePhase
+            // replays as the frozen "zone complete" chip, and there is no
+            // completed traversal here to freeze. Clearing it matters behind us
+            // as much as ahead: without this, InZone(A) → … → Unmeasured(B) →
+            // Outside re-pushes A's recap, so the driver watches B's "not
+            // measured" chip flip back to a stale average for a road they left
+            // a zone ago. Nil cache means the next Outside falls through to
+            // trackingPlaceholder() instead.
+            self.lastZoneContent = nil
+            await pushUnmeasured(content: Self.contentState(
+                from: unmeasured, currentSpeedKmh: currentSpeedKmh, limitKmh: limitKmh
+            ))
         }
     }
 
@@ -138,6 +155,24 @@ public actor LiveActivityManager {
         ))
         lastPushedAt = now
         lastPushedPhase = .inZone
+    }
+
+    /// Same ≤1/second throttle as `pushInZone`. The payload changes as the
+    /// distance-remaining ticks down, so it is not a one-shot push like the
+    /// outside phase, but nothing here is time-critical either.
+    private func pushUnmeasured(content: ZoneActivityAttributes.ContentState) async {
+        guard let activity else { return }
+        let now = Date()
+        let phaseChanged = lastPushedPhase != .unmeasured
+        if !phaseChanged && now.timeIntervalSince(lastPushedAt) < Self.minUpdateInterval {
+            return
+        }
+        await activity.update(.init(
+            state: content,
+            staleDate: now.addingTimeInterval(Self.staleAfter)
+        ))
+        lastPushedAt = now
+        lastPushedPhase = .unmeasured
     }
 
     /// Push at most ONCE per outside-phase transition. While outside, we don't
@@ -179,6 +214,30 @@ public actor LiveActivityManager {
             distanceRemainingM: max(0, Int(inZone.distanceRemaining.rounded())),
             isOverLimit: inZone.speedStatus.isOverLimit,
             statusColorPacked: zoneStatusColor(state: inZone, currentSpeedKmh: currentSpeedKmh)
+        )
+    }
+
+    /// Pure projection for a zone we're inside but never saw entered. Carries the
+    /// road's facts only — name, vehicle-resolved limit, distance left — with
+    /// `avgSpeedKmh` nil, `isOverLimit` false and the neutral packed colour.
+    /// There is no verdict to render, so none of the traffic-light values may
+    /// appear here. See `ZoneDetector.startWitnessArcM`.
+    public static func contentState(
+        from unmeasured: ZoneState.Unmeasured,
+        currentSpeedKmh: Double?,
+        limitKmh: Int?
+    ) -> ZoneActivityAttributes.ContentState {
+        ZoneActivityAttributes.ContentState(
+            phase: .unmeasured,
+            roadName: unmeasured.zone.road,
+            avgSpeedKmh: nil,
+            currentSpeedKmh: roundedInt(currentSpeedKmh),
+            speedLimitKmh: limitKmh ?? unmeasured.zone.speedLimits.car,
+            distanceTraveledM: 0,
+            zoneTotalM: max(1, unmeasured.zone.distanceM),
+            distanceRemainingM: max(0, Int(unmeasured.distanceRemaining.rounded())),
+            isOverLimit: false,
+            statusColorPacked: zoneColorNeutral
         )
     }
 
@@ -235,6 +294,12 @@ public enum ZoneActivityPhase: String, Codable, Hashable, Sendable {
     case inZone
     /// Zone just ended — frozen greyed cached chip until the next zone-entry.
     case zoneComplete
+    /// Inside an average-speed zone whose entry we never witnessed. The widget
+    /// renders the road's facts (name, limit badge, distance left) with **no**
+    /// average and a neutral tint — `avgSpeedKmh` is always nil in this phase and
+    /// `statusColorPacked` is `zoneColorNeutral`, never a traffic-light value.
+    /// See `ZoneDetector.startWitnessArcM`.
+    case unmeasured
 }
 
 /// `ActivityAttributes` describing a zone-tracking session. The fixed `road`

@@ -74,6 +74,9 @@ class ZoneMapViewModel @Inject constructor(
         when (state) {
             is ZoneState.InZone -> state.zone.id
             is ZoneState.Exiting -> state.zone.id
+            // We know exactly which zone we're in even when we can't measure it,
+            // so it still gets highlighted — just in the neutral colour.
+            is ZoneState.Unmeasured -> state.zone.id
             ZoneState.Outside -> highlight?.second?.id
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)

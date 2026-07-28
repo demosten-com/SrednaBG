@@ -62,16 +62,18 @@ struct ModelsTests {
                 ),
                 distanceRemaining: 19160
             )),
+            .unmeasured(.init(zone: TRAKIYA_T10, distanceRemaining: 8000)),
             .exiting(.init(zone: TRAKIYA_T10, finalAvgSpeed: 135.0))
         ]
         let names: [String] = states.map { state in
             switch state {
             case .outside: return "outside"
             case .inZone: return "inzone"
+            case .unmeasured: return "unmeasured"
             case .exiting: return "exiting"
             }
         }
-        #expect(names == ["outside", "inzone", "exiting"])
+        #expect(names == ["outside", "inzone", "unmeasured", "exiting"])
     }
 
     @Test

@@ -86,9 +86,15 @@ public final class HistoryRecorder {
             }
             capture = nil
 
-        case .outside:
+        case .unmeasured, .outside:
             // The exit is finalized on `.inZone -> .exiting`; by the time
             // `.outside` arrives the buffer is already closed. Clear defensively.
+            //
+            // `.unmeasured` is handled identically and records nothing: we never
+            // saw the entry camera, so there is no traversal to attribute samples
+            // to. It also cannot reach `.exiting` (it drops straight to
+            // `.outside`), so no half-open buffer can ever be finalized from it —
+            // which is exactly what keeps mid-zone joins out of History.
             capture = nil
         }
     }

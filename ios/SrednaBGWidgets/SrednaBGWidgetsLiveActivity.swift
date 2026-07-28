@@ -10,10 +10,22 @@
 // primitives (`LimitBadge`, status colors) come from the shared
 // `SrednaBGTheme` module so the widget and the in-app HUD stay in lock-step.
 //
-// The activity has three phases (`state.phase`):
+// The activity has four phases (`state.phase`):
 //   - `.tracking`     — minimal "awaiting zone" pill
 //   - `.inZone`       — full StatusChip-style HUD with live progress
+//   - `.unmeasured`   — zone facts only, neutral tint, no average or verdict
 //   - `.zoneComplete` — greyed cached recap of the last zone
+//
+// Copy lives in this target's `Localizable.xcstrings` (BG + EN), NOT in
+// SrednaBGUI's catalogue: the widget runs out-of-process and links only
+// SrednaBGTheme/SrednaBGTracking, so `L10n` and the app's in-app language
+// override are both out of reach. It follows the *device* language instead.
+// Keep the wording in step with the matching SrednaBGUI keys by hand
+// (`liveActivityUnmeasured` ↔ `statusUnmeasured`). `ios/scripts/check-l10n-parity.py`
+// pins those pairs — it runs in iOS CI, and its PAIRS list is where a new
+// must-match pair goes. Most keys here are deliberately NOT mirrored: this is a
+// compact surface with its own register ("avg" / "left" vs the app's fuller
+// labels), so only same-meaning pairs belong in that list.
 
 import ActivityKit
 import SrednaBGTheme
@@ -62,6 +74,8 @@ struct ZoneLiveActivity: Widget {
         switch state.phase {
         case .inZone:       return statusSwiftUIColor(state.statusColorPacked)
         case .zoneComplete: return statusSwiftUIColor(state.statusColorPacked).opacity(0.5)
+        // .unmeasured carries zoneColorNeutral, so this is grey by construction.
+        case .unmeasured:   return statusSwiftUIColor(state.statusColorPacked)
         case .tracking:     return .secondary
         }
     }
@@ -78,6 +92,8 @@ struct ZoneLockScreenView: View {
             TrackingLockView()
         case .inZone:
             InZoneLockView(state: state)
+        case .unmeasured:
+            UnmeasuredLockView(state: state)
         case .zoneComplete:
             ZoneCompleteLockView(state: state)
         }
@@ -94,11 +110,54 @@ private struct TrackingLockView: View {
                 Text("SrednaBG")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.primary)
-                Text("Awaiting zone")
+                Text("liveActivityAwaitingZone")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
             Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+    }
+}
+
+/// Inside an average-speed zone we never saw entered. Same shape as
+/// `InZoneLockView` minus the average and the progress capsule: the hero is the
+/// live speed, the tint is neutral (`zoneColorNeutral`, set by the projection),
+/// and there is no verdict anywhere. See `ZoneDetector.startWitnessArcM`.
+private struct UnmeasuredLockView: View {
+    let state: ZoneActivityAttributes.ContentState
+
+    var body: some View {
+        let tint = statusSwiftUIColor(state.statusColorPacked)
+        VStack(alignment: .leading, spacing: 10) {
+            Text(state.roadName ?? "")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+
+            HStack(alignment: .center, spacing: 0) {
+                StatCell(
+                    value: formatSpeed(state.currentSpeedKmh),
+                    label: "liveActivityNowLabel",
+                    valueFont: .system(size: 30, weight: .bold, design: .rounded),
+                    valueColor: .primary
+                )
+                Spacer(minLength: 8)
+                LimitBadge(limit: state.speedLimitKmh ?? 0, size: 42)
+                Spacer(minLength: 8)
+                StatCell(
+                    value: formatRemainingKm(state.distanceRemainingM),
+                    label: "liveActivityLeftLabel",
+                    valueFont: .callout.weight(.bold),
+                    valueColor: .primary
+                )
+            }
+
+            Text("liveActivityUnmeasured")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(tint)
+                .lineLimit(1)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
@@ -119,14 +178,14 @@ private struct InZoneLockView: View {
             HStack(alignment: .center, spacing: 0) {
                 StatCell(
                     value: formatSpeed(state.avgSpeedKmh),
-                    label: "avg",
+                    label: "liveActivityAvgLabel",
                     valueFont: .system(size: 30, weight: .bold, design: .rounded),
                     valueColor: tint
                 )
                 Spacer(minLength: 8)
                 StatCell(
                     value: formatSpeed(state.currentSpeedKmh),
-                    label: "now",
+                    label: "liveActivityNowLabel",
                     valueFont: .title3.weight(.semibold),
                     valueColor: .primary
                 )
@@ -135,7 +194,7 @@ private struct InZoneLockView: View {
                 Spacer(minLength: 8)
                 StatCell(
                     value: formatRemainingKm(state.distanceRemainingM),
-                    label: "left",
+                    label: "liveActivityLeftLabel",
                     valueFont: .callout.weight(.bold),
                     valueColor: .primary
                 )
@@ -166,7 +225,7 @@ private struct ZoneCompleteLockView: View {
                         .monospacedDigit()
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
-                    Text("avg km/h")
+                    Text("liveActivityAvgUnit")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -181,7 +240,7 @@ private struct ZoneCompleteLockView: View {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text("Зоната завърши")
+                Text("liveActivityZoneComplete")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -193,7 +252,9 @@ private struct ZoneCompleteLockView: View {
 
 private struct StatCell: View {
     let value: String
-    let label: String
+    /// LocalizedStringKey, not String — a `String` would render verbatim and
+    /// silently bypass this target's `Localizable.xcstrings`.
+    let label: LocalizedStringKey
     let valueFont: Font
     let valueColor: Color
 
@@ -230,7 +291,18 @@ private struct ExpandedLeading: View {
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(statusSwiftUIColor(state.statusColorPacked))
-                Text("avg km/h")
+                Text("liveActivityAvgUnit")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        case .unmeasured:
+            // Live speed in the hero slot, never an average — there is none.
+            VStack(alignment: .leading, spacing: 0) {
+                Text(formatSpeed(state.currentSpeedKmh))
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(.primary)
+                Text("liveActivitySpeedUnit")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -240,7 +312,7 @@ private struct ExpandedLeading: View {
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
-                Text("avg km/h")
+                Text("liveActivityAvgUnit")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -255,7 +327,7 @@ private struct ExpandedTrailing: View {
         switch state.phase {
         case .tracking:
             EmptyView()
-        case .inZone:
+        case .inZone, .unmeasured:
             LimitBadge(limit: state.speedLimitKmh ?? 0, size: 44)
         case .zoneComplete:
             LimitBadge(limit: state.speedLimitKmh ?? 0, size: 44)
@@ -274,11 +346,11 @@ private struct ExpandedCenter: View {
                 Text("SrednaBG")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.primary)
-                Text("Awaiting zone")
+                Text("liveActivityAwaitingZone")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
-        case .inZone, .zoneComplete:
+        case .inZone, .unmeasured, .zoneComplete:
             Text(state.roadName ?? "")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -306,13 +378,27 @@ private struct ExpandedBottom: View {
                     .monospacedDigit()
                     .foregroundStyle(.primary)
             }
+        case .unmeasured:
+            // Distance only, and deliberately no progress capsule: progress is a
+            // fraction of a traversal, and there is no traversal here.
+            HStack(spacing: 8) {
+                Text(formatRemainingKm(state.distanceRemainingM))
+                    .font(.caption.weight(.semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(.primary)
+                Text("liveActivityUnmeasured")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
         case .zoneComplete:
             HStack(spacing: 8) {
                 ProgressCapsule(progress: 1.0, tint: .secondary)
                 Image(systemName: "checkmark.circle.fill")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text("Зоната завърши")
+                Text("liveActivityZoneComplete")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -336,6 +422,11 @@ private struct CompactLeading: View {
                 .font(.caption.weight(.bold))
                 .monospacedDigit()
                 .foregroundStyle(statusSwiftUIColor(state.statusColorPacked))
+        case .unmeasured:
+            Text(formatSpeed(state.currentSpeedKmh))
+                .font(.caption.weight(.bold))
+                .monospacedDigit()
+                .foregroundStyle(.primary)
         case .zoneComplete:
             Text(formatSpeed(state.avgSpeedKmh))
                 .font(.caption.weight(.bold))
@@ -354,7 +445,7 @@ private struct CompactTrailing: View {
             Image(systemName: "ellipsis")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
-        case .inZone:
+        case .inZone, .unmeasured:
             LimitBadge(limit: state.speedLimitKmh ?? 0, size: 22)
         case .zoneComplete:
             LimitBadge(limit: state.speedLimitKmh ?? 0, size: 22)
@@ -377,6 +468,10 @@ private struct MinimalView: View {
                 .font(.caption2.weight(.bold))
                 .monospacedDigit()
                 .foregroundStyle(statusSwiftUIColor(state.statusColorPacked))
+        case .unmeasured:
+            Image(systemName: "questionmark.circle")
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(.secondary)
         case .zoneComplete:
             Image(systemName: "checkmark")
                 .font(.caption2.weight(.bold))

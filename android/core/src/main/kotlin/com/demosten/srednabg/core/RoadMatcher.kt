@@ -13,6 +13,23 @@ object RoadMatcher {
     /** Heading-match tolerance (degrees) between the fix bearing and the zone's centerline. */
     const val DIRECTION_TOLERANCE_DEG = 45.0
 
+    /**
+     * Half-width (metres) of the window the centerline's *local* heading is read
+     * over for [matchDirection].
+     *
+     * The heading test used to compare the fix course against the zone's
+     * end-to-end bearing, which on a long zone is meaningless locally: the A3
+     * Струма motorway passes within 15 m of the I-1 centerline at the Кочериново
+     * interchange on a heading 43–45° off `i1-02-north`'s end-to-end bearing —
+     * inside [DIRECTION_TOLERANCE_DEG] — while being 48–57° off the road's
+     * *local* heading there. That let motorway traffic false-match the I-1 zone.
+     *
+     * 150 m is long enough to smooth out vertex noise and the backwards endpoint
+     * jogs present in the stored geometry (≤122 m), short enough to track the
+     * real curvature of the road.
+     */
+    const val LOCAL_BEARING_WINDOW_M = 150.0
+
     fun isOnRoad(point: GpsPoint, zone: Zone, maxDistance: Double = maxOnRoadDistanceM(zone)): Boolean {
         if (zone.centerline.size < 2) return false
         return pointToPolylineDistance(point.lat, point.lng, zone.centerline) <= maxDistance
@@ -28,24 +45,53 @@ object RoadMatcher {
         return if (isMotorway(zone)) MOTORWAY_MAX_DISTANCE_M else DEFAULT_MAX_DISTANCE_M
     }
 
-    fun matchDirection(bearing: Double, zone: Zone, tolerance: Double = DIRECTION_TOLERANCE_DEG): Boolean {
-        val zoneBearing = if (zone.centerline.size >= 2) {
-            polylineBearing(zone.centerline)
-        } else {
-            directionToBearing(zone.direction) ?: return false
-        }
-        return bearingDifference(bearing, zoneBearing) <= tolerance
+    /**
+     * Does [point]'s course run *with* [zone] where the point sits on it?
+     *
+     * Compares against the centerline's local heading ([LOCAL_BEARING_WINDOW_M]),
+     * not its end-to-end bearing, so a road that crosses or runs alongside the
+     * zone is rejected on its own heading rather than on the zone's average one.
+     * Degenerate centerlines (<2 points) fall back to the cardinal [Zone.direction].
+     */
+    fun matchDirection(point: GpsPoint, zone: Zone, tolerance: Double = DIRECTION_TOLERANCE_DEG): Boolean {
+        val position = positionOnPolyline(point.lat, point.lng, zone.centerline)
+            ?: return directionToBearing(zone.direction)
+                ?.let { bearingDifference(point.bearing, it) <= tolerance }
+                ?: false
+        return matchesLocalDirection(point, zone, position, tolerance)
+    }
+
+    /** [matchDirection] for a caller that already projected the point onto the centerline. */
+    fun matchesLocalDirection(
+        point: GpsPoint,
+        zone: Zone,
+        position: PolylinePosition,
+        tolerance: Double = DIRECTION_TOLERANCE_DEG,
+    ): Boolean {
+        val local = localPolylineBearing(zone.centerline, position.arcLengthM, LOCAL_BEARING_WINDOW_M)
+            ?: return false
+        return bearingDifference(point.bearing, local) <= tolerance
     }
 
     fun findMatchingZone(point: GpsPoint, zones: List<Zone>): Zone? {
-        // Compute the point-to-centerline distance once per zone and reuse it for
-        // both the on-road band check and the nearest-zone selection (it was
-        // previously computed twice — in isOnRoad's filter and again in minByOrNull).
+        // Project onto each centerline once and reuse that projection for the
+        // on-road band test, the local-heading test, and the nearest-zone
+        // tie-break — each used to re-walk every centerline on its own.
+        //
+        // Not a claim that a fix now costs one walk per zone: matchesLocalDirection
+        // still walks inside localPolylineBearing (a polylineLengthMeters plus two
+        // pointAtArcLength lookups). What changed is that those walks are now
+        // short-circuited to the zones already inside the on-road band — normally
+        // zero or one of ~72 — instead of running unconditionally for every zone.
         return zones.asSequence()
-            .filter { zone -> zone.centerline.size >= 2 }
-            .map { zone -> zone to pointToPolylineDistance(point.lat, point.lng, zone.centerline) }
-            .filter { (zone, dist) -> dist <= maxOnRoadDistanceM(zone) && matchDirection(point.bearing, zone) }
-            .minByOrNull { (_, dist) -> dist }
+            .mapNotNull { zone ->
+                positionOnPolyline(point.lat, point.lng, zone.centerline)?.let { zone to it }
+            }
+            .filter { (zone, position) ->
+                position.distanceFromLineM <= maxOnRoadDistanceM(zone) &&
+                    matchesLocalDirection(point, zone, position)
+            }
+            .minByOrNull { (_, position) -> position.distanceFromLineM }
             ?.first
     }
 

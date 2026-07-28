@@ -71,6 +71,9 @@ EDGE_SCENARIOS = [
     "tts_cold_start_leadin",
     "dense_centerline",
     "noisy_fix_rejected",
+    "parallel_motorway",
+    "mid_zone_join",
+    "jog_start_measured",
 ]
 # Edge scenarios that exercise an Android-only code path and would never pass on
 # iOS, so they're skipped under `--platform ios` rather than failed (same

@@ -10,6 +10,8 @@
 "statusTrackingOutside" = "Tracking — no active zone";
 "statusInZone" = "In zone — %@";
 "statusExiting" = "Exiting %@";
+"statusUnmeasured" = "Not measured";
+"statusUnmeasuredReason" = "missed the zone entry";
 "statusOverLimit" = "Over limit";
 "statusWithinLimit" = "Within limit";
 "statusNowSpeed" = "Current %@ km/h";

@@ -22,7 +22,12 @@ public enum AdaptiveLocationCadence {
         zones: [Zone]
     ) -> Int {
         switch state {
-        case .inZone, .exiting:
+        // `.unmeasured` polls at the in-zone rate too. No averaging is happening,
+        // but we still want a prompt drop to `.outside` at the zone end and a
+        // prompt open of a co-located successor — whose entry camera *is* crossed,
+        // so that next zone is genuinely measurable and must not be missed by a
+        // coarse fix.
+        case .inZone, .unmeasured, .exiting:
             return inZoneIntervalMs
         case .outside:
             guard let position else { return farIntervalMs }

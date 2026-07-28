@@ -74,6 +74,221 @@ val I4_10 = Zone(
     lastVerified = "2026-04-12",
 )
 
+// A straight synthetic road for the ISSUE-001 jog fixture below.
+const val JOG_ZONE_HEADING_DEG = 37.0
+private const val JOG_ZONE_ORIGIN_LAT = 42.2
+private const val JOG_ZONE_ORIGIN_LNG = 23.1
+
+/** [metres] along [headingDeg] from a lat/lng, as a `[lat, lng]` pair. */
+private fun offsetMetres(lat: Double, lng: Double, headingDeg: Double, metres: Double): List<Double> {
+    val rad = Math.toRadians(headingDeg)
+    return listOf(
+        lat + (metres * kotlin.math.cos(rad)) / 111_320.0,
+        lng + (metres * kotlin.math.sin(rad)) / (111_320.0 * kotlin.math.cos(Math.toRadians(lat))),
+    )
+}
+
+/**
+ * A zone whose stored centerline opens with a segment running ~180 degrees
+ * *against* the road: `centerline[0]` is the entry camera, `centerline[1]` sits
+ * [jogM] metres **behind** it, and only then does the geometry run forward.
+ *
+ * This is ISSUE-001 as it appears in the shipped data — i3-02-north (121 m jog),
+ * i6-01-east (80 m) and trakiya-03-east (77 m). It matters here because a car
+ * approaching the camera projects onto that backwards leg, so the arc position
+ * of its *first* matching fix is the jog length rather than ~0. Measured across
+ * all 72 bundled zones, the worst such value is 121 m at the 2 s near-zone
+ * cadence and 148 m at the 5 s cold-start cadence — which is why
+ * [ZoneDetector.START_WITNESS_ARC_M] is 200 m and not the 100 m first proposed.
+ *
+ * A national road (not "АМ …"), so it gets the stricter 100 m on-road band.
+ */
+fun jogStartZone(
+    id: String = "jog-start-test",
+    jogM: Double = 121.0,
+    lengthM: Double = 8_000.0,
+): Zone {
+    val origin = listOf(JOG_ZONE_ORIGIN_LAT, JOG_ZONE_ORIGIN_LNG)
+    val end = offsetMetres(origin[0], origin[1], JOG_ZONE_HEADING_DEG, lengthM)
+    val stepM = 100.0
+    // centerline[0] is the camera; centerline[1] is jogM behind it; from there the
+    // geometry runs forward, back past the camera and on to the zone end. The
+    // final step is clamped to lengthM so the last vertex lands exactly on `end`
+    // — a bare floor() count stops up to stepM short, leaving centerline.last()
+    // and zone.end disagreeing by tens of metres.
+    val steps = kotlin.math.ceil((jogM + lengthM) / stepM).toInt()
+    val forward = (1..steps).map { i ->
+        offsetMetres(origin[0], origin[1], JOG_ZONE_HEADING_DEG, minOf(-jogM + i * stepM, lengthM))
+    }
+    return Zone(
+        id = id,
+        road = "Път I-3",
+        roadLatin = "I-3",
+        direction = "north",
+        description = "ISSUE-001 backwards start jog",
+        start = ZoneEndpoint(lat = origin[0], lng = origin[1]),
+        end = ZoneEndpoint(lat = end[0], lng = end[1]),
+        distanceM = lengthM.toInt(),
+        speedLimits = SpeedLimits(car = 90, truck = 80, bus = 80, motorcycle = 90),
+        centerline = listOf(
+            origin,
+            offsetMetres(origin[0], origin[1], JOG_ZONE_HEADING_DEG, -jogM),
+        ) + forward,
+        source = "test",
+        lastVerified = "2026-07-28",
+    )
+}
+
+/**
+ * Fixes along the straight *physical* road of [jogStartZone], from [fromM] to
+ * [toM] metres relative to the entry camera (negative = still approaching).
+ *
+ * The shared [collectAlongCenterline] cannot be used here: it derives its
+ * heading from the stored geometry, which for this zone points backwards near
+ * arc 0 — the whole point of the fixture.
+ */
+fun jogStartRoadTrace(
+    fromM: Double,
+    toM: Double,
+    stepM: Double = 36.0,
+    speedKmh: Double = 90.0,
+    startTime: Long = EPOCH_BASE,
+): List<GpsPoint> {
+    val stepMs = (stepM / (speedKmh / 3.6) * 1000.0).toLong().coerceAtLeast(1L)
+    var d = fromM
+    var i = 0
+    val points = mutableListOf<GpsPoint>()
+    while (d <= toM) {
+        val at = offsetMetres(JOG_ZONE_ORIGIN_LAT, JOG_ZONE_ORIGIN_LNG, JOG_ZONE_HEADING_DEG, d)
+        points += GpsPoint(
+            lat = at[0], lng = at[1], speed = speedKmh,
+            timestamp = startTime + i * stepMs, bearing = JOG_ZONE_HEADING_DEG,
+        )
+        d += stepM
+        i++
+    }
+    return points
+}
+
+/**
+ * Drive [detector] along [zone]'s centerline for [metres], starting [fromArcM]
+ * along it, and return the final state.
+ *
+ * Each fix carries the road's local heading, so it reads as a car genuinely
+ * following the road — which is what entry confirmation
+ * ([ZoneDetector.ENTRY_CONFIRM_DISTANCE_M]) asks for. [lateralOffsetM] pushes
+ * the track sideways off the centerline for off-road cases.
+ */
+fun driveAlongCenterline(
+    detector: ZoneDetector,
+    zone: Zone,
+    fromArcM: Double,
+    metres: Double,
+    speedKmh: Double = 130.0,
+    stepM: Double = 36.0,
+    startTime: Long = EPOCH_BASE,
+    lateralOffsetM: Double = 0.0,
+    vehicleType: VehicleType = VehicleType.CAR,
+): ZoneState = collectAlongCenterline(
+    detector, zone, fromArcM, metres, speedKmh, stepM, startTime, lateralOffsetM, vehicleType,
+).last()
+
+/**
+ * A zone co-located with [base]: its start sits exactly on [base]'s end and its
+ * centerline runs straight on from there along [base]'s final heading. Models
+ * the back-to-back camera pairs in the real data (24 of them, nearly all with
+ * the two endpoints 0 m apart).
+ */
+fun nextZoneFrom(base: Zone, id: String, lengthM: Double): Zone {
+    val cl = base.centerline
+    val heading = bearingBetween(
+        cl[cl.size - 2][0], cl[cl.size - 2][1], cl.last()[0], cl.last()[1],
+    )
+    val stepM = 100.0
+    val points = (0..(lengthM / stepM).toInt()).map { i ->
+        val d = i * stepM
+        listOf(
+            base.end.lat + (d * kotlin.math.cos(Math.toRadians(heading))) / 111_320.0,
+            base.end.lng + (d * kotlin.math.sin(Math.toRadians(heading))) /
+                (111_320.0 * kotlin.math.cos(Math.toRadians(base.end.lat))),
+        )
+    }
+    return base.copy(
+        id = id,
+        start = ZoneEndpoint(lat = base.end.lat, lng = base.end.lng),
+        end = ZoneEndpoint(lat = points.last()[0], lng = points.last()[1]),
+        distanceM = lengthM.toInt(),
+        centerline = points,
+    )
+}
+
+/**
+ * Position for an arc length that may be **negative**, i.e. on the approach road
+ * before the entry camera. Negative arcs extrapolate straight back from the
+ * centerline's first vertex along [heading], which is what a car driving up to
+ * the camera actually does.
+ *
+ * This matters because entry provenance is now decided by the arc position of
+ * the *first* matching fix (ZoneDetector.START_WITNESS_ARC_M): a trace that
+ * simply starts mid-zone is a "joined late" drive and is deliberately
+ * Unmeasured, so any test that means "a car genuinely driving this zone" has to
+ * begin before arc 0.
+ *
+ * Not private: it is load-bearing enough for the entry-provenance suite to
+ * deserve its own assertions (see `TestFixturesTest`), rather than only being
+ * exercised indirectly through [collectAlongCenterline].
+ */
+fun pointOnApproach(zone: Zone, arc: Double, heading: Double): List<Double> {
+    if (arc >= 0.0) return pointAtArcLength(zone.centerline, arc)
+    val v0 = zone.centerline.first()
+    val back = Math.toRadians((heading + 180) % 360)
+    return listOf(
+        v0[0] + (-arc * kotlin.math.cos(back)) / 111_320.0,
+        v0[1] + (-arc * kotlin.math.sin(back)) /
+            (111_320.0 * kotlin.math.cos(Math.toRadians(v0[0]))),
+    )
+}
+
+/** [driveAlongCenterline], returning every state rather than just the last. */
+fun collectAlongCenterline(
+    detector: ZoneDetector,
+    zone: Zone,
+    fromArcM: Double,
+    metres: Double,
+    speedKmh: Double = 130.0,
+    stepM: Double = 36.0,
+    startTime: Long = EPOCH_BASE,
+    lateralOffsetM: Double = 0.0,
+    vehicleType: VehicleType = VehicleType.CAR,
+): List<ZoneState> {
+    val states = mutableListOf<ZoneState>()
+    var covered = 0.0
+    var index = 0
+    val stepMs = (stepM / (speedKmh / 3.6) * 1000.0).toLong().coerceAtLeast(1L)
+    while (covered <= metres) {
+        val arc = fromArcM + covered
+        val heading = localPolylineBearing(
+            zone.centerline, arc.coerceAtLeast(0.0), RoadMatcher.LOCAL_BEARING_WINDOW_M,
+        ) ?: polylineBearing(zone.centerline)
+        val at = pointOnApproach(zone, arc, heading)
+        // Offset perpendicular (to the right of travel) by lateralOffsetM.
+        val perp = Math.toRadians((heading + 90) % 360)
+        val lat = at[0] + (lateralOffsetM * kotlin.math.cos(perp)) / 111_320.0
+        val lng = at[1] + (lateralOffsetM * kotlin.math.sin(perp)) /
+            (111_320.0 * kotlin.math.cos(Math.toRadians(at[0])))
+        states += detector.update(
+            GpsPoint(
+                lat = lat, lng = lng, speed = speedKmh,
+                timestamp = startTime + index * stepMs, bearing = heading,
+            ),
+            vehicleType,
+        )
+        covered += stepM
+        index++
+    }
+    return states
+}
+
 /**
  * Generate a GPS trace along a zone's centerline at constant speed.
  * Includes approach points before the zone start and departure points after the zone end.

@@ -11,6 +11,8 @@ import android.graphics.Paint
 import android.graphics.Path
 import com.demosten.srednabg.core.GpsPoint
 import com.demosten.srednabg.core.Zone
+import com.demosten.srednabg.core.ZONE_COLOR_GREEN
+import com.demosten.srednabg.core.ZONE_COLOR_NEUTRAL
 import com.demosten.srednabg.core.ZoneState
 import com.demosten.srednabg.core.zoneStatusColor
 
@@ -98,10 +100,12 @@ class MapRenderer {
         }
 
         if (activeZone != null) {
-            activeZonePaint.color = if (zoneState is ZoneState.InZone) {
-                zoneStatusColor(zoneState, pos.speed)
-            } else {
-                0xFF66BB6A.toInt()
+            activeZonePaint.color = when (zoneState) {
+                is ZoneState.InZone -> zoneStatusColor(zoneState, pos.speed)
+                // Neutral, not green: the traffic light is a verdict on the
+                // driver, and an entry we never witnessed earns no verdict.
+                is ZoneState.Unmeasured -> ZONE_COLOR_NEUTRAL
+                else -> ZONE_COLOR_GREEN
             }
             drawPolyline(canvas, activeZone.centerline, pos.lat, pos.lng, zoom, width, height, activeZonePaint)
 

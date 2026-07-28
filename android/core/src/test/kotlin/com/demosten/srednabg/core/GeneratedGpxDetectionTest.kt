@@ -51,14 +51,43 @@ class GeneratedGpxDetectionTest {
         val firstInZoneIdx = states.indexOfFirst { it is ZoneState.InZone }
         assertTrue(firstInZoneIdx >= 0, "Zone $zoneId was never entered during playback")
 
-        // Entry must fire no later than the GPX point at centerline[0] — in
-        // practice slightly earlier, because ZoneDetector.ENTRY_DISTANCE_M is
-        // 500m. A non-trivially-later entry would mean the detector missed the
-        // transition even with the zone start explicitly present.
+        // The InZone *flip* now trails the zone start: a traversal only opens
+        // once the match has held over ZoneDetector.ENTRY_CONFIRM_DISTANCE_M of
+        // travel along the centerline, so a neighbouring road that merely clips
+        // the on-road band can't open one. What must NOT slip is the recorded
+        // entry — the traversal is back-dated to the first confirming fix, so
+        // the reported entryTime still lands at or before the zone-start sample
+        // (ZoneDetector.ENTRY_DISTANCE_M lets the approach count).
+        val firstInZone = states[firstInZoneIdx] as ZoneState.InZone
         assertTrue(
-            firstInZoneIdx <= zoneStartIdx,
-            "Zone $zoneId entry fired at GPX index $firstInZoneIdx, AFTER " +
-                "the explicit zone-start sample at $zoneStartIdx — detector lost the transition",
+            firstInZone.entryTime <= gpxPoints[zoneStartIdx].timestamp,
+            "Zone $zoneId recorded entryTime ${firstInZone.entryTime} is AFTER the " +
+                "zone-start sample at ${gpxPoints[zoneStartIdx].timestamp} — the " +
+                "traversal was not back-dated to the approach",
+        )
+
+        // And the flip itself must land inside the confirmation window, not deep
+        // inside the zone — a genuinely lost transition shows up as a much
+        // larger lag than the window can explain.
+        //
+        // The 1.5x allowance is not arbitrary slack: confirmation needs
+        // ENTRY_CONFIRM_DISTANCE_M of *centerline* progress, and the flip can
+        // only be observed on the next GPX sample after that, so the measured
+        // lag necessarily exceeds the window. Measured for this fixture
+        // (struma-02-south): **324 m of the 450 m ceiling** — 1.08x the window,
+        // 28 % headroom. If a future fixture lands near 450 m, raise this against
+        // a fresh measurement rather than nudging it whenever it goes red.
+        val lagM = (zoneStartIdx until firstInZoneIdx).sumOf { i ->
+            haversineDistance(
+                gpxPoints[i].lat, gpxPoints[i].lng,
+                gpxPoints[i + 1].lat, gpxPoints[i + 1].lng,
+            )
+        }
+        assertTrue(
+            lagM <= ZoneDetector.ENTRY_CONFIRM_DISTANCE_M * 1.5,
+            "Zone $zoneId entry fired ${lagM.toInt()} m past the zone start (GPX index " +
+                "$firstInZoneIdx vs $zoneStartIdx) — more than the confirmation window " +
+                "explains, so the detector lost the transition",
         )
 
         assertTrue(

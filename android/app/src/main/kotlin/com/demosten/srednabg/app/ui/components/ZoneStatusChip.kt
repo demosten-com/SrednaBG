@@ -29,6 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -39,6 +41,7 @@ import com.demosten.srednabg.app.ui.theme.SpeedRed
 import com.demosten.srednabg.app.ui.util.orDash
 import com.demosten.srednabg.core.VehicleType
 import com.demosten.srednabg.core.ZONE_COLOR_GREEN
+import com.demosten.srednabg.core.ZONE_COLOR_NEUTRAL
 import com.demosten.srednabg.core.ZONE_COLOR_RED
 import com.demosten.srednabg.core.ZoneState
 import com.demosten.srednabg.core.zoneStatusColor
@@ -72,7 +75,110 @@ internal fun ZoneStatusChip(
         is ZoneState.Outside -> Unit
         is ZoneState.InZone ->
             InZoneChip(state, currentSpeedKmh, vehicleType, debugMaxSpeedOverride, modifier)
+        is ZoneState.Unmeasured -> UnmeasuredChip(state, currentSpeedKmh, vehicleType, modifier)
         is ZoneState.Exiting -> ExitingChip(state, vehicleType, modifier)
+    }
+}
+
+/**
+ * Inside an average-speed zone we did not see entered. Shows the road's own
+ * facts — which zone, its speed limit, how much of it is left, and the live
+ * speed — and nothing derived from timing. No average, no max-for-remainder, no
+ * progress bar, and a neutral colour rather than the green/amber/red traffic
+ * light, because that palette *is* a verdict and here we are declining to give
+ * one. See ZoneDetector.START_WITNESS_ARC_M.
+ */
+@Composable
+private fun UnmeasuredChip(
+    state: ZoneState.Unmeasured,
+    currentSpeedKmh: Double?,
+    vehicleType: VehicleType,
+    modifier: Modifier = Modifier,
+) {
+    val limit = vehicleType.limit(state.zone.speedLimits)
+    val neutral = Color(ZONE_COLOR_NEUTRAL)
+    val distanceKm = state.distanceRemaining / 1000.0
+    val contentDesc = stringResource(R.string.accessibility_unmeasured, state.zone.road, limit)
+
+    Surface(
+        modifier = modifier.semantics { contentDescription = contentDesc },
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f),
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        shape = MaterialTheme.shapes.large,
+        tonalElevation = 4.dp,
+        shadowElevation = 6.dp,
+        border = BorderStroke(1.5.dp, neutral.copy(alpha = 0.65f)),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(neutral.copy(alpha = 0.15f))
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.End,
+            ) {
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = currentSpeedKmh.orDash(),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 32.sp,
+                        modifier = Modifier.alignByBaseline(),
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = stringResource(R.string.current_speed_label),
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.alignByBaseline(),
+                    )
+                }
+                Text(
+                    text = state.zone.road,
+                    style = MaterialTheme.typography.labelSmall,
+                    maxLines = 1,
+                )
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Surface(
+                modifier = Modifier.size(48.dp),
+                shape = CircleShape,
+                color = Color.White,
+                border = BorderStroke(3.dp, Color(ZONE_COLOR_RED)),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "$limit",
+                        color = Color.Black,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = String.format(Locale.US, "%.1f km", distanceKm),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.status_unmeasured),
+                    color = neutral,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.labelMedium,
+                )
+                Text(
+                    text = stringResource(R.string.status_unmeasured_reason),
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
+        }
     }
 }
 

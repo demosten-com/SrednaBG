@@ -18,6 +18,8 @@ data class OverlayLabels(
     val overLimit: String,
     val withinLimit: String,
     val monitoringHint: String,
+    /** Short form for a zone we're in but didn't see entered — must clear the glyph floors. */
+    val unmeasuredHint: String,
     val nowSpeedFormat: String,
     val kmhLabel: String,
     val zoneComplete: String,
@@ -100,13 +102,24 @@ class SpeedOverlay {
     ) {
         when (zoneState) {
             is ZoneState.Outside -> drawOutside(canvas, stableArea, currentSpeedKmh, labels)
+            // Same compact two-row panel as Outside — live speed plus a hint —
+            // because there is no average, no remainder and no verdict to draw.
+            // The only change is what the hint says.
+            is ZoneState.Unmeasured ->
+                drawOutside(canvas, stableArea, currentSpeedKmh, labels, hint = labels.unmeasuredHint)
             is ZoneState.InZone -> drawInZone(canvas, stableArea, zoneState, speedLimit, currentSpeedKmh, labels)
             is ZoneState.Exiting ->
                 drawExiting(canvas, stableArea, zoneState, speedLimit, currentSpeedKmh, labels)
         }
     }
 
-    private fun drawOutside(canvas: Canvas, area: Rect, currentSpeedKmh: Double?, labels: OverlayLabels) {
+    private fun drawOutside(
+        canvas: Canvas,
+        area: Rect,
+        currentSpeedKmh: Double?,
+        labels: OverlayLabels,
+        hint: String = labels.monitoringHint,
+    ) {
         // Two rows: "VALUE km/h" sharing a baseline, then "Monitoring zones".
         // Text sizes scale with stable area; floors keep glyphs readable on a
         // small projection surface; panel grows to fit — never the other way.
@@ -136,7 +149,7 @@ class SpeedOverlay {
         val topLineWidth = valueWidth + unitWidth
 
         labelTextPaint.textAlign = Paint.Align.CENTER
-        val hintWidth = labelTextPaint.measureText(labels.monitoringHint)
+        val hintWidth = labelTextPaint.measureText(hint)
         val panelWidth = max(max(topLineWidth, hintWidth) + 56f, area.width() * 0.28f)
             .coerceAtMost(area.width() * 0.6f)
 
@@ -155,10 +168,10 @@ class SpeedOverlay {
         labelTextPaint.textSize = max(area.height() * 0.07f, PRIMARY_MIN_PX)
         canvas.drawText(unitStr, row1Start + valueWidth, row1Baseline, labelTextPaint)
 
-        // Row 2: "Monitoring zones" centred.
+        // Row 2: the hint ("Monitoring zones" / "Not measured") centred.
         labelTextPaint.textAlign = Paint.Align.CENTER
         val row2Baseline = row1Baseline + heroFm.descent + gap - labelFm.ascent
-        canvas.drawText(labels.monitoringHint, cx, row2Baseline, labelTextPaint)
+        canvas.drawText(hint, cx, row2Baseline, labelTextPaint)
 
         speedTextPaint.textAlign = savedSpeedAlign
         labelTextPaint.textAlign = savedLabelAlign

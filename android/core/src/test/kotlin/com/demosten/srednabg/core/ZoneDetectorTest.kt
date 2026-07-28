@@ -28,11 +28,13 @@ class ZoneDetectorTest {
         var sawOutside = false
         var sawInZone = false
         var sawExiting = false
+        var sawUnmeasured = false
 
         for (point in trace) {
             val state = detector.update(point)
             when (state) {
                 is ZoneState.Outside -> sawOutside = true
+                is ZoneState.Unmeasured -> sawUnmeasured = true
                 is ZoneState.InZone -> {
                     sawInZone = true
                     assertFalse(state.speedStatus.isOverLimit, "Should not be over limit at 130 km/h")
@@ -51,6 +53,11 @@ class ZoneDetectorTest {
         assertTrue(sawOutside, "Should have been Outside initially")
         assertTrue(sawInZone, "Should have been InZone during traversal")
         assertTrue(sawExiting, "Should have Exiting state")
+        assertFalse(
+            sawUnmeasured,
+            "A trace that approaches from before the entry camera is a witnessed " +
+                "entry — it must never degrade to Unmeasured",
+        )
     }
 
     @Test
@@ -151,26 +158,38 @@ class ZoneDetectorTest {
     }
 
     @Test
-    fun `cold-start mid-zone enters with reduced effective distance`() {
-        // Point on the centerline well inside the zone, beyond the start buffer but
-        // not yet at the end. Simulates user opening the app while already driving
-        // through a zone.
-        val midBearing = polylineBearing(TRAKIYA_T10.centerline)
-        val midPoint = GpsPoint(
-            lat = 42.510, lng = 23.770, speed = 130.0,
-            timestamp = EPOCH_BASE, bearing = midBearing,
+    fun `cold-start mid-zone is Unmeasured, never a measured traversal`() {
+        // Simulates opening the app while already deep inside a zone. We never saw
+        // the entry camera, so there is nothing trustworthy to average: a running
+        // average over the remainder alone matches nothing BG TOLL computes, yet
+        // used to be rendered in the same chip, spoken in the same phrase and
+        // stored in the same History row as a real traversal (the junk 24 km/h
+        // record, real drive 2026-07-26). The reason we missed the entry is
+        // deliberately irrelevant — see ZoneDetector.START_WITNESS_ARC_M.
+        val midArc = arcLengthOnPolyline(42.510, 23.770, TRAKIYA_T10.centerline)
+        val states = collectAlongCenterline(
+            detector,
+            TRAKIYA_T10,
+            fromArcM = midArc,
+            metres = ZoneDetector.ENTRY_CONFIRM_DISTANCE_M * 2,
         )
-
-        val state = detector.update(midPoint)
-        assertTrue(state is ZoneState.InZone, "Should enter zone from mid-point cold-start")
-        val inZone = state as ZoneState.InZone
-        // distanceRemaining is polyline arc-length to zone.end (drives the UI label
-        // and progress bar). Must be strictly less than the full zone length and
-        // meaningful (not pinned to 0).
-        assertTrue(inZone.distanceRemaining < TRAKIYA_T10.distanceM,
-            "Polyline-remaining ${inZone.distanceRemaining} should be less than full zone ${TRAKIYA_T10.distanceM}")
-        assertTrue(inZone.distanceRemaining > 1000,
-            "Mid-zone cold-start should still have meaningful distance remaining (${inZone.distanceRemaining})")
+        assertTrue(
+            states.none { it is ZoneState.InZone },
+            "A mid-zone cold start must never open a measured traversal",
+        )
+        val state = states.last()
+        assertTrue(state is ZoneState.Unmeasured, "Should be Unmeasured mid-zone, got $state")
+        val unmeasured = state as ZoneState.Unmeasured
+        assertEquals(TRAKIYA_T10.id, unmeasured.zone.id)
+        // distanceRemaining is polyline arc-length to zone.end — a fact about the
+        // road, true regardless of when we joined, so it is one of the two things
+        // this state may show (with the zone's speed limit).
+        assertTrue(unmeasured.distanceRemaining < TRAKIYA_T10.distanceM,
+            "Polyline-remaining ${unmeasured.distanceRemaining} should be less than " +
+                "full zone ${TRAKIYA_T10.distanceM}")
+        assertTrue(unmeasured.distanceRemaining > 1000,
+            "Mid-zone join should still have meaningful distance remaining " +
+                "(${unmeasured.distanceRemaining})")
     }
 
     @Test
@@ -231,9 +250,9 @@ class ZoneDetectorTest {
     fun `exit on leaving road`() {
         val trace = generateGpsTrace(TRAKIYA_T10, speedKmh = 130.0)
 
-        // Feed a few points to enter the zone
+        // Feed enough points to clear the entry-confirmation window and enter.
         var enteredZone = false
-        for (point in trace.take(10)) {
+        for (point in trace.take(25)) {
             val state = detector.update(point)
             if (state is ZoneState.InZone) {
                 enteredZone = true
@@ -368,10 +387,15 @@ class ZoneDetectorTest {
     }
 
     @Test
-    fun `re-entry always starts fresh`() {
-        // Drive into zone, leave the road to trigger an exit, then return.
-        // Re-entry must anchor to the new entry point: fresh entryTime and
-        // near-zero distanceTraveled, regardless of how recently we exited.
+    fun `re-joining mid-zone after an off-road exit is Unmeasured, not a second traversal`() {
+        // Drive into the zone through its entry camera, leave the road (which
+        // finalizes that traversal), then rejoin the road 30 % in.
+        //
+        // The rejoin does not cross the entry camera, so it cannot be measured:
+        // it used to open a *second* traversal whose average covered only the
+        // remainder, producing a junk History row on top of the real one. Now it
+        // is Unmeasured — the first traversal is still recorded exactly as
+        // before, and the rejoin adds nothing.
         val trace = generateReentryTrace(
             TRAKIYA_T10,
             speedKmh = 130.0,
@@ -382,6 +406,8 @@ class ZoneDetectorTest {
         val det = ZoneDetector(listOf(TRAKIYA_T10))
         val entrySnapshots = mutableListOf<ZoneState.InZone>()
         var prevEntryTime: Long? = null
+        var exits = 0
+        var sawUnmeasuredAfterExit = false
 
         for (point in trace) {
             val state = det.update(point)
@@ -392,17 +418,17 @@ class ZoneDetectorTest {
                 }
             } else {
                 prevEntryTime = null
+                if (state is ZoneState.Exiting) exits++
+                if (state is ZoneState.Unmeasured && exits > 0) sawUnmeasuredAfterExit = true
             }
         }
 
-        assertTrue(entrySnapshots.size >= 2,
-            "Should have entered zone twice (initial + re-entry), got ${entrySnapshots.size}")
-        val first = entrySnapshots.first()
-        val reentry = entrySnapshots.last()
-        assertTrue(reentry.entryTime > first.entryTime,
-            "Re-entry time ${reentry.entryTime} should be after initial ${first.entryTime}")
-        assertTrue(reentry.distanceTraveled < 5.0,
-            "Re-entry should start with ~0 distanceTraveled, got ${reentry.distanceTraveled}")
+        assertEquals(1, entrySnapshots.size,
+            "The rejoin never crossed the entry camera, so exactly one measured " +
+                "traversal must exist, got ${entrySnapshots.size}")
+        assertEquals(1, exits, "Exactly one traversal should have been finalized")
+        assertTrue(sawUnmeasuredAfterExit,
+            "Rejoining the road mid-zone must surface as Unmeasured, not silence")
     }
 
     @Test
@@ -451,8 +477,14 @@ class ZoneDetectorTest {
         assertTrue(rewoundEntryTime != null, "Should have re-entered zone after rewind")
         assertTrue(rewoundEntryTime!! < firstEntryTime!!,
             "Rewound entry time $rewoundEntryTime should be before original $firstEntryTime")
-        assertTrue(rewoundInitialDistance!! < 5.0,
-            "Re-entry after rewind should start with ~0 distance, got $rewoundInitialDistance")
+        // Starts from its own confirmation window (see `re-entry always starts
+        // fresh`), never resuming phase 1's progress.
+        assertTrue(rewoundInitialDistance!! <= ZoneDetector.ENTRY_CONFIRM_DISTANCE_M * 1.5,
+            "Re-entry after rewind should start from its own confirmation window, " +
+                "got $rewoundInitialDistance")
+        assertTrue(rewoundInitialDistance!! < firstMaxDistance,
+            "Re-entry after rewind must not resume phase 1's progress " +
+                "($rewoundInitialDistance vs $firstMaxDistance)")
     }
 
     @Test
@@ -513,13 +545,15 @@ class ZoneDetectorTest {
         val entryTimes = linkedSetOf<Long>()
         var sawExiting = false
         var collapsedEarly = false
+        var sawUnmeasured = false
         for (point in trace) {
             when (val state = det.update(point)) {
+                is ZoneState.Unmeasured -> sawUnmeasured = true
                 is ZoneState.InZone -> {
                     entryTimes.add(state.entryTime)
                     // While there is meaningful road left, the remainder speed must
                     // not collapse to 0 (it would, the moment the drifted integrator
-                    // passed effectiveZoneDistance).
+                    // passed the zone distance).
                     if (state.distanceRemaining > ZoneDetector.EXIT_DISTANCE_M &&
                         state.speedStatus.maxSpeedForRemainder <= 0.0
                     ) {
@@ -536,6 +570,7 @@ class ZoneDetectorTest {
         assertEquals(1, entryTimes.size,
             "Expected a single uninterrupted traversal, but the zone was (re-)entered ${entryTimes.size} times")
         assertTrue(sawExiting, "Should have cleanly exited at the zone end")
+        assertFalse(sawUnmeasured, "Witnessed entry must not degrade to Unmeasured")
     }
 
     @Test
@@ -555,6 +590,7 @@ class ZoneDetectorTest {
         val inZoneIds = mutableListOf<String>()
         var firstInZoneId: String? = null
         var exitedId: String? = null
+        var unmeasuredId: String? = null
         for (point in trace) {
             when (val state = det.update(point)) {
                 is ZoneState.InZone -> {
@@ -562,9 +598,15 @@ class ZoneDetectorTest {
                     inZoneIds.add(state.zone.id)
                 }
                 is ZoneState.Exiting -> exitedId = state.zone.id
+                is ZoneState.Unmeasured -> unmeasuredId = state.zone.id
                 is ZoneState.Outside -> {}
             }
         }
+        assertEquals(
+            null, unmeasuredId,
+            "Re-orienting the reversed centerline must also restore the arc origin, " +
+                "so the approach is witnessed and the traversal measurable",
+        )
 
         assertTrue(inZoneIds.isNotEmpty(), "Should have entered a zone")
         assertEquals(
@@ -669,6 +711,164 @@ class ZoneDetectorTest {
         // No zones to match — stays Outside across repeated fixes, no crash.
         assertTrue(empty.update(point) is ZoneState.Outside)
         assertTrue(empty.update(point.copy(timestamp = EPOCH_BASE + 1000L)) is ZoneState.Outside)
+    }
+
+    @Test
+    fun `road clipping the band on a matching heading never opens a traversal`() {
+        // Regression for the phantom I-1 traversal (real drive, 2026-07-26,
+        // reproduced on both platforms). The A3 Струма motorway runs within 15 m
+        // of the i1-02-north centerline for ~190 m at the Кочериново
+        // interchange, on a heading inside DIRECTION_TOLERANCE_DEG. A single
+        // band-clipping fix opened a *full* traversal of the 10.6 km zone —
+        // entry announcement, junk History record — that then exited seconds
+        // later when the motorway pulled away.
+        val det = ZoneDetector(listOf(TRAKIYA_T10))
+
+        // A neighbouring carriageway: inside the on-road band, running parallel,
+        // but only for less than the confirmation distance.
+        val clip = collectAlongCenterline(
+            det, TRAKIYA_T10,
+            fromArcM = 2_000.0,
+            metres = ZoneDetector.ENTRY_CONFIRM_DISTANCE_M * 0.6,
+            lateralOffsetM = 60.0,
+        )
+        assertTrue(
+            clip.all { it is ZoneState.Outside },
+            "A road clipping the band for less than ENTRY_CONFIRM_DISTANCE_M must " +
+                "never open a traversal, got ${clip.firstOrNull { it !is ZoneState.Outside }}",
+        )
+
+        // …and once it peels away the detector is still Outside, with nothing to
+        // exit from (no phantom Exiting, so no History record / exit announcement).
+        val awayTime = EPOCH_BASE + 60_000L
+        val away = det.update(GpsPoint(42.6, 23.9, 130.0, awayTime, 180.0))
+        assertTrue(away is ZoneState.Outside, "Peeling away must stay Outside, got $away")
+    }
+
+    @Test
+    fun `sustained travel along the zone still enters, back-dated to the first fix`() {
+        // The other half of the guard above: a car genuinely on the road must
+        // still enter, and must not be charged for the confirmation window —
+        // the traversal is back-dated to the first confirming fix, so the
+        // average covers the whole drive.
+        val det = ZoneDetector(listOf(TRAKIYA_T10))
+        // Start on the approach road, before the entry camera: the traversal is
+        // only measurable if we watched the start line being crossed.
+        val states = collectAlongCenterline(
+            det, TRAKIYA_T10,
+            fromArcM = -200.0,
+            metres = ZoneDetector.ENTRY_CONFIRM_DISTANCE_M * 2 + 200.0,
+        )
+        val entered = states.filterIsInstance<ZoneState.InZone>().firstOrNull()
+        assertTrue(entered != null, "Sustained travel along the centerline must enter the zone")
+
+        // Back-dating means the recorded entry is the first fix that *matched* the
+        // zone (a couple of fixes into the approach, once we are inside the
+        // on-road band), not the much later fix at which confirmation completed.
+        val stepMs = (36.0 / (130.0 / 3.6) * 1000.0).toLong()
+        val flipTime = EPOCH_BASE + states.indexOfFirst { it is ZoneState.InZone } * stepMs
+        val backDatedByMs = flipTime - entered!!.entryTime
+        val confirmMs = (ZoneDetector.ENTRY_CONFIRM_DISTANCE_M / (130.0 / 3.6) * 1000.0).toLong()
+        assertTrue(backDatedByMs >= confirmMs * 0.8,
+            "Traversal must be back-dated across the confirmation window — expected " +
+                "at least ${(confirmMs * 0.8).toLong()}ms, got ${backDatedByMs}ms")
+        assertTrue(entered.distanceTraveled >= ZoneDetector.ENTRY_CONFIRM_DISTANCE_M * 0.8,
+            "Back-dated entry must carry the ground covered during confirmation, " +
+                "got ${entered.distanceTraveled}")
+    }
+
+    @Test
+    fun `co-located camera hands over to the next zone immediately`() {
+        // At a co-located pair (24 in the data) one camera ends zone A and
+        // begins zone B, so there is no room to re-confirm B — and no need:
+        // driving A to its end IS the evidence. B must open on the very next
+        // fix, keeping the InZone(A) -> Exiting(A) -> InZone(B) handover the
+        // TTS layer relies on for the chained exit/entry announcement.
+        val zoneA = TRAKIYA_T10
+        val zoneB = nextZoneFrom(zoneA, id = "trakiya-02-west", lengthM = 6_000.0)
+        val det = ZoneDetector(listOf(zoneA, zoneB))
+
+        // Drive the whole of A, from before its entry camera up to the shared one.
+        // Starting mid-zone would make A Unmeasured, and an Unmeasured zone never
+        // reaches exitZone, so it never offers the handover this test is about.
+        val stepM = 36.0
+        val speed = 130.0
+        val stepMs = (stepM / (speed / 3.6) * 1000.0).toLong()
+        val total = polylineLengthMeters(zoneA.centerline)
+        val statesA = collectAlongCenterline(
+            det, zoneA, fromArcM = -200.0, metres = total + 200.0,
+            speedKmh = speed, stepM = stepM,
+        )
+        assertTrue(statesA.any { it is ZoneState.InZone && it.zone.id == zoneA.id },
+            "Should have driven zone A")
+        assertTrue(statesA.any { it is ZoneState.Exiting }, "Should have exited zone A at its end")
+
+        // …then straight on into B, which starts at that same camera.
+        val statesB = collectAlongCenterline(
+            det, zoneB, fromArcM = 0.0, metres = ZoneDetector.ENTRY_CONFIRM_DISTANCE_M,
+            speedKmh = speed, stepM = stepM,
+            startTime = EPOCH_BASE + statesA.size * stepMs,
+        )
+        val enterBIdx = statesB.indexOfFirst { it is ZoneState.InZone && it.zone.id == zoneB.id }
+        assertTrue(enterBIdx >= 0, "Co-located zone B must open after A's exit, got $statesB")
+
+        // The bypass is the point: B opens well inside the distance a normal
+        // confirmation would have cost, so the driver gets the new limit at the
+        // camera rather than a few hundred metres past it.
+        val handoverM = enterBIdx * stepM
+        assertTrue(
+            handoverM < ZoneDetector.ENTRY_CONFIRM_DISTANCE_M * 0.5,
+            "Co-located handover took ${handoverM.toInt()} m — no better than the " +
+                "normal ${ZoneDetector.ENTRY_CONFIRM_DISTANCE_M.toInt()} m confirmation",
+        )
+    }
+
+    @Test
+    fun `GPS dropout does not deflate the reported average`() {
+        // Regression for the "24 km/h" History record (real drive, 2026-07-26):
+        // the integrator skipped the dropout gap while elapsed time kept
+        // counting it, so ~6 s of credited distance divided by 21 s of elapsed
+        // turned an ~87 km/h drive into a reported 24 km/h. Across a dropout the
+        // distance is now bridged from the centerline projection.
+        val det = ZoneDetector(listOf(TRAKIYA_T10))
+        val speed = 90.0
+        val speedMs = speed / 3.6
+        val stepM = 25.0
+        val stepMs = (stepM / speedMs * 1000.0).toLong()
+        // Approach from before the entry camera so the traversal is measurable at
+        // all (see START_WITNESS_ARC_M) — the dropout behaviour under test only
+        // exists inside a measured traversal.
+        val startArc = -200.0
+        val drivenM = ZoneDetector.ENTRY_CONFIRM_DISTANCE_M * 1.5 + 200.0
+
+        val states = collectAlongCenterline(
+            det, TRAKIYA_T10,
+            fromArcM = startArc, metres = drivenM,
+            speedKmh = speed, stepM = stepM,
+        )
+        assertTrue(states.last() is ZoneState.InZone, "Should be in the zone before the dropout")
+        val lastArc = startArc + (states.size - 1) * stepM
+        val lastTime = EPOCH_BASE + (states.size - 1) * stepMs
+
+        // 15 s of silence, during which the car covers 375 m of road at the same
+        // steady speed.
+        val dropoutMs = 15_000L
+        val resumeArc = lastArc + speedMs * (dropoutMs / 1000.0)
+        val resumeAt = pointAtArcLength(TRAKIYA_T10.centerline, resumeArc)
+        val resumed = det.update(
+            GpsPoint(
+                lat = resumeAt[0], lng = resumeAt[1], speed = speed,
+                timestamp = lastTime + dropoutMs,
+                bearing = localPolylineBearing(
+                    TRAKIYA_T10.centerline, resumeArc, RoadMatcher.LOCAL_BEARING_WINDOW_M,
+                )!!,
+            ),
+        ) as ZoneState.InZone
+
+        val avg = resumed.speedStatus.avgSpeed!!
+        assertTrue(avg > speed * 0.85,
+            "A GPS dropout must not deflate the average — driving a steady $speed km/h " +
+                "through a ${dropoutMs}ms gap reported $avg km/h")
     }
 
     @Test

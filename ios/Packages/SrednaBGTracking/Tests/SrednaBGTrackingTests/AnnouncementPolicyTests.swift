@@ -62,21 +62,25 @@ struct AnnouncementPolicyTests {
         lastVerified: "2026-04-12"
     )
 
+    private func unmeasured(_ zone: Zone = AnnouncementPolicyTests.zone) -> ZoneState {
+        .unmeasured(.init(zone: zone, distanceRemaining: 5_000))
+    }
+
     private func exitingZone(_ zone: Zone) -> ZoneState {
         .exiting(.init(zone: zone, finalAvgSpeed: 130))
     }
 
-    private func inZone(_ zone: Zone) -> ZoneState {
+    private func inZone(_ zone: Zone, over: Bool = false, avgSpeed: Double? = 130) -> ZoneState {
         .inZone(.init(
             zone: zone,
             entryTime: 0,
             distanceTraveled: 0,
             speedStatus: SpeedStatus(
-                avgSpeed: 130,
+                avgSpeed: avgSpeed,
                 maxSpeedForRemainder: 140,
                 distanceRemaining: 0,
                 timeRemaining: 0,
-                isOverLimit: false
+                isOverLimit: over
             ),
             distanceRemaining: 0
         ))
@@ -143,6 +147,41 @@ struct AnnouncementPolicyTests {
             prev: .outside, new: inZone(over: false), vehicle: .truck
         ))
         #expect(d.event == .entry(road: "АМ Тракия", limit: 90))
+    }
+
+    @Test
+    func entryAlreadyOverLimitWarnsImmediately() {
+        // Entry is confirmed over ZoneDetector.entryConfirmDistanceM and then
+        // back-dated to the first confirming fix, so a traversal can open with a
+        // few hundred metres of speeding already banked. The (.inZone, .inZone)
+        // branch only fires on a false→true flip, so without a follow-up here
+        // the driver who is already over gets no warning at all.
+        // Regression: qa/scenarios/edge/vehicle_type_limit_badge.py.
+        let d = AnnouncementPolicy.decide(inputs(
+            prev: .outside, new: inZone(over: true, avgSpeed: 100), vehicle: .truck
+        ))
+        #expect(d.event == .entry(road: "АМ Тракия", limit: 90))
+        #expect(d.followUp == .overLimit(avgSpeedKmh: 100))
+        #expect(d.clockUpdate == .markEntryAndAnnouncement)
+    }
+
+    @Test
+    func entryWithinLimitHasNoFollowUp() {
+        let d = AnnouncementPolicy.decide(inputs(
+            prev: .outside, new: inZone(over: false), vehicle: .car
+        ))
+        #expect(d.followUp == nil)
+    }
+
+    @Test
+    func coLocatedEntryAlreadyOverLimitWarnsImmediately() {
+        // Same reasoning at a co-located camera: zone B's traversal also opens
+        // back-dated, so it too can start over the limit.
+        let d = AnnouncementPolicy.decide(inputs(
+            prev: exitingZone(Self.zone), new: inZone(Self.zoneB, over: true, avgSpeed: 130)
+        ))
+        #expect(d.event == .entry(road: "АМ Тракия (Б)", limit: 120))
+        #expect(d.followUp == .overLimit(avgSpeedKmh: 130))
     }
 
     @Test
@@ -266,6 +305,53 @@ struct AnnouncementPolicyTests {
         ))
         #expect(d.event == .entry(road: "АМ Тракия (Б)", limit: 120))
         #expect(d.clockUpdate == .markEntryAndAnnouncement)
+    }
+
+    @Test
+    func everyUnmeasuredTransitionIsSilent() {
+        // Pins the decision the guard above the pair switch encodes: we never saw
+        // the entry camera, so there is no entry to announce, no average to warn
+        // about and no exit to sum up. Driven at 100 km/h — well over
+        // minAnnounceSpeedKmh — so the silence is the *policy's*, not the speed
+        // gate's, and stays meaningful if the two ever swap places.
+        //
+        // No pair below matches a `case` in `decide` today, so removing the guard
+        // would still land on `default`. That is exactly what this locks: the day
+        // someone adds a branch that could claim one of these pairs (an
+        // `(.exiting, _)` catch-all, a `(_, .outside)` recap), it fails here
+        // rather than in a drive.
+        //
+        // Android peer: `AudioAlertSilenceTest`. The split is deliberate — the
+        // two platforms put the gate at different layers, so each test sits where
+        // its platform's decision is actually made. Android's gate is a boolean
+        // inside `AudioAlertManager`'s `when`, so it asserts *"is this pair
+        // silent?"*; here the gate is in this pure policy, so we can assert the
+        // stronger *"is the whole decision empty — no event AND no clock
+        // update?"*. Change both together.
+        let pairs: [(String, ZoneState, ZoneState)] = [
+            ("Outside → Unmeasured", .outside, unmeasured()),
+            ("Unmeasured → Unmeasured", unmeasured(), unmeasured()),
+            ("Unmeasured → Outside", unmeasured(), .outside),
+            ("Unmeasured → InZone", unmeasured(), inZone(over: true, avgSpeed: 152)),
+            ("InZone → Unmeasured", inZone(over: true, avgSpeed: 152), unmeasured()),
+            ("Exiting → Unmeasured", exiting(finalAvg: 132), unmeasured()),
+            ("Unmeasured → Exiting", unmeasured(), exiting(finalAvg: 132)),
+            ("Unmeasured(A) → Unmeasured(B)", unmeasured(), unmeasured(Self.zoneB))
+        ]
+        for (label, prev, new) in pairs {
+            // Every clock/periodic input set to the values that would make a
+            // measured pair *most* likely to speak: periodic on, 60 s since the
+            // last line, entry long past the transient-exit window.
+            let d = AnnouncementPolicy.decide(inputs(
+                prev: prev, new: new,
+                periodic: true, onlyOver: false,
+                lastEntry: Date(timeIntervalSince1970: 1_000_000 - 300),
+                lastAnn: Date(timeIntervalSince1970: 1_000_000 - 60)
+            ))
+            #expect(d.event == nil, "\(label) must be silent, got \(String(describing: d.event))")
+            #expect(d.followUp == nil, "\(label) must have no follow-up")
+            #expect(d.clockUpdate == .none, "\(label) must not touch the announcement clocks")
+        }
     }
 
     @Test

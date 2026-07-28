@@ -25,7 +25,8 @@ struct CarPlaySpeedOverlayModelTests {
         zoneCompleteTitle: "COMPLETE",
         trackingOutsideTitle: "OUTSIDE",
         notTrackingTitle: "OFF",
-        tapToStartHint: "TAP"
+        tapToStartHint: "TAP",
+        notMeasuredTitle: "NOT MEASURED"
     )
 
     private static func fixtureZone() -> Zone {

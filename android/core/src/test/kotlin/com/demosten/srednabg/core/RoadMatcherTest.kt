@@ -45,26 +45,66 @@ class RoadMatcherTest {
         assertFalse(RoadMatcher.isOnRoad(point, TRAKIYA_T10))
     }
 
+    // A point sitting on the Trakiya centerline, plus the road's *local* heading
+    // there — what matchDirection now compares against (not the zone's
+    // end-to-end bearing).
+    private val onRoadLat = 42.480
+    private val onRoadLng = 23.800
+
+    private fun localBearing(zone: Zone, lat: Double = onRoadLat, lng: Double = onRoadLng): Double =
+        localPolylineBearing(
+            zone.centerline,
+            arcLengthOnPolyline(lat, lng, zone.centerline),
+            RoadMatcher.LOCAL_BEARING_WINDOW_M,
+        )!!
+
+    private fun fixHeading(bearing: Double, lat: Double = onRoadLat, lng: Double = onRoadLng) =
+        GpsPoint(lat = lat, lng = lng, speed = 130.0, timestamp = EPOCH_BASE, bearing = bearing)
+
     @Test
     fun `matchDirection accepts correct direction`() {
-        // Trakiya t10 polyline bearing is ~310-320 degrees (NW)
-        val polyBearing = polylineBearing(TRAKIYA_T10.centerline)
-        assertTrue(RoadMatcher.matchDirection(polyBearing, TRAKIYA_T10))
+        assertTrue(RoadMatcher.matchDirection(fixHeading(localBearing(TRAKIYA_T10)), TRAKIYA_T10))
     }
 
     @Test
     fun `matchDirection rejects opposite direction`() {
-        // Opposite of NW (~310) is SE (~130)
-        val polyBearing = polylineBearing(TRAKIYA_T10.centerline)
-        val opposite = (polyBearing + 180) % 360
-        assertFalse(RoadMatcher.matchDirection(opposite, TRAKIYA_T10))
+        val opposite = (localBearing(TRAKIYA_T10) + 180) % 360
+        assertFalse(RoadMatcher.matchDirection(fixHeading(opposite), TRAKIYA_T10))
     }
 
     @Test
     fun `matchDirection accepts within tolerance`() {
-        val polyBearing = polylineBearing(TRAKIYA_T10.centerline)
         // 40 degrees off should still be within 45 tolerance
-        assertTrue(RoadMatcher.matchDirection(polyBearing + 40, TRAKIYA_T10))
+        assertTrue(RoadMatcher.matchDirection(fixHeading(localBearing(TRAKIYA_T10) + 40), TRAKIYA_T10))
+    }
+
+    @Test
+    fun `matchDirection uses the local heading, not the zone's end-to-end bearing`() {
+        // The regression behind the phantom I-1 traversal: a course that sits
+        // inside the tolerance of the zone's *end-to-end* bearing while running
+        // across the road locally used to match. An L-shaped zone makes the two
+        // readings disagree by construction — 2 km east, then 2 km north, so the
+        // whole-line bearing is ~45° while the first leg runs due east.
+        val corner = 42.0
+        val lShaped = TRAKIYA_T10.copy(
+            centerline = listOf(
+                listOf(corner, 23.000),
+                listOf(corner, 23.024),          // ~2 km east
+                listOf(corner + 0.018, 23.024),  // ~2 km north
+            ),
+        )
+        val overall = polylineBearing(lShaped.centerline)
+        assertEquals(45.0, overall, 5.0)
+
+        // A fix halfway along the eastbound leg, heading 30° — 15° off the zone's
+        // end-to-end bearing (the old test would pass it) but 60° off the road it
+        // is actually sitting on.
+        val onEastLeg = fixHeading(30.0, lat = corner, lng = 23.012)
+        assertEquals(90.0, localBearing(lShaped, corner, 23.012), 5.0)
+        assertFalse(RoadMatcher.matchDirection(onEastLeg, lShaped))
+
+        // …while a fix genuinely heading east there still matches.
+        assertTrue(RoadMatcher.matchDirection(fixHeading(90.0, lat = corner, lng = 23.012), lShaped))
     }
 
     @Test
@@ -76,7 +116,7 @@ class RoadMatcherTest {
             direction = "northeast",
             centerline = listOf(listOf(42.427, 23.855)),
         )
-        assertFalse(RoadMatcher.matchDirection(310.0, degenerate))
+        assertFalse(RoadMatcher.matchDirection(fixHeading(310.0), degenerate))
     }
 
     @Test

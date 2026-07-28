@@ -119,6 +119,10 @@ final class CarPlaySceneCoordinator {
             activeZoneId = nil
         case .inZone(let inZone):
             activeZoneId = inZone.zone.id
+        // Highlighted like any other in-zone state — we know which zone it is,
+        // just not how fast we crossed it.
+        case .unmeasured(let unmeasured):
+            activeZoneId = unmeasured.zone.id
         case .exiting(let exiting):
             activeZoneId = exiting.zone.id
         }
@@ -202,7 +206,11 @@ final class CarPlaySceneCoordinator {
 
     private func updateNavigationSession(for state: ZoneState) {
         switch state {
-        case .outside:
+        // `.unmeasured` runs no navigation session, for the same reason it shows
+        // no average: a CarPlay trip card publishes a distance *and an ETA*, and
+        // without a measured traversal any ETA we produced would be guidance we
+        // have explicitly declined to give. Treated exactly like `.outside`.
+        case .outside, .unmeasured:
             if navigationSession != nil {
                 navigationSession?.cancelTrip()
                 navigationSession = nil

@@ -72,6 +72,7 @@ import com.demosten.srednabg.app.ui.util.orDash
 import com.demosten.srednabg.app.ui.components.exitVerdictOverLimit
 import com.demosten.srednabg.app.ui.viewmodel.HomeViewModel
 import com.demosten.srednabg.core.VehicleType
+import com.demosten.srednabg.core.ZONE_COLOR_NEUTRAL
 import com.demosten.srednabg.core.ZoneState
 import java.util.Locale
 
@@ -222,23 +223,34 @@ private fun StateContent(
     onRequestNotification: () -> Unit,
     onRequestBatteryOptOut: () -> Unit,
 ) {
-    when {
-        // Active tracking always wins — never gate the live display on
-        // permission state changes mid-trip.
-        isTracking && zoneState is ZoneState.InZone ->
-            InZoneCard(modifier, zoneState, currentSpeedKmh, vehicleType, debugMaxSpeedOverride)
-        isTracking && zoneState is ZoneState.Exiting ->
-            ExitingCard(modifier, zoneState, currentSpeedKmh, vehicleType)
-        isTracking ->
-            OutsideCard(modifier, currentSpeedKmh, zoneCount)
-        !permissionState.canStartTracking ->
-            PermissionCard(modifier, permissionState, onOpenAppSettings)
-        !permissionState.notificationGranted ->
-            NotificationCard(modifier, onRequestNotification, onOpenAppSettings)
-        !permissionState.ignoringBatteryOptimizations ->
-            BatteryOptimizationCard(modifier, onRequestBatteryOptOut)
-        else ->
-            NotTrackingCard(modifier)
+    // Active tracking always wins — never gate the live display on permission
+    // state changes mid-trip. Structured as `if (isTracking) when (zoneState)`
+    // rather than one flat `when` of `isTracking && zoneState is …` guards so the
+    // state arm is **exhaustive over the sealed ZoneState**: a fifth state, or a
+    // deleted branch, is a compile error instead of a zone silently rendering the
+    // idle "monitoring zones" card while the driver is inside it.
+    if (isTracking) {
+        when (zoneState) {
+            is ZoneState.InZone ->
+                InZoneCard(modifier, zoneState, currentSpeedKmh, vehicleType, debugMaxSpeedOverride)
+            is ZoneState.Exiting ->
+                ExitingCard(modifier, zoneState, currentSpeedKmh, vehicleType)
+            is ZoneState.Unmeasured ->
+                UnmeasuredCard(modifier, zoneState, currentSpeedKmh, vehicleType)
+            is ZoneState.Outside ->
+                OutsideCard(modifier, currentSpeedKmh, zoneCount)
+        }
+    } else {
+        when {
+            !permissionState.canStartTracking ->
+                PermissionCard(modifier, permissionState, onOpenAppSettings)
+            !permissionState.notificationGranted ->
+                NotificationCard(modifier, onRequestNotification, onOpenAppSettings)
+            !permissionState.ignoringBatteryOptimizations ->
+                BatteryOptimizationCard(modifier, onRequestBatteryOptOut)
+            else ->
+                NotTrackingCard(modifier)
+        }
     }
 }
 
@@ -594,6 +606,96 @@ private fun InZoneCard(
                 text = statusText,
                 style = MaterialTheme.typography.titleMedium,
                 color = statusColor,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+/**
+ * Inside an average-speed zone whose entry we never saw. Shows the road's own
+ * facts — which zone, its limit, how much is left — plus the live speed, and
+ * deliberately nothing else: no average, no max-for-remainder, no elapsed time.
+ * Those are the "help" we cannot honestly give here, and the neutral colouring
+ * says so, because green/amber/red is a verdict on the driver.
+ *
+ * See ZoneDetector.START_WITNESS_ARC_M.
+ */
+@Composable
+private fun UnmeasuredCard(
+    modifier: Modifier,
+    state: ZoneState.Unmeasured,
+    currentSpeedKmh: Double?,
+    vehicleType: VehicleType,
+) {
+    val limit = vehicleType.limit(state.zone.speedLimits)
+    val neutral = Color(ZONE_COLOR_NEUTRAL)
+    val semanticDescription = stringResource(
+        R.string.accessibility_unmeasured,
+        state.zone.road,
+        limit,
+    )
+
+    Card(
+        modifier = modifier.clearAndSetSemantics { contentDescription = semanticDescription },
+        colors = CardDefaults.cardColors(containerColor = neutral.copy(alpha = 0.15f)),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(24.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.status_in_zone, state.zone.road),
+                style = MaterialTheme.typography.titleMedium,
+            )
+
+            // The hero slot is the live speed, not an average: it is the one
+            // number we can still state truthfully.
+            Box(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = currentSpeedKmh.orDash(),
+                        fontSize = HeroSpeedFontSize,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        text = stringResource(R.string.current_speed_label),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = stringResource(R.string.status_unmeasured_reason),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                InfoItem(
+                    label = stringResource(R.string.speed_limit),
+                    value = "$limit",
+                )
+                InfoItem(
+                    label = stringResource(R.string.remaining),
+                    value = String.format(Locale.US, "%.1f km", state.distanceRemaining / 1000.0),
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = stringResource(R.string.status_unmeasured),
+                style = MaterialTheme.typography.titleMedium,
+                color = neutral,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.fillMaxWidth(),
             )

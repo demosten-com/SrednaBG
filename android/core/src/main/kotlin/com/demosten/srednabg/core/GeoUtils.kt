@@ -146,13 +146,27 @@ fun polylineLengthMeters(polyline: List<List<Double>>): Double {
 }
 
 /**
- * Arc length (metres) from the polyline start to the projection of (lat, lng)
- * onto the polyline — i.e. how far along the line the point sits. Returns a
- * scalar; contrast [projectPointOntoPolyline], which returns the projected
- * point's coordinates/bearing/offset as a [PolylineProjection].
+ * Where a point sits relative to a polyline: how far along it the projection
+ * falls ([arcLengthM]) and how far off the line the point is
+ * ([distanceFromLineM]).
+ *
+ * Both numbers come out of the same walk of the segments. The zone hot path
+ * needs both for every candidate zone on every fix (the on-road band test, the
+ * nearest-zone tie-break, the local-heading test, and the remaining distance),
+ * and computing them separately walked all 72 centerlines three times per fix.
  */
-fun arcLengthOnPolyline(lat: Double, lng: Double, polyline: List<List<Double>>): Double {
-    if (polyline.size < 2) return 0.0
+data class PolylinePosition(
+    val arcLengthM: Double,
+    val distanceFromLineM: Double,
+)
+
+/**
+ * Project (lat, lng) onto [polyline] and report both the arc length to the
+ * projection and the offset from the line. Null when the polyline has no
+ * segment to project onto.
+ */
+fun positionOnPolyline(lat: Double, lng: Double, polyline: List<List<Double>>): PolylinePosition? {
+    if (polyline.size < 2) return null
 
     var bestDist = Double.MAX_VALUE
     var bestCumulative = 0.0
@@ -174,7 +188,81 @@ fun arcLengthOnPolyline(lat: Double, lng: Double, polyline: List<List<Double>>):
 
         cumulative += segLen
     }
-    return bestCumulative
+    return PolylinePosition(bestCumulative, bestDist)
+}
+
+/**
+ * Arc length (metres) from the polyline start to the projection of (lat, lng)
+ * onto the polyline — i.e. how far along the line the point sits. Returns a
+ * scalar; contrast [projectPointOntoPolyline], which returns the projected
+ * point's coordinates/bearing/offset as a [PolylineProjection].
+ */
+fun arcLengthOnPolyline(lat: Double, lng: Double, polyline: List<List<Double>>): Double =
+    positionOnPolyline(lat, lng, polyline)?.arcLengthM ?: 0.0
+
+/** The point sitting [arcLengthM] along [polyline], clamped to its two ends. */
+fun pointAtArcLength(polyline: List<List<Double>>, arcLengthM: Double): List<Double> {
+    if (polyline.isEmpty()) return emptyList()
+    if (polyline.size == 1 || arcLengthM <= 0.0) return polyline.first()
+
+    var remaining = arcLengthM
+    for (i in 0 until polyline.size - 1) {
+        val segLen = haversineDistance(
+            polyline[i][0], polyline[i][1],
+            polyline[i + 1][0], polyline[i + 1][1],
+        )
+        if (remaining <= segLen) {
+            val t = if (segLen <= 0.0) 0.0 else remaining / segLen
+            return listOf(
+                polyline[i][0] + t * (polyline[i + 1][0] - polyline[i][0]),
+                polyline[i][1] + t * (polyline[i + 1][1] - polyline[i][1]),
+            )
+        }
+        remaining -= segLen
+    }
+    return polyline.last()
+}
+
+/**
+ * The polyline's heading *in the neighbourhood of* [arcLengthM] — the bearing
+ * from the point [windowM] back along the line to the point [windowM] ahead of
+ * it, clamped at the ends.
+ *
+ * Contrast [polylineBearing], which is the single first→last bearing of the
+ * whole line. On a 10–25 km zone that whole-line bearing says almost nothing
+ * about which way the road actually runs at a given place: it let a fix whose
+ * course was 45° off the *local* road pass the direction test purely because it
+ * happened to align with the zone end-to-end (see [PolylinePosition] callers in
+ * RoadMatcher).
+ *
+ * Reading it over a window rather than off the nearest single segment also makes
+ * it immune to short backwards jogs in the stored geometry — 31 of the 72 zones
+ * have a first segment pointing >90° away from the zone's overall direction
+ * (jogs of 6–122 m), which a bare nearest-segment bearing would read as "driving
+ * the wrong way" and reject at the zone start.
+ */
+fun localPolylineBearing(
+    polyline: List<List<Double>>,
+    arcLengthM: Double,
+    windowM: Double,
+): Double? {
+    if (polyline.size < 2) return null
+    val total = polylineLengthMeters(polyline)
+    if (total <= 0.0) return null
+
+    // Keep the window a full 2 * windowM wide wherever the line is long enough,
+    // sliding it inward at the ends rather than letting it collapse (a bearing
+    // read across a few metres at the very start is pure vertex noise).
+    val span = minOf(2 * windowM, total)
+    val from = (arcLengthM - windowM).coerceIn(0.0, total - span)
+    val to = from + span
+
+    // pointAtArcLength returns an empty list only for an empty polyline, which
+    // the size guard above already rules out — but it is the caller's job to say
+    // so, not to index into whatever comes back.
+    val a = pointAtArcLength(polyline, from).takeIf { it.size >= 2 } ?: return null
+    val b = pointAtArcLength(polyline, to).takeIf { it.size >= 2 } ?: return null
+    return bearingBetween(a[0], a[1], b[0], b[1])
 }
 
 fun bearingBetween(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {

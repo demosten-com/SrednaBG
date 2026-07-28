@@ -253,6 +253,29 @@ def evaluate(zone_id, seq):
     summary = " ".join(f"{s}:{z}" if z else s for s, z in path) or "(no states)"
 
     if total == 0:
+        # Distinguish "matched nothing" from "matched but judged unmeasurable".
+        # Every drive here starts ~120 m before the zone start, so the entry IS
+        # witnessed and must open a measured traversal. Unmeasured instead means
+        # the first matching fix projected past START_WITNESS_ARC_M — i.e. the
+        # threshold is too tight for this zone's stored geometry (the zones whose
+        # centerline opens with a backwards jog are the ones to check: ISSUE-001,
+        # worst measured 121 m at i3-02-north).
+        unmeasured = {z for s, z in seq if s == "Unmeasured" and z}
+        if unmeasured:
+            # Two causes produce this, and the state log alone can't tell them
+            # apart — name both rather than assert the tuning one. Get the arc
+            # itself from `qa/feed-zone.sh <zone> --keep-online` and read the
+            # first-match projection off the device log before touching the
+            # constant.
+            return False, [
+                f"only ever Unmeasured ({', '.join(sorted(unmeasured))}) — the "
+                f"approach was not credited as witnessing the entry camera. "
+                f"Either START_WITNESS_ARC_M is too tight for this zone's stored "
+                f"geometry, or that geometry is wrong (an ISSUE-001 start jog "
+                f"longer than the constant, or a centerline that does not reach "
+                f"its own start endpoint). Check the first-match arc before "
+                f"changing the constant"
+            ], summary
         return False, ["never entered any zone"], summary
 
     dominant, dom_n = counts.most_common(1)[0]

@@ -18,7 +18,7 @@ Namecheap **addon domain**, served from `$HOME/srednabg_com/` on the cPanel host
 | `$HOME/srednabg_com/assets/...` | `web/html/assets/...` | CSS, JS, i18n JSON, screenshots. |
 | `$HOME/srednabg_com/.htaccess` | `web/html/.htaccess` | Force HTTPS, dotfile blocks, HSTS, gzip, expires, /api/* rewrites. |
 | `$HOME/srednabg_com/api/zones.json` | (produced by cron) | Live zone data. Not committed. |
-| `$HOME/srednabg_com/api/version.json` | (produced by cron) | Hash-gated app sync. Not committed. |
+| `$HOME/srednabg_com/api/version.json` | (produced by cron) | Hash-gated app sync. Not committed. `map_hash` stays `null` until this host serves a map bundle — see `scrapers/CLAUDE.md`. |
 | `$HOME/srednabg_com/api/zones-<ts>.json` | (produced by cron) | Snapshot per change, 26 retained. |
 
 The `/api/*` tree is **not in git** — it's produced by the scraper cron on the same host. See `scrapers/CLAUDE.md` "Hosted deployment (Namecheap)".

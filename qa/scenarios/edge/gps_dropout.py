@@ -5,9 +5,13 @@
 
 """GPS dropout: 15-second gap mid-zone. Detector should not phantom-exit.
 
-Models a tunnel or signal blackout. The ZoneDetector explicitly handles
-gaps >10s by NOT accumulating distance for the gap (LocationTrackingService
-adaptive interval is irrelevant — we just stop pushing fixes).
+Models a tunnel or signal blackout. A gap >10s (`GPS_DROPOUT_MS`) has no speed
+samples to integrate, so the ZoneDetector bridges the distance from the
+centerline projection instead — the car demonstrably covered that arc. It used
+to drop the gap's distance outright, which left elapsed time counting ground the
+average never got credit for and deflated the reported average (see ISSUE-012).
+LocationTrackingService's adaptive interval is irrelevant here — we just stop
+pushing fixes.
 """
 
 from __future__ import annotations

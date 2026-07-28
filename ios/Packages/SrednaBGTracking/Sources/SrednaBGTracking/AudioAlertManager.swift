@@ -100,10 +100,14 @@ public actor AudioAlertManager {
         }
         guard let event = decision.event else { return }
         let resolvedLang = s.appLanguage.resolvedVoiceLanguage(deviceLanguage: deviceLanguage())
-        let phrase = TtsPhrases.phrase(for: event, language: resolvedLang)
-        // QA harness tripwire: line shape must match `qa/parsers.py` SPEAK_RE.
-        QALog.tts.info("speak: \"\(phrase, privacy: .public)\"")
-        await engine.speak(phrase, language: resolvedLang)
+        // `followUp` (entered already over the limit) rides behind the main
+        // utterance; the engine enqueues rather than clobbers, so order holds.
+        for spoken in [event, decision.followUp].compactMap({ $0 }) {
+            let phrase = TtsPhrases.phrase(for: spoken, language: resolvedLang)
+            // QA harness tripwire: line shape must match `qa/parsers.py` SPEAK_RE.
+            QALog.tts.info("speak: \"\(phrase, privacy: .public)\"")
+            await engine.speak(phrase, language: resolvedLang)
+        }
     }
 
     public func reset() async {

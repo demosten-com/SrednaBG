@@ -6,6 +6,7 @@
 package com.demosten.srednabg.core
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class ZoneStatusColorTest {
@@ -65,5 +66,17 @@ class ZoneStatusColorTest {
         val state = inZone(isOverLimit = false)
         assertEquals(ZONE_COLOR_GREEN, zoneStatusColor(state, currentSpeedKmh = 120.0))
         assertEquals(ZONE_COLOR_YELLOW, zoneStatusColor(state, currentSpeedKmh = 160.0))
+    }
+
+    @Test
+    fun `the neutral colour is outside the traffic light`() {
+        // ZoneState.Unmeasured renders neutral because green / amber / red *is*
+        // the verdict, and there we are explicitly declining to give one. Reusing
+        // any traffic-light value would silently claim knowledge we don't have.
+        val trafficLight = listOf(ZONE_COLOR_GREEN, ZONE_COLOR_YELLOW, ZONE_COLOR_RED)
+        assertTrue(
+            ZONE_COLOR_NEUTRAL !in trafficLight,
+            "Unmeasured must not borrow a verdict colour",
+        )
     }
 }

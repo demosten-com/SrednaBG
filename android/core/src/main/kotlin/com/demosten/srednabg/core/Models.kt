@@ -96,6 +96,33 @@ sealed class ZoneState {
         val avgSpeed: Double? get() = speedStatus.avgSpeed
     }
 
+    /**
+     * Inside a zone whose entry we did not witness, so no measurement is
+     * possible: we cannot know what the entry camera timestamped, and a running
+     * average over the remainder alone matches nothing BG TOLL computes.
+     *
+     * Carries only facts about the road — the zone (and therefore its speed
+     * limit) and the distance left to drive, both true regardless of when we
+     * joined. It deliberately carries **no** timing or averaging fields, and
+     * that is structural rather than a convention: there is no average here to
+     * accidentally render.
+     *
+     * Two invariants consumers may rely on:
+     * - [Exiting] only ever follows [InZone]. An [Unmeasured] zone has no
+     *   traversal to finalize, so leaving one goes straight to [Outside] — no
+     *   History row, no exit announcement, nothing to suppress downstream.
+     * - `Unmeasured -> InZone` is unreachable for the same zone: arc length only
+     *   increases, so a start cannot be witnessed retroactively.
+     *
+     * See ZoneDetector.START_WITNESS_ARC_M.
+     */
+    data class Unmeasured(
+        val zone: Zone,
+        // Polyline arc-length to zone.end from the live GPS position, same
+        // meaning as InZone.distanceRemaining.
+        val distanceRemaining: Double,
+    ) : ZoneState()
+
     data class Exiting(
         val zone: Zone,
         val finalAvgSpeed: Double?,

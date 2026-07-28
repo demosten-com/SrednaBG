@@ -92,7 +92,7 @@ struct CarPlayModuleTests {
         currentSpeedLabel: "", avgSpeedLabel: "", remaining: "",
         speedLimit: "", finalAvgSpeedFormat: "%@",
         zoneCompleteTitle: "", trackingOutsideTitle: "",
-        notTrackingTitle: "", tapToStartHint: ""
+        notTrackingTitle: "", tapToStartHint: "", notMeasuredTitle: ""
     )
 }
 

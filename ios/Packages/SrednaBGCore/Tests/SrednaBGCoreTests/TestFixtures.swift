@@ -122,6 +122,200 @@ let NATIONAL_ROAD_ZONE = Zone(
     lastVerified: "2026-04-12"
 )
 
+/// A zone co-located with `base`: its start sits exactly on `base`'s end and its
+/// centerline runs straight on from there along `base`'s final heading. Models
+/// the back-to-back camera pairs in the real data (24 of them, nearly all with
+/// the two endpoints 0 m apart). Mirrors Kotlin `nextZoneFrom`.
+func nextZoneFrom(_ base: Zone, id: String, lengthM: Double) -> Zone {
+    let cl = base.centerline
+    let heading = bearingBetween(
+        cl[cl.count - 2][0], cl[cl.count - 2][1], cl[cl.count - 1][0], cl[cl.count - 1][1]
+    )
+    let stepM = 100.0
+    let points = (0...Int(lengthM / stepM)).map { i -> [Double] in
+        let d = Double(i) * stepM
+        return [
+            base.end.lat + (d * cos(heading * .pi / 180)) / 111_320.0,
+            base.end.lng + (d * sin(heading * .pi / 180)) /
+                (111_320.0 * cos(base.end.lat * .pi / 180))
+        ]
+    }
+    return Zone(
+        id: id,
+        road: base.road,
+        roadLatin: base.roadLatin,
+        direction: base.direction,
+        description: base.description,
+        start: ZoneEndpoint(lat: base.end.lat, lng: base.end.lng),
+        end: ZoneEndpoint(lat: points[points.count - 1][0], lng: points[points.count - 1][1]),
+        distanceM: Int(lengthM),
+        speedLimits: base.speedLimits,
+        centerline: points,
+        source: base.source,
+        lastVerified: base.lastVerified
+    )
+}
+
+// A straight synthetic road for the ISSUE-001 jog fixture below.
+let jogZoneHeadingDeg = 37.0
+private let jogZoneOriginLat = 42.2
+private let jogZoneOriginLng = 23.1
+
+/// `metres` along `headingDeg` from a lat/lng, as a `[lat, lng]` pair.
+private func offsetMetres(_ lat: Double, _ lng: Double, _ headingDeg: Double, _ metres: Double) -> [Double] {
+    let rad = headingDeg * .pi / 180
+    return [
+        lat + (metres * cos(rad)) / 111_320.0,
+        lng + (metres * sin(rad)) / (111_320.0 * cos(lat * .pi / 180))
+    ]
+}
+
+/// Position for an arc length that may be **negative**, i.e. on the approach
+/// road before the entry camera. Negative arcs extrapolate straight back from
+/// the centerline's first vertex along `heading`, which is what a car driving up
+/// to the camera actually does.
+///
+/// This matters because entry provenance is now decided by the arc position of
+/// the *first* matching fix (`ZoneDetector.startWitnessArcM`): a trace that
+/// simply starts mid-zone is a "joined late" drive and is deliberately
+/// unmeasured, so any test that means "a car genuinely driving this zone" has to
+/// begin before arc 0. Mirrors Kotlin `pointOnApproach`.
+///
+/// Not private: it is load-bearing enough for the entry-provenance suite to
+/// deserve its own assertions (see `TestFixturesTests`), rather than only being
+/// exercised indirectly through `collectAlongCenterline`.
+func pointOnApproach(_ zone: Zone, _ arc: Double, _ heading: Double) -> [Double] {
+    if arc >= 0 { return pointAtArcLength(zone.centerline, arc) }
+    let v0 = zone.centerline[0]
+    let back = (heading + 180).truncatingRemainder(dividingBy: 360) * .pi / 180
+    return [
+        v0[0] + (-arc * cos(back)) / 111_320.0,
+        v0[1] + (-arc * sin(back)) / (111_320.0 * cos(v0[0] * .pi / 180))
+    ]
+}
+
+/// A zone whose stored centerline opens with a segment running ~180 degrees
+/// *against* the road: `centerline[0]` is the entry camera, `centerline[1]` sits
+/// `jogM` metres **behind** it, and only then does the geometry run forward.
+///
+/// This is ISSUE-001 as it appears in the shipped data — i3-02-north (121 m jog),
+/// i6-01-east (80 m) and trakiya-03-east (77 m). It matters here because a car
+/// approaching the camera projects onto that backwards leg, so the arc position
+/// of its *first* matching fix is the jog length rather than ~0. Measured across
+/// all 72 bundled zones, the worst such value is 121 m at the 2 s near-zone
+/// cadence and 148 m at the 5 s cold-start cadence — which is why
+/// `ZoneDetector.startWitnessArcM` is 200 m and not the 100 m first proposed.
+///
+/// A national road (not "АМ …"), so it gets the stricter 100 m on-road band.
+/// Mirrors Kotlin `jogStartZone`.
+func jogStartZone(
+    id: String = "jog-start-test",
+    jogM: Double = 121.0,
+    lengthM: Double = 8_000.0
+) -> Zone {
+    let origin = [jogZoneOriginLat, jogZoneOriginLng]
+    let end = offsetMetres(origin[0], origin[1], jogZoneHeadingDeg, lengthM)
+    let stepM = 100.0
+    // centerline[0] is the camera; centerline[1] is jogM behind it; from there the
+    // geometry runs forward, back past the camera and on to the zone end. The
+    // final step is clamped to lengthM so the last vertex lands exactly on `end`
+    // — a bare floor() count stops up to stepM short, leaving centerline.last()
+    // and zone.end disagreeing by tens of metres. Mirrors Kotlin.
+    let steps = Int(((jogM + lengthM) / stepM).rounded(.up))
+    let forward = (1...steps).map { i -> [Double] in
+        offsetMetres(origin[0], origin[1], jogZoneHeadingDeg, min(-jogM + Double(i) * stepM, lengthM))
+    }
+    return Zone(
+        id: id,
+        road: "Път I-3",
+        roadLatin: "I-3",
+        direction: "north",
+        description: "ISSUE-001 backwards start jog",
+        start: ZoneEndpoint(lat: origin[0], lng: origin[1]),
+        end: ZoneEndpoint(lat: end[0], lng: end[1]),
+        distanceM: Int(lengthM),
+        speedLimits: SpeedLimits(car: 90, truck: 80, bus: 80, motorcycle: 90),
+        centerline: [origin, offsetMetres(origin[0], origin[1], jogZoneHeadingDeg, -jogM)] + forward,
+        source: "test",
+        lastVerified: "2026-07-28"
+    )
+}
+
+/// Fixes along the straight *physical* road of `jogStartZone`, from `fromM` to
+/// `toM` metres relative to the entry camera (negative = still approaching).
+///
+/// The shared `collectAlongCenterline` cannot be used here: it derives its
+/// heading from the stored geometry, which for this zone points backwards near
+/// arc 0 — the whole point of the fixture. Mirrors Kotlin `jogStartRoadTrace`.
+func jogStartRoadTrace(
+    fromM: Double,
+    toM: Double,
+    stepM: Double = 36.0,
+    speedKmh: Double = 90.0,
+    startTime: Int64 = epochBase
+) -> [GpsPoint] {
+    let stepMs = max(Int64(stepM / (speedKmh / 3.6) * 1000.0), 1)
+    var points: [GpsPoint] = []
+    var d = fromM
+    var i: Int64 = 0
+    while d <= toM {
+        let at = offsetMetres(jogZoneOriginLat, jogZoneOriginLng, jogZoneHeadingDeg, d)
+        points.append(GpsPoint(
+            lat: at[0], lng: at[1], speed: speedKmh,
+            timestamp: startTime + i * stepMs, bearing: jogZoneHeadingDeg
+        ))
+        d += stepM
+        i += 1
+    }
+    return points
+}
+
+/// Drive `detector` along `zone`'s centerline for `metres`, starting `fromArcM`
+/// along it, and return every state it produced.
+///
+/// Each fix carries the road's local heading, so it reads as a car genuinely
+/// following the road — which is what entry confirmation
+/// (`ZoneDetector.entryConfirmDistanceM`) asks for. `lateralOffsetM` pushes the
+/// track sideways off the centerline for off-road cases.
+/// Mirrors Kotlin `collectAlongCenterline`.
+@discardableResult
+func collectAlongCenterline(
+    _ detector: inout ZoneDetector,
+    _ zone: Zone,
+    fromArcM: Double,
+    metres: Double,
+    speedKmh: Double = 130.0,
+    stepM: Double = 36.0,
+    startTime: Int64 = epochBase,
+    lateralOffsetM: Double = 0,
+    vehicleType: VehicleType = .car
+) -> [ZoneState] {
+    var states: [ZoneState] = []
+    var covered = 0.0
+    var index: Int64 = 0
+    let stepMs = max(Int64(stepM / (speedKmh / 3.6) * 1000.0), 1)
+    while covered <= metres {
+        let arc = fromArcM + covered
+        let heading = localPolylineBearing(zone.centerline, max(arc, 0), RoadMatcher.localBearingWindowM)
+            ?? polylineBearing(zone.centerline) ?? 0
+        let at = pointOnApproach(zone, arc, heading)
+        // Offset perpendicular (to the right of travel) by lateralOffsetM.
+        let perp = (heading + 90).truncatingRemainder(dividingBy: 360) * .pi / 180
+        let lat = at[0] + (lateralOffsetM * cos(perp)) / 111_320.0
+        let lng = at[1] + (lateralOffsetM * sin(perp)) / (111_320.0 * cos(at[0] * .pi / 180))
+        states.append(detector.update(
+            GpsPoint(
+                lat: lat, lng: lng, speed: speedKmh,
+                timestamp: startTime + index * stepMs, bearing: heading
+            ),
+            vehicleType: vehicleType
+        ))
+        covered += stepM
+        index += 1
+    }
+    return states
+}
+
 /// Generate a GPS trace along a zone's centerline at constant speed.
 /// Includes 3 approach points before the zone start and 3 departure points after.
 func generateGpsTrace(

@@ -37,24 +37,73 @@ struct RoadMatcherTests {
         #expect(!RoadMatcher.isOnRoad(point, TRAKIYA_T10))
     }
 
+    // A point sitting on the Trakiya centerline, plus the road's *local* heading
+    // there — what `matchDirection` now compares against (not the zone's
+    // end-to-end bearing).
+    private static let onRoadLat = 42.480
+    private static let onRoadLng = 23.800
+
+    private func localBearing(
+        _ zone: Zone,
+        _ lat: Double = onRoadLat,
+        _ lng: Double = onRoadLng
+    ) throws -> Double {
+        try #require(localPolylineBearing(
+            zone.centerline,
+            arcLengthOnPolyline(lat, lng, zone.centerline),
+            RoadMatcher.localBearingWindowM
+        ))
+    }
+
+    private func fixHeading(
+        _ bearing: Double,
+        lat: Double = onRoadLat,
+        lng: Double = onRoadLng
+    ) -> GpsPoint {
+        GpsPoint(lat: lat, lng: lng, speed: 130.0, timestamp: epochBase, bearing: bearing)
+    }
+
     @Test
     func matchDirectionAcceptsCorrectDirection() throws {
-        let polyBearing = try #require(polylineBearing(TRAKIYA_T10.centerline))
-        #expect(RoadMatcher.matchDirection(polyBearing, TRAKIYA_T10))
+        #expect(RoadMatcher.matchDirection(fixHeading(try localBearing(TRAKIYA_T10)), TRAKIYA_T10))
     }
 
     @Test
     func matchDirectionRejectsOppositeDirection() throws {
-        let polyBearing = try #require(polylineBearing(TRAKIYA_T10.centerline))
-        let opposite = (polyBearing + 180).truncatingRemainder(dividingBy: 360)
-        #expect(!RoadMatcher.matchDirection(opposite, TRAKIYA_T10))
+        let opposite = (try localBearing(TRAKIYA_T10) + 180).truncatingRemainder(dividingBy: 360)
+        #expect(!RoadMatcher.matchDirection(fixHeading(opposite), TRAKIYA_T10))
     }
 
     @Test
     func matchDirectionAcceptsWithinTolerance() throws {
-        let polyBearing = try #require(polylineBearing(TRAKIYA_T10.centerline))
         // 40 degrees off should still be within 45 tolerance
-        #expect(RoadMatcher.matchDirection(polyBearing + 40, TRAKIYA_T10))
+        #expect(RoadMatcher.matchDirection(fixHeading(try localBearing(TRAKIYA_T10) + 40), TRAKIYA_T10))
+    }
+
+    @Test
+    func matchDirectionUsesLocalHeadingNotEndToEndBearing() throws {
+        // The regression behind the phantom I-1 traversal: a course that sits
+        // inside the tolerance of the zone's *end-to-end* bearing while running
+        // across the road locally used to match. An L-shaped zone makes the two
+        // readings disagree by construction — 2 km east, then 2 km north, so the
+        // whole-line bearing is ~45° while the first leg runs due east.
+        let corner = 42.0
+        let lShaped = TRAKIYA_T10.with(centerline: [
+            [corner, 23.000],
+            [corner, 23.024],          // ~2 km east
+            [corner + 0.018, 23.024]   // ~2 km north
+        ])
+        let overall = try #require(polylineBearing(lShaped.centerline))
+        #expect(abs(overall - 45.0) < 5.0)
+
+        // A fix halfway along the eastbound leg, heading 30° — 15° off the zone's
+        // end-to-end bearing (the old test would pass it) but 60° off the road it
+        // is actually sitting on.
+        #expect(abs(try localBearing(lShaped, corner, 23.012) - 90.0) < 5.0)
+        #expect(!RoadMatcher.matchDirection(fixHeading(30.0, lat: corner, lng: 23.012), lShaped))
+
+        // …while a fix genuinely heading east there still matches.
+        #expect(RoadMatcher.matchDirection(fixHeading(90.0, lat: corner, lng: 23.012), lShaped))
     }
 
     @Test
@@ -114,8 +163,8 @@ struct RoadMatcherTests {
         // A degenerate single-point centerline can't yield a polyline bearing;
         // the matcher falls back to the zone's cardinal `direction` ("west" → 270°).
         let degenerate = TRAKIYA_T10.with(centerline: [[42.480, 23.800]])
-        #expect(RoadMatcher.matchDirection(270.0, degenerate))
-        #expect(!RoadMatcher.matchDirection(90.0, degenerate))
+        #expect(RoadMatcher.matchDirection(fixHeading(270.0), degenerate))
+        #expect(!RoadMatcher.matchDirection(fixHeading(90.0), degenerate))
     }
 
     @Test
@@ -135,6 +184,6 @@ struct RoadMatcherTests {
             source: "test",
             lastVerified: "2026-04-12"
         )
-        #expect(!RoadMatcher.matchDirection(0.0, degenerate))
+        #expect(!RoadMatcher.matchDirection(fixHeading(0.0), degenerate))
     }
 }

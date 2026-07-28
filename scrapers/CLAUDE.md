@@ -59,10 +59,12 @@ Layout on the cPanel user's `$HOME` (note: the addon-domain docroot is `srednabg
 | `~/srednabg-scraper/` | Private; rsync target for `scrapers/src/`, `requirements.txt`, `scripts/run_cron.sh`. Holds `venv/`, `logs/cron.log`, `state/last_hash`. |
 | `~/.config/srednabg/scraper.env` | `chmod 600`. `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID`. Never committed. |
 | `~/srednabg_com/api/zones.json` | Live, atomically replaced. Served as `/api/zones`. |
-| `~/srednabg_com/api/version.json` | Live, atomically replaced. Served as `/api/version`. `map_hash` is `null` until a map bundle is uploaded. |
+| `~/srednabg_com/api/version.json` | Live, atomically replaced. Served as `/api/version`. `map_hash` **must stay `null`** — see below. |
 | `~/srednabg_com/api/zones-<UTC-timestamp>.json` | Snapshot saved on every content change; newest 26 retained (~6 months at weekly cadence). |
 
 `--target-dir` mode in `src/output.py` is the production entry point: it atomic-writes both files (`*.tmp` → `os.replace`) and snapshots the prior `zones.json` only when content changed. `--output` remains for one-shot local runs.
+
+**`map_hash` must remain `null` on the production host until the map-bundle pipeline actually ships.** `src/output.py` hardcodes it to `None`, which is correct: the host serves no `/api/map/bundle.zip`, so a non-null hash would put the wire response ahead of what the host can serve. Both clients currently ignore the field (`FeatureFlags.IS_MAP_SYNC_ENABLED` / `.isMapSyncEnabled` are `false`, and `qa/scenarios/sync/map_disabled.py` pins the *Skipped* shape), so nothing breaks today — but the moment either flag flips, a populated `map_hash` would make the first sync round see a mismatch and chase a bundle endpoint that 404s. Note `backend/data/version.json` *does* carry a real `map_hash`: `backend/scripts/build-map-bundle.sh` patches it in for the locally-built bundle. That file is the local build artifact, not the deployed one — don't copy it to the host.
 
 Cron entry (server-local time; pick a low-traffic hour and accept TZ drift since exact UTC alignment doesn't matter):
 

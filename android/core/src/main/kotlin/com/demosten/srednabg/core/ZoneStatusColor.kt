@@ -10,6 +10,14 @@ const val ZONE_COLOR_YELLOW: Int = 0xFFFDD835.toInt()
 const val ZONE_COLOR_RED: Int = 0xFFEF5350.toInt()
 
 /**
+ * The colour of "no verdict" — used for [ZoneState.Unmeasured], where we know the
+ * driver is inside an average-speed zone but never saw the entry. Green / amber /
+ * red *is* the verdict, so rendering any of them there would claim knowledge we
+ * do not have.
+ */
+const val ZONE_COLOR_NEUTRAL: Int = 0xFF9E9E9E.toInt()
+
+/**
  * Status traffic light for the in-zone HUD:
  * - **red** ([ZONE_COLOR_RED]) when the running average is already over the limit;
  * - **amber** ([ZONE_COLOR_YELLOW]) when the current instantaneous speed exceeds

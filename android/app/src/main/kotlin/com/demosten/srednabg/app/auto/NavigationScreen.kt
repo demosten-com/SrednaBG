@@ -79,6 +79,7 @@ class NavigationScreen(carContext: CarContext) : Screen(carContext) {
             overLimit = carContext.getString(R.string.status_over_limit),
             withinLimit = carContext.getString(R.string.status_within_limit),
             monitoringHint = carContext.getString(R.string.auto_monitoring_hint),
+            unmeasuredHint = carContext.getString(R.string.status_unmeasured),
             nowSpeedFormat = carContext.getString(R.string.status_now_speed),
             kmhLabel = carContext.getString(R.string.current_speed_label),
             zoneComplete = carContext.getString(R.string.zone_complete),
@@ -266,6 +267,26 @@ class NavigationScreen(carContext: CarContext) : Screen(carContext) {
                         .build(),
                 )
             }
+            is ZoneState.Unmeasured -> {
+                // Name the zone and its limit with the road left to drive, but no
+                // average in the cue — we never saw the entry camera, so there is
+                // nothing to average. Deliberately no navigation session either
+                // (see handleStateTransition): an ETA here would be guidance.
+                val step = Step.Builder(state.zone.road)
+                    .setManeuver(Maneuver.Builder(Maneuver.TYPE_STRAIGHT).build())
+                    .setCue(
+                        carContext.getString(R.string.auto_unmeasured_cue, getSpeedLimit(state.zone)),
+                    )
+                    .build()
+                builder.setNavigationInfo(
+                    RoutingInfo.Builder()
+                        .setCurrentStep(
+                            step,
+                            Distance.create(state.distanceRemaining, Distance.UNIT_METERS),
+                        )
+                        .build(),
+                )
+            }
             is ZoneState.Exiting -> {
                 val step = Step.Builder(state.zone.road)
                     .setManeuver(Maneuver.Builder(Maneuver.TYPE_DESTINATION).build())
@@ -297,6 +318,11 @@ class NavigationScreen(carContext: CarContext) : Screen(carContext) {
                 current is ZoneState.InZone -> {
                     if (isNavigating) updateTrip(current)
                 }
+                // Unmeasured starts no navigation session and ends none. There is
+                // no ETA to publish without a measured average, and it is only
+                // ever reached from Outside, so there is never a live session to
+                // tear down here.
+                current is ZoneState.Unmeasured -> Unit
                 current is ZoneState.Exiting -> {
                     if (isNavigating) {
                         navigationManager.navigationEnded()
@@ -345,11 +371,18 @@ class NavigationScreen(carContext: CarContext) : Screen(carContext) {
 
         try {
             val safeArea = stableArea ?: visibleArea ?: Rect(0, 0, canvas.width, canvas.height)
-            val activeZone = (currentZoneState as? ZoneState.InZone)?.zone
+            // Unmeasured highlights its zone on the map too — we know exactly
+            // which zone we're in, just not how fast we've crossed it.
+            val activeZone = when (val state = currentZoneState) {
+                is ZoneState.InZone -> state.zone
+                is ZoneState.Unmeasured -> state.zone
+                else -> null
+            }
             // The overlay also needs the limit while Exiting (verdict color),
             // when activeZone — which drives the map highlight — is null.
             val overlayZone = when (val state = currentZoneState) {
                 is ZoneState.InZone -> state.zone
+                is ZoneState.Unmeasured -> state.zone
                 is ZoneState.Exiting -> state.zone
                 is ZoneState.Outside -> null
             }

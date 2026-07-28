@@ -14,6 +14,8 @@
     <string name="status_tracking_outside">Наблюдение на зони</string>
     <string name="status_in_zone">В зона: %s</string>
     <string name="status_exiting">Излизане от зона: %s</string>
+    <string name="status_unmeasured">Не се измерва</string>
+    <string name="status_unmeasured_reason">пропуснато влизане</string>
     <string name="start_tracking">Стартирай</string>
     <string name="stop_tracking">Спри</string>
     <string name="tap_to_start_hint">Натиснете ▶, за да започнете наблюдение на зоните за средна скорост.</string>
@@ -134,9 +136,11 @@
     <!-- Accessibility -->
     <string name="accessibility_in_zone">Средна скорост %1$s километра в час. Ограничение %2$d. %3$s.</string>
     <string name="accessibility_exiting">Зоната завърши. Крайна средна скорост %1$s километра в час на %2$s.</string>
+    <string name="accessibility_unmeasured">Зона със средна скорост %1$s. Ограничение %2$d. Не се измерва, пропуснато влизане.</string>
 
     <!-- Android Auto -->
     <string name="auto_routing_cue">Средна: %1$s km/h | Ограничение: %2$d</string>
+    <string name="auto_unmeasured_cue">Не се измерва | Ограничение: %1$d</string>
     <string name="auto_final_speed">Крайна средна: %s km/h</string>
     <string name="auto_zone_end">Край на зона</string>
     <string name="auto_settings">Настройки</string>

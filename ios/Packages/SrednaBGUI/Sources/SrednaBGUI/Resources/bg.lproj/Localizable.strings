@@ -10,6 +10,8 @@
 "statusTrackingOutside" = "Наблюдаване — няма активна зона";
 "statusInZone" = "В зона — %@";
 "statusExiting" = "Излизане %@";
+"statusUnmeasured" = "Не се измерва";
+"statusUnmeasuredReason" = "пропуснато влизане";
 "statusOverLimit" = "Превишение";
 "statusWithinLimit" = "В норма";
 "statusNowSpeed" = "Текуща %@ km/h";

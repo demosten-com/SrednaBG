@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-17T11:51:47Z",
+  "version": "2026-07-24T21:10:47Z",
   "hash": "sha256:933e69a4424c596b2f2160ef20072743dede221c1c431e9eebd48ed9a6c0d434",
   "zones": [
     {
@@ -621,7 +621,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "europa-01-west",
@@ -1246,7 +1246,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "maritsa-01-east",
@@ -4211,7 +4211,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "maritsa-02-east",
@@ -4940,7 +4940,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "maritsa-01-west",
@@ -7909,7 +7909,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "maritsa-03-east",
@@ -8718,7 +8718,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "maritsa-02-west",
@@ -9447,7 +9447,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "maritsa-03-west",
@@ -10256,7 +10256,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "struma-01-south",
@@ -11393,7 +11393,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "struma-01-north",
@@ -12534,7 +12534,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "struma-02-south",
@@ -12979,7 +12979,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "struma-02-north",
@@ -13428,7 +13428,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "struma-03-south",
@@ -14149,7 +14149,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "struma-04-south",
@@ -15934,7 +15934,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "struma-03-north",
@@ -16655,7 +16655,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "struma-04-north",
@@ -18440,7 +18440,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "trakiya-01-east",
@@ -20569,7 +20569,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "trakiya-01-west",
@@ -22698,7 +22698,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "trakiya-02-east",
@@ -25023,7 +25023,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "trakiya-03-east",
@@ -25924,7 +25924,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "trakiya-02-west",
@@ -28249,7 +28249,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "trakiya-04-east",
@@ -28606,7 +28606,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "trakiya-03-west",
@@ -29507,7 +29507,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "trakiya-05-east",
@@ -30620,7 +30620,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "trakiya-04-west",
@@ -30977,7 +30977,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "trakiya-06-east",
@@ -32990,7 +32990,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "trakiya-05-west",
@@ -34103,7 +34103,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "trakiya-07-east",
@@ -35156,7 +35156,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "trakiya-06-west",
@@ -37165,7 +37165,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "trakiya-07-west",
@@ -38211,7 +38211,7 @@
       ],
       "road_type": "motorway",
       "source": "kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "trakiya-08-east",
@@ -39292,7 +39292,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "trakiya-08-west",
@@ -40377,7 +40377,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "hemus-01-east",
@@ -43906,7 +43906,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "hemus-01-west",
@@ -47439,7 +47439,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "hemus-02-east",
@@ -49152,7 +49152,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "hemus-02-west",
@@ -50865,7 +50865,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "hemus-03-east",
@@ -52922,7 +52922,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "hemus-03-west",
@@ -54983,7 +54983,7 @@
       ],
       "road_type": "motorway",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i1-01-south",
@@ -56276,7 +56276,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i1-01-north",
@@ -57569,7 +57569,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i1-02-south",
@@ -59094,7 +59094,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i1-02-north",
@@ -60615,7 +60615,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i2-01-east",
@@ -61420,7 +61420,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i2-01-west",
@@ -62229,7 +62229,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i3-01-south",
@@ -63386,7 +63386,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i3-01-north",
@@ -64543,7 +64543,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i3-02-south",
@@ -66120,7 +66120,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i3-02-north",
@@ -67697,7 +67697,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i4-01-east",
@@ -68614,7 +68614,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i4-02-east",
@@ -69947,7 +69947,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i4-01-west",
@@ -70872,7 +70872,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i4-02-west",
@@ -72209,7 +72209,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i4-03-east",
@@ -73226,7 +73226,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i4-04-east",
@@ -74923,7 +74923,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i4-03-west",
@@ -75936,7 +75936,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i4-04-west",
@@ -77625,7 +77625,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i4-05-east",
@@ -79406,7 +79406,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i4-05-west",
@@ -81191,7 +81191,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i5-01-south",
@@ -82348,7 +82348,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i5-02-south",
@@ -82957,7 +82957,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i5-01-north",
@@ -84110,7 +84110,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i5-02-north",
@@ -84715,7 +84715,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i5-03-south",
@@ -85812,7 +85812,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i5-04-south",
@@ -86441,7 +86441,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i5-03-north",
@@ -87538,7 +87538,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i5-04-north",
@@ -88167,7 +88167,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i5-05-south",
@@ -88848,7 +88848,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i5-05-north",
@@ -89533,7 +89533,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i6-01-east",
@@ -90370,7 +90370,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "i6-01-west",
@@ -91207,7 +91207,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "ii55-01-south",
@@ -92768,7 +92768,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     },
     {
       "id": "ii55-01-north",
@@ -94333,7 +94333,7 @@
       ],
       "road_type": "road",
       "source": "bgtoll+tolltracker+kml",
-      "last_verified": "2026-07-17"
+      "last_verified": "2026-07-24"
     }
   ]
 }

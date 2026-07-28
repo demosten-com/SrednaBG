@@ -19,6 +19,10 @@ public struct CarPlaySpeedOverlayModel: Equatable, Sendable {
         case notTracking
         case outside
         case inZone
+        /// Inside an average-speed zone whose entry we never saw. Renders the
+        /// road's facts (zone limit + distance left) with no average and no
+        /// verdict colour. See `ZoneDetector.startWitnessArcM`.
+        case unmeasured
         case exiting
     }
 
@@ -89,6 +93,25 @@ public struct CarPlaySpeedOverlayModel: Equatable, Sendable {
                 distanceSubtitle: labels.remaining,
                 statusLabel: statusLabel,
                 packedStatusColor: packed
+            )
+
+        case .unmeasured(let unmeasured):
+            // Hero is the live speed, not an average — it is the one number we can
+            // still state truthfully. Limit and distance stay (facts about the
+            // road); packedStatusColor stays 0 because the traffic light is a
+            // verdict and we are declining to give one.
+            return Self(
+                mode: .unmeasured,
+                heroSpeedText: Self.formatSpeed(currentSpeedKmh),
+                heroSubtitle: labels.currentSpeedLabel,
+                smallSpeedText: nil,
+                smallSubtitle: nil,
+                limitText: String(vehicleType.limit(unmeasured.zone.speedLimits)),
+                limitSubtitle: labels.speedLimit,
+                distanceText: Self.formatDistance(unmeasured.distanceRemaining),
+                distanceSubtitle: labels.remaining,
+                statusLabel: labels.notMeasuredTitle,
+                packedStatusColor: 0
             )
 
         case .exiting(let exiting):

@@ -128,6 +128,10 @@ final class CarPlayMapViewController: UIViewController {
         switch zoneState {
         case .inZone(let inZone):
             return statusUIColor(zoneStatusColor(state: inZone, currentSpeedKmh: currentPosition?.speed))
+        // Neutral: the traffic-light palette is a verdict on the driver, and an
+        // entry we never witnessed earns no verdict. Mirrors `MapLibreView`.
+        case .unmeasured:
+            return statusUIColor(zoneColorNeutral)
         case .exiting, .outside:
             return MapLayers.activeRedLineColor
         }

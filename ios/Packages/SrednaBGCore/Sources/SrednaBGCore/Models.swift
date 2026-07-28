@@ -189,6 +189,7 @@ public struct SpeedStatus: Sendable, Equatable, Hashable {
 public enum ZoneState: Sendable, Equatable, Hashable {
     case outside
     case inZone(InZone)
+    case unmeasured(Unmeasured)
     case exiting(Exiting)
 
     public struct InZone: Sendable, Equatable, Hashable {
@@ -213,6 +214,34 @@ public enum ZoneState: Sendable, Equatable, Hashable {
             self.entryTime = entryTime
             self.distanceTraveled = distanceTraveled
             self.speedStatus = speedStatus
+            self.distanceRemaining = distanceRemaining
+        }
+    }
+
+    /// Inside a zone whose entry we did not witness, so no measurement is
+    /// possible: we cannot know what the entry camera timestamped, and a running
+    /// average over the remainder alone matches nothing BG TOLL computes.
+    ///
+    /// Carries only facts about the road — the zone (and therefore its speed
+    /// limit) and the distance left to drive, both true regardless of when we
+    /// joined. It deliberately carries **no** timing or averaging fields, and
+    /// that is structural rather than a convention.
+    ///
+    /// Two invariants consumers may rely on:
+    /// - `exiting` only ever follows `inZone`. An unmeasured zone has no
+    ///   traversal to finalize, so leaving one goes straight to `outside` — no
+    ///   History row, no exit announcement, nothing to suppress downstream.
+    /// - `unmeasured -> inZone` is unreachable for the same zone: arc length
+    ///   only increases, so a start cannot be witnessed retroactively.
+    ///
+    /// Mirrors Kotlin `ZoneState.Unmeasured`. See `ZoneDetector.startWitnessArcM`.
+    public struct Unmeasured: Sendable, Equatable, Hashable {
+        public let zone: Zone
+        /// Polyline arc length to `zone.end`, same meaning as `InZone.distanceRemaining`.
+        public let distanceRemaining: Double
+
+        public init(zone: Zone, distanceRemaining: Double) {
+            self.zone = zone
             self.distanceRemaining = distanceRemaining
         }
     }

@@ -105,9 +105,15 @@ class HistoryRecorder @Inject constructor(
                 }
                 capture = null
             }
-            is ZoneState.Outside -> {
+            is ZoneState.Unmeasured, is ZoneState.Outside -> {
                 // The exit is finalized on InZone -> Exiting; by the time Outside
                 // arrives the buffer is already closed. Clear defensively.
+                //
+                // Unmeasured is handled identically and records nothing: we never
+                // saw the entry camera, so there is no traversal to attribute
+                // samples to. It also cannot reach Exiting (it drops straight to
+                // Outside), so no half-open buffer can ever be finalized from it —
+                // which is exactly what keeps mid-zone joins out of History.
                 capture = null
             }
         }

@@ -24,6 +24,9 @@ public struct CarPlayLabels: Sendable, Equatable {
     public let trackingOutsideTitle: String
     public let notTrackingTitle: String
     public let tapToStartHint: String
+    /// Short form for a zone we're in but didn't see entered. Must clear the
+    /// CarPlay/AA glyph-size floors, so keep it to two or three words.
+    public let notMeasuredTitle: String
 
     public init(
         overLimit: String,
@@ -37,7 +40,8 @@ public struct CarPlayLabels: Sendable, Equatable {
         zoneCompleteTitle: String,
         trackingOutsideTitle: String,
         notTrackingTitle: String,
-        tapToStartHint: String
+        tapToStartHint: String,
+        notMeasuredTitle: String
     ) {
         self.overLimit = overLimit
         self.withinLimit = withinLimit
@@ -51,5 +55,6 @@ public struct CarPlayLabels: Sendable, Equatable {
         self.trackingOutsideTitle = trackingOutsideTitle
         self.notTrackingTitle = notTrackingTitle
         self.tapToStartHint = tapToStartHint
+        self.notMeasuredTitle = notMeasuredTitle
     }
 }
