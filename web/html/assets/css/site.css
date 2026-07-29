@@ -267,23 +267,146 @@ section { padding: 88px 0; position: relative; }
   text-align: center; padding: 24px;
   color: var(--text-mid);
 }
-.aa-slot .aa-placeholder .badge {
-  display: inline-flex; align-items: center; gap: 8px;
+/* ---- animated zone-status demo (fills the AA slot until a real shot lands) */
+.zdemo {
+  --state: var(--green);
+  width: 100%;
+  max-width: 460px;
+  display: flex; flex-direction: column;
+  gap: 10px;
+  text-align: left;
+}
+.zdemo[data-state="amber"] { --state: var(--amber); }
+.zdemo[data-state="red"]   { --state: var(--red); }
+
+.zdemo-caption {
+  display: flex; align-items: center; gap: 8px;
   font-family: var(--font-mono);
-  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
   color: var(--text-low);
-  padding: 6px 10px;
-  border: 1px solid var(--stroke);
-  border-radius: 999px;
 }
-.aa-slot .aa-placeholder .aa-title {
+.zdemo-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--state);
+  flex: none;
+}
+.zdemo-road { color: var(--text-mid); }
+
+/* the chip itself — washed in the state colour, like the in-app status chip */
+.zdemo-chip {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--state);
+  background: var(--state-wash);
+}
+.zdemo { --state-wash: rgba(46, 125, 50, 0.13); }
+.zdemo[data-state="amber"] { --state-wash: rgba(249, 168, 37, 0.13); }
+.zdemo[data-state="red"]   { --state-wash: rgba(198, 40, 40, 0.15); }
+
+.zdemo-col { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.zdemo-col-rest { flex: 1; }
+
+.zdemo-label {
+  font-family: var(--font-mono);
+  font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--text-low);
+}
+.zdemo-avg { display: flex; align-items: baseline; gap: 5px; }
+.zdemo-num {
   font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 22px;
-  color: var(--text-high);
+  font-weight: 700;
+  font-size: 44px;
+  line-height: 1.05;
+  letter-spacing: var(--display-tracking);
+  color: var(--state);
+  /* tabular digits stop the number jittering as it counts */
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
 }
-.aa-slot .aa-placeholder .aa-sub { font-size: 13px; color: var(--text-low); }
-.aa-slot .aa-placeholder .mini-logo { color: var(--accent); width: 40px; height: 40px; }
+.zdemo-unit { font-size: 13px; color: var(--text-mid); }
+.zdemo-sub {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-mid);
+  white-space: nowrap;
+}
+.zdemo-sub b {
+  color: var(--text-high);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* speed-limit roundel — a real road sign, so it keeps its own colours */
+.zdemo-sign {
+  flex: none;
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: #fff;
+  border: 5px solid var(--red);
+  display: grid; place-items: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 21px;
+  line-height: 1;
+  color: #14120f;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+.zdemo-remain {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-mid);
+}
+.zdemo-remain b {
+  color: var(--text-high);
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+.zdemo-track {
+  position: relative;
+  display: block;
+  height: 4px;
+  margin: 5px 0 6px;
+  border-radius: 999px;
+  background: var(--bg-3);
+}
+.zdemo-fill {
+  display: block;
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: var(--state);
+}
+/* end-of-zone marker, mirroring the dot on the in-app progress bar */
+.zdemo-track::after {
+  content: "";
+  position: absolute; right: -1px; top: 50%;
+  width: 6px; height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: var(--state);
+}
+.zdemo-verdict {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--state);
+}
+
+@media (max-width: 460px) {
+  .zdemo-chip { gap: 10px; padding: 10px 11px; }
+  .zdemo-num { font-size: 34px; }
+  .zdemo-sign { width: 46px; height: 46px; border-width: 4px; font-size: 17px; }
+  .zdemo-sub, .zdemo-verdict { font-size: 10px; }
+  .zdemo-remain { font-size: 11px; }
+  .zdemo-remain b { font-size: 13px; }
+}
 
 /* hero stats row — meaningful, not filler */
 .hero-meta { display: flex; gap: 24px; flex-wrap: wrap; padding-top: 8px; margin-top: 4px; }
