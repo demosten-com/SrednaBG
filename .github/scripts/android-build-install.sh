@@ -7,7 +7,7 @@ set -euo pipefail
 
 cd android
 chmod +x gradlew
-./gradlew :app:assembleGmsDebug
+./gradlew :app:assembleGmsDebug --stacktrace
 cd ..
 
 APK=android/app/build/outputs/apk/gms/debug/app-gms-debug.apk

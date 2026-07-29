@@ -50,21 +50,36 @@ jobs:
           MAP_BUNDLE_URL: ${{ secrets.MAP_BUNDLE_URL }}
         run: bash .github/scripts/download-map-bundle.sh
 
+      # `assembleDebug` builds both flavors in one invocation, each embedding the
+      # ~52 MB map bundle into a ~116 MB APK, on a 16 GB mini. A memory-pressure
+      # failure surfaces as an opaque AGP worker failure with no cause, so record
+      # what the machine looked like going in. (Disk is not a factor — the mini
+      # runs ~100 GB of 1 TB — but the line is cheap and keeps the snapshot
+      # honest if that ever changes.)
+      - name: Runner memory + disk snapshot
+        run: |
+          vm_stat | head -5
+          df -h /
+
       - name: Run core tests
         working-directory: android
-        run: ./gradlew :core:test
+        run: ./gradlew :core:test --stacktrace
 
       - name: Run app unit tests (both flavors)
         working-directory: android
-        run: ./gradlew :app:testAospDebugUnitTest :app:testGmsDebugUnitTest
+        run: ./gradlew :app:testAospDebugUnitTest :app:testGmsDebugUnitTest --stacktrace
 
+      # --stacktrace is mandatory here: AGP runs packaging in a Gradle worker, and
+      # without it a worker failure prints only "A failure occurred while executing
+      # PackageAndroidArtifact$IncrementalSplitterRunnable" with the real cause
+      # (OOM, IOException, …) swallowed — undiagnosable after the fact.
       - name: Build Android app (both flavors)
         working-directory: android
-        run: ./gradlew :app:assembleDebug
+        run: ./gradlew :app:assembleDebug --stacktrace
 
       - name: Run lint
         working-directory: android
-        run: ./gradlew lint
+        run: ./gradlew lint --stacktrace
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v7
