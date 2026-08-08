@@ -40,11 +40,22 @@ from ...runner import RunContext, Scenario, step_lambda
 # digest — guarantees the version gate falls through to a full re-fetch.
 _SENTINEL_HASH = "sha256:qa-force-refetch-0000000000000000000000000000000000"
 
+# Older than any real scrape. A poisoned *hash* alone no longer guarantees a
+# re-fetch: `ZoneDataRecency` also skips a server whose `version` is older than
+# the cached one, which is exactly the state right after a local
+# `refresh-zones.sh` (the app bundles a scrape the weekly cron hasn't published
+# yet). Backdating the cached version keeps this scenario testing what it means
+# to test — the manual fetch round-trip — instead of the recency gate, which
+# `zones_remote_older` owns.
+_ANCIENT_VERSION = "2020-01-01T00:00:00Z"
+
 
 def build() -> Scenario:
     def go(ctx: RunContext) -> None:
-        # 1) Poison the cached hash, then sync → must re-fetch (Updated).
+        # 1) Poison the cached hash + backdate the version, then sync → must
+        #    re-fetch (Updated).
         settings.set_setting("cached_zone_hash", _SENTINEL_HASH)
+        settings.set_setting("cached_zone_version", _ANCIENT_VERSION)
         ctx.obs.clear()
         sync.force_sync_zones()
         first = sync.wait_for_sync(ctx.obs, "SYNC_ZONES", timeout_s=20)

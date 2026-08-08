@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 
 from src.geo import haversine_m
-from src.output import MIN_PUBLISH_ZONES
+from src.output import MIN_PUBLISH_ZONES, publish_guard_errors
 from src.validator import validate
 from src.zone_schema import ZoneDatabase
 
@@ -48,6 +48,14 @@ class TestShippedData:
         slip through unnoticed."""
         _, warnings = validate(db.zones)
         assert warnings == []
+
+    def test_passes_the_publish_guard(self, db):
+        """Whatever refuses to be published must also refuse to be committed.
+
+        Covers the shape the 2026-08 Път I-8 merge failure shipped: a zone with
+        placeholder (0, 0) endpoints and an empty centerline, which the apps
+        cannot detect and which made MapLibre reject the whole zone layer."""
+        assert publish_guard_errors(db) == []
 
     def test_centerlines_start_first(self, db):
         for z in db.zones:

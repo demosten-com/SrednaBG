@@ -43,10 +43,14 @@ public enum MapLayers {
 
     public static func zoneFeatures(from zones: [Zone]) -> [MLNPolylineFeature] {
         zones.compactMap { zone in
-            guard zone.centerline.count >= 2 else { return nil }
-            var coords = zone.centerline.map { pair in
+            // Filter per point, not just per zone: a short pair would trap on
+            // subscript, and a degenerate polyline is a rendering error the
+            // whole layer would pay for. `ZoneSanitizer` should have dropped
+            // such a zone already — this keeps the crash impossible if it didn't.
+            var coords = zone.centerline.filter { $0.count >= 2 }.map { pair in
                 CLLocationCoordinate2D(latitude: pair[0], longitude: pair[1])
             }
+            guard coords.count >= 2 else { return nil }
             let feature = MLNPolylineFeature(coordinates: &coords, count: UInt(coords.count))
             feature.identifier = zone.id
             feature.attributes = [

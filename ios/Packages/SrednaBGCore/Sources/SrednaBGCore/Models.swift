@@ -33,11 +33,59 @@ public struct SpeedLimits: Sendable, Equatable, Hashable, Codable {
     public let bus: Int
     public let motorcycle: Int?
 
+    /// True when `truck` or `bus` was absent from the payload and filled in
+    /// from `car`. Not part of the wire format (never encoded, never compared)
+    /// — it exists so the sync path can report that the served data needed
+    /// repairing, which is a defect in the *data*, not in this client.
+    public private(set) var didFallBackToCarLimit = false
+
     public init(car: Int, truck: Int, bus: Int, motorcycle: Int? = nil) {
         self.car = car
         self.truck = truck
         self.bus = bus
         self.motorcycle = motorcycle
+    }
+
+    public static func == (lhs: SpeedLimits, rhs: SpeedLimits) -> Bool {
+        lhs.car == rhs.car && lhs.truck == rhs.truck
+            && lhs.bus == rhs.bus && lhs.motorcycle == rhs.motorcycle
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(car)
+        hasher.combine(truck)
+        hasher.combine(bus)
+        hasher.combine(motorcycle)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case car, truck, bus, motorcycle
+    }
+
+    /// Decodes a payload that omits `truck` / `bus`, falling back to the car
+    /// limit rather than failing.
+    ///
+    /// TollTracker tiles carry a single `speed_limit`, so a zone that merges
+    /// without a BG TOLL or KML partner publishes `{"car": 90}` alone. With the
+    /// synthesized `Codable` conformance that missing key throws
+    /// `keyNotFound`, which fails the decode of the **entire** `ZonesResponse`
+    /// — one under-populated zone silently wedges zone sync forever (2026-08,
+    /// Път I-8). The schema already treats the car limit as the fallback for a
+    /// class a zone doesn't name (the documented rule for `motorcycle`);
+    /// applying it to truck and bus keeps the catalog decodable.
+    ///
+    /// Kotlin twin: `ZoneSanitizer.withFallbackLimits` (Gson zero-fills instead
+    /// of throwing, so the fallback there keys off a non-positive value).
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let car = try container.decode(Int.self, forKey: .car)
+        let truck = try container.decodeIfPresent(Int.self, forKey: .truck)
+        let bus = try container.decodeIfPresent(Int.self, forKey: .bus)
+        self.car = car
+        self.truck = truck ?? car
+        self.bus = bus ?? car
+        self.motorcycle = try container.decodeIfPresent(Int.self, forKey: .motorcycle)
+        self.didFallBackToCarLimit = truck == nil || bus == nil
     }
 }
 

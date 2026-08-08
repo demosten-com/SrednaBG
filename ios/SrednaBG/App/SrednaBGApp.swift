@@ -263,8 +263,9 @@ final class AppContainer {
                cachedHash: settings.cachedZoneHash,
                cachedVersion: settings.cachedZoneVersion
            ) {
-            try? await zoneStore.replaceAll(with: response.zones)
-            tracking.updateZones(response.zones)
+            let usable = Self.usableZones(response.zones, origin: "bundle \(response.version)")
+            try? await zoneStore.replaceAll(with: usable)
+            tracking.updateZones(usable)
             settings.cachedZoneHash = response.hash
             settings.cachedZoneVersion = response.version
             seeded = true
@@ -342,8 +343,9 @@ final class AppContainer {
                 return .upToDate
             case .applyRemote:
                 let response = try await syncClient.fetchZones()
-                try await zoneStore.replaceAll(with: response.zones)
-                tracking.updateZones(response.zones)
+                let usable = Self.usableZones(response.zones, origin: "server \(response.version)")
+                try await zoneStore.replaceAll(with: usable)
+                tracking.updateZones(usable)
                 settings.cachedZoneHash = response.hash
                 settings.cachedZoneVersion = response.version
                 return .updated
@@ -351,6 +353,29 @@ final class AppContainer {
         } catch {
             return .failed(SyncFailure(underlying: error))
         }
+    }
+
+    /// Drop zones the app can't use before they reach the store — see
+    /// `ZoneSanitizer`. Logged by id, because a zone quietly vanishing between
+    /// the wire and the map is the failure this guard exists to make traceable.
+    private static func usableZones(_ zones: [Zone], origin: String) -> [Zone] {
+        let result = ZoneSanitizer.sanitize(zones)
+        if !result.repairedIds.isEmpty {
+            // Separate line from the drop below: this zone is fine for *us* and
+            // fatal for the 1.x clients in the stores (1.x fails the whole
+            // decode). QA must fail on it, so it can't be a quiet debug log.
+            QALog.location.error(
+                "zones repaired (n=\(result.repairedIds.count, privacy: .public)) ids=[\(result.repairedIds.joined(separator: ", "), privacy: .public)] origin=\(origin, privacy: .public)"
+            )
+        }
+        if !result.droppedIds.isEmpty {
+            // Body matches the Android twin character-for-character — the QA
+            // harness reads it as a tripwire on the served data (qa/parsers.py).
+            QALog.location.error(
+                "zones dropped (n=\(result.droppedIds.count, privacy: .public)) ids=[\(result.droppedIds.joined(separator: ", "), privacy: .public)] origin=\(origin, privacy: .public)"
+            )
+        }
+        return result.zones
     }
 
     func runMapSync() async -> SyncResult {

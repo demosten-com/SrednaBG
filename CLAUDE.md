@@ -9,15 +9,15 @@ Package ID: `com.demosten.srednabg` | Bulgaria-only scope | MIT license.
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 1 | Monorepo scaffolding, Gradle, CI/CD | Done |
-| 2 | Zone data schema and Python scrapers | Done (`zones.json` ships ~72 real zones; exact count tracked by the scraper). The single source of truth is `backend/data/zones.json` — both apps bundle that same file (Android generates its asset at build time; see "Three-Tier Data Flow") |
+| 2 | Zone data schema and Python scrapers | Done (`zones.json` ships ~74 real zones; exact count tracked by the scraper). The single source of truth is `backend/data/zones.json` — both apps bundle that same file (Android generates its asset at build time; see "Three-Tier Data Flow") |
 | 3 | Core calculation engine (pure Kotlin) | Done + comprehensive tests. Self-orienting centerlines, polyline-projection remaining/exit, off-road exit hysteresis, vehicle-type-aware limits |
 | 4 | Offline map-bundle build pipeline | Done (self-contained Planetiler-JAR builder; the former Docker/tileserver-gl serving stack is retired) |
 | 5 | Android app foundation (phone UI) | Done (Compose UI, Room, Hilt, location service, audio alerts, opt-in draw-over-other-apps overlay, vehicle-type setting) |
 | 6 | Android Auto integration | Done in code — WIP, not in initial release (kept for developer testing on DHU/AAOS) |
-| 7 | Polish, testing, release prep | Signing wired; signed-APK release workflow shipping `srednabg-<version>.apk` + `.sha256` to GitHub Releases; F-Droid: build recipe **merged into `fdroiddata`** — the app publishes once F-Droid's build server signs the first build; `web/fdroid/` remains the source of truth for ongoing per-tag updates (metadata, locale descriptions, SHA-pinned map-bundle pipeline). Play Store: listing + screenshots done; v1.0.2 **approved and live in open testing**, promotable to production at the user's discretion (not yet promoted). See `android/CLAUDE.md` |
+| 7 | Polish, testing, release prep | Signing wired; signed-APK release workflow shipping `srednabg-<version>.apk` + `.sha256` to GitHub Releases; F-Droid: build recipe **merged into `fdroiddata`** — the app publishes once F-Droid's build server signs the first build; `web/fdroid/` remains the source of truth for ongoing per-tag updates (metadata, locale descriptions, SHA-pinned map-bundle pipeline). Play Store: listing + screenshots done, **1.1.0 live**. Per-channel release state lives in **`VERSIONS.md`** (the single source of truth — do not restate it here, that is how it drifted). See `android/CLAUDE.md` |
 | 8a | iOS phone port (Swift 6 + SwiftUI) | Functionally complete (Xcode app shell, MapLibre map, Live Activity + Dynamic Island, permission gating). App Store submission is Phase 8c. |
 | 8b | CarPlay | WIP — not in initial release. Code complete (`SrednaBGCarPlay` package — scene delegate, `CPMapTemplate`, `CPNavigationSession`). **Unwired from the app target** until Apple grants `com.apple.developer.carplay-navigation` (iOS 18+ Simulator's `amfi` rejects the un-granted entitlement). Re-link path is documented in `ios/CLAUDE.md`. |
-| 8c | Phone-only App Store release | Privacy manifest, App Store metadata + screenshots all done; phone build **submitted — in App Store review as v1.0.2**. v1.0.4 held back from App Store Connect until v1.0.2 clears review (re-submitting would pull the in-review build). CarPlay entitlement filed once TestFlight build exists. |
+| 8c | Phone-only App Store release | Privacy manifest, App Store metadata + screenshots all done; phone build **live on the App Store (1.1.0)** — see `VERSIONS.md` for per-channel state. CarPlay entitlement filed once TestFlight build exists. |
 
 ## Monorepo Layout
 

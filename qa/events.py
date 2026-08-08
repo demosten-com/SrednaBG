@@ -123,6 +123,35 @@ class ZonesLoaded(Event):
 
 
 @dataclass(frozen=True)
+class ZonesDropped(Event):
+    """The client refused zones it can't use — `ZoneSanitizer` on both platforms.
+
+    Never emitted against healthy data, so *any* occurrence is a finding: the
+    served (or bundled) catalog contains a zone with placeholder (0, 0)
+    endpoints, an empty centerline, or no car limit. See
+    `qa/scenarios/sync/zones_all_usable.py`.
+    """
+    count: int
+    ids: list[str]
+    origin: str
+
+
+@dataclass(frozen=True)
+class ZonesRepaired(Event):
+    """The client had to substitute a missing truck/bus limit from `car`.
+
+    Distinct from `ZonesDropped` and just as much a finding: the zone works
+    fine on a current build, and the **1.x clients in the stores** have no such
+    fallback — iOS 1.x fails the entire `/api/zones` decode on that payload.
+    Without this event, QA on a current build passes on data that is bricking
+    every published install.
+    """
+    count: int
+    ids: list[str]
+    origin: str
+
+
+@dataclass(frozen=True)
 class LocationSourceSelected(Event):
     """Which GPS source the app picked when tracking started — emitted on tag
     `SrednaBG.LocSrc` by the flavor-specific `createLocationSource()`.

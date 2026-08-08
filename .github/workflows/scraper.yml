@@ -5,6 +5,14 @@ on:
     paths:
       - 'scrapers/**'
       - '.github/workflows/scraper.yml'
+      # The client wire contract is a transcription of these models. A change
+      # here must re-run the scraper tests so `check_drift` can catch the
+      # contract falling out of date with the apps it protects — otherwise the
+      # publish gate silently keeps approving payloads the clients reject.
+      - 'android/core/src/main/kotlin/com/demosten/srednabg/core/Models.kt'
+      - 'android/app/src/main/kotlin/com/demosten/srednabg/app/data/remote/ZoneApi.kt'
+      - 'ios/Packages/SrednaBGCore/Sources/SrednaBGCore/Models.swift'
+      - 'ios/Packages/SrednaBGData/Sources/SrednaBGData/ApiTypes.swift'
   workflow_dispatch:
 
 permissions:

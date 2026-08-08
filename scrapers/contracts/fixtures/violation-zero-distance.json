@@ -1,0 +1,49 @@
+{
+  "version": "2026-08-08T00:00:00Z",
+  "hash": "sha256:fixture",
+  "zones": [
+    {
+      "id": "trakiya-01-east",
+      "road": "АМ Тракия",
+      "road_latin": "Trakiya",
+      "direction": "east",
+      "description": "Вакарел – Ихтиман",
+      "start": {
+        "lat": 42.5432,
+        "lng": 23.8234,
+        "km_marker": "24+288",
+        "settlement": "Вакарел"
+      },
+      "end": {
+        "lat": 42.4321,
+        "lng": 23.9876,
+        "km_marker": "43+448",
+        "settlement": "Ихтиман"
+      },
+      "distance_m": 0,
+      "speed_limits": {
+        "car": 140,
+        "truck": 90,
+        "bus": 100,
+        "motorcycle": 140
+      },
+      "centerline": [
+        [
+          42.5432,
+          23.8234
+        ],
+        [
+          42.5,
+          23.9
+        ],
+        [
+          42.4321,
+          23.9876
+        ]
+      ],
+      "road_type": "motorway",
+      "source": "bgtoll+tolltracker+kml",
+      "last_verified": "2026-08-08"
+    }
+  ]
+}

@@ -72,7 +72,8 @@ class ZoneRepository @Inject constructor(
                 }
                 ZoneSyncDecision.APPLY_REMOTE -> {
                     val response = zoneApi.fetchZones()
-                    val entities = response.zones.map { it.toEntity(gson) }
+                    val entities = usableZones(response.zones, "server ${response.version}")
+                        .map { it.toEntity(gson) }
                     zoneDao.replaceAll(entities)
                     settingsRepository.setCachedZoneHash(response.hash)
                     settingsRepository.setCachedZoneVersion(response.version)
@@ -91,7 +92,8 @@ class ZoneRepository @Inject constructor(
     private suspend fun loadFromAssets() {
         val response = parseBundledZones() ?: return
         if (response.zones.isNotEmpty()) {
-            val entities = response.zones.map { it.toEntity(gson) }
+            val entities = usableZones(response.zones, "bundle ${response.version}")
+                .map { it.toEntity(gson) }
             zoneDao.replaceAll(entities)
             settingsRepository.setCachedZoneHash(response.hash)
             settingsRepository.setCachedZoneVersion(response.version)
@@ -120,10 +122,41 @@ class ZoneRepository @Inject constructor(
             return
         }
         Log.i(TAG, "Re-seeding zones from bundle ${response.version} (local was $cachedVersion)")
-        val entities = response.zones.map { it.toEntity(gson) }
+        val entities = usableZones(response.zones, "bundle ${response.version}")
+            .map { it.toEntity(gson) }
         zoneDao.replaceAll(entities)
         settingsRepository.setCachedZoneHash(response.hash)
         settingsRepository.setCachedZoneVersion(response.version)
+    }
+
+    /**
+     * Drop zones the app can't use before they reach Room — see [ZoneSanitizer].
+     * Logged by id, because a zone quietly vanishing between the wire and the
+     * map is the failure this guard exists to make traceable.
+     */
+    private fun usableZones(zones: List<Zone>, origin: String): List<Zone> {
+        val result = ZoneSanitizer.sanitize(zones)
+        if (result.repairedIds.isNotEmpty()) {
+            // Separate line from the drop below: this zone is fine for *us* and
+            // fatal for the 1.x clients in the stores (iOS 1.x fails the whole
+            // decode). QA must fail on it, so it can't be folded into a debug log.
+            Log.w(
+                QA_TAG,
+                "zones repaired (n=${result.repairedIds.size}) " +
+                    "ids=[${result.repairedIds.joinToString()}] origin=$origin",
+            )
+        }
+        if (result.droppedIds.isNotEmpty()) {
+            // Emitted on the QA log channel (not this class's own tag) with a
+            // body the iOS twin matches character-for-character — the harness
+            // reads it as a tripwire on the served data. See qa/parsers.py.
+            Log.w(
+                QA_TAG,
+                "zones dropped (n=${result.droppedIds.size}) " +
+                    "ids=[${result.droppedIds.joinToString()}] origin=$origin",
+            )
+        }
+        return result.zones
     }
 
     private fun parseBundledZones(): ZonesResponse? {
@@ -145,5 +178,8 @@ class ZoneRepository @Inject constructor(
 
     private companion object {
         const val TAG = "SrednaBG.ZoneRepo"
+
+        /** The zone-data channel the QA harness tails; iOS's `QALog.location`. */
+        const val QA_TAG = "SrednaBG.Loc"
     }
 }

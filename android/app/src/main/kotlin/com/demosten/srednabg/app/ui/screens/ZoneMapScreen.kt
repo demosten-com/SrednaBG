@@ -769,6 +769,11 @@ private fun zonesFeatureCollection(zones: List<Zone>): String {
                 })
             }
         }
+        // MapLibre rejects the *whole* FeatureCollection on a single invalid
+        // LineString ("must have two or more coordinate points"), which blanks
+        // every zone on the map rather than just the bad one. Skip degenerate
+        // geometry here so one malformed zone can never cost the other 75.
+        if (coordinates.length() < 2) continue
         val feature = JSONObject().apply {
             put("type", "Feature")
             put("geometry", JSONObject().apply {

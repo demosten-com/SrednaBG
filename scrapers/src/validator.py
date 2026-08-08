@@ -23,7 +23,9 @@ from datetime import UTC, datetime
 from src.geo import haversine_m as _haversine
 from src.geo import polyline_length_m as _polyline_length_m
 from src.roads import (
+    ROAD_AXIS,
     ROAD_DIRECTIONS,
+    is_motorway,
     normalize_road,
     opposite_direction,
     road_slug,
@@ -303,6 +305,36 @@ def match_zones(
     return matches
 
 
+# Per-vehicle ceilings outside built-up areas, by road class. The motorway row
+# is Bulgaria's statutory maximum; the non-motorway row is what BG TOLL — the
+# official source — publishes for every one of its class-I sections.
+MAX_LIMIT_KMH: dict[str, dict[str, int]] = {
+    "motorway": {"car": 140, "truck": 90, "bus": 100, "motorcycle": 140},
+    "road": {"car": 90, "truck": 80, "bus": 80, "motorcycle": 90},
+}
+
+
+def _limit_is_plausible(road: str, field: str, value: int) -> bool:
+    """Whether ``value`` km/h can apply to ``field`` on ``road``.
+
+    The BG TOLL KML publishes the full **motorway** set (140/90/100) for the
+    Ихтиман – Мирово section of Път I-8, a class-I road (2026-08). KML outranks
+    every other source for limits — correctly, it is the only one carrying all
+    the per-category values — so without this check it wins over the 90/80/80
+    that BG TOLL *and* TollTracker report, and the app tells a driver they may
+    hold 140 km/h through a 90 km/h enforcement zone.
+
+    Checked per field, not per zone: the ceilings differ by vehicle class, so a
+    truck value of 90 is legitimate on a motorway and upstream error on a
+    class-I road even though the car value alone wouldn't give it away.
+    """
+    if value <= 0:
+        return False
+    road_class = "motorway" if is_motorway(normalize_road(road)) else "road"
+    ceiling = MAX_LIMIT_KMH[road_class].get(field)
+    return ceiling is None or value <= ceiling
+
+
 def _flip_zone(zone: Zone) -> Zone:
     """Return a copy of ``zone`` traversed in the opposite direction."""
     update: dict = {
@@ -376,14 +408,44 @@ def _orient_to(src: Zone | None, primary: Zone) -> Zone | None:
 def merge_match(m: ZoneMatch) -> Zone:
     """Merge a ZoneMatch into a single Zone using field priority rules.
 
+    **The BG TOLL KML is the authority.** It is the camera operator's own
+    published map, so for every field it *authors* its value is the source of
+    truth and every other scraper is a secondary reading. See
+    `scrapers/CLAUDE.md` "The BG TOLL KML is the authority" for the reasoning
+    and the measurements behind the three carve-outs below.
+
     Priority per field:
-    - GPS coordinates: TollTracker > KML > OSM > BG TOLL
-    - Km markers: BG TOLL > KML > TollTracker
-    - Settlements: BG TOLL > KML > TollTracker
-    - Speed limits: KML (official per-category) > TollTracker > BG TOLL
-    - Centerline: KML (richest) > TollTracker > OSM
-    - Distance: KML > TollTracker (measured) > BG TOLL (km calc)
-    - Road type: TollTracker > KML
+    - Speed limits:  **KML** > TollTracker > `bgtoll` road-class default > OSM
+    - Road name:     **KML** > BG TOLL > TollTracker > OSM
+    - Road type:     **KML** > TollTracker
+    - Centerline:    **KML** (richest) > TollTracker > OSM
+    - Distance:      **KML** > TollTracker > BG TOLL — then overwritten by
+      `align_centerline_to_endpoints` with the drawn centerline's arc length
+      (the apps project onto that polyline to derive "remaining", so it must
+      describe the geometry we ship, not the km-marker arithmetic).
+    - Latin names:   TollTracker > KML — the KML authors none.
+    - Direction: from the primary; sources within one match can never disagree,
+      because `match_zones` groups on (road, direction).
+
+    Three carve-outs where the KML does **not** win. None is a dispute about
+    who is right on the facts; each is a field the KML does not author, and
+    each was measured (2026-08-08) before being kept:
+
+    - **GPS coordinates** (TollTracker > KML > OSM). The KML's endpoints are
+      just its centerline's terminals, and they are a coarser survey: taking
+      them broke 2 of the 24 shared-camera junction seams (0 m -> 110 m gap,
+      past `snap_junction_seams`' 30 m) and raised backwards-jog openings from
+      20 to 29 zones — the ISSUE-001 defect class that forced
+      `START_WITNESS_ARC_M` to 200 m. TollTracker's coordinates are the better
+      instrument, and BG TOLL publishes none at all, so nothing is overruled.
+    - **Km markers** (BG TOLL > KML > TollTracker). The KML's are *inferred* by
+      matching camera placemarks to endpoints, not authored per endpoint; the
+      BG TOLL tables state them directly.
+    - **Settlements** (BG TOLL > KML > TollTracker), and the `description`
+      built from them. The KML parses one segment title ("Ихтиман-Мирово") and
+      assigns the halves to endpoints by proximity, so they can cross — on I-8
+      they do, contradicting both the km markers and the Latin names — and it
+      misspells Горни Богров as "Горни Богоров". These strings are user-visible.
     """
     bg = m.bgtoll
     tt = m.tolltracker
@@ -403,13 +465,15 @@ def merge_match(m: ZoneMatch) -> Zone:
     kml = _orient_to(kml, primary)
     osm = _orient_to(osm, primary)
 
-    # Road name: prefer BG TOLL canonical
-    road = normalize_road((bg or tt or kml or osm).road)
+    # Road name: the authority's, normalized to canonical form.
+    road = normalize_road((kml or bg or tt or osm).road)
 
     # Direction
     direction = primary.direction
 
-    # Coordinates: prefer TollTracker > KML > OSM > BG TOLL
+    # Coordinates: TollTracker > KML > OSM. NOT an authority ranking —
+    # see `merge_match`'s docstring: this is a survey-precision choice,
+    # measured, and BG TOLL publishes no coordinates at all.
     start_coords = (0.0, 0.0)
     end_coords = (0.0, 0.0)
     for src in [tt, kml, osm, bg]:
@@ -418,7 +482,8 @@ def merge_match(m: ZoneMatch) -> Zone:
             end_coords = (src.end.lat, src.end.lng)
             break
 
-    # Km markers: prefer BG TOLL > KML > TollTracker
+    # Km markers: BG TOLL > KML > TollTracker (see docstring — KML's are
+    # inferred by matching camera placemarks to endpoints, not authored).
     start_km = None
     end_km = None
     for src in [bg, kml, tt]:
@@ -427,7 +492,8 @@ def merge_match(m: ZoneMatch) -> Zone:
             end_km = src.end.km_marker
             break
 
-    # Settlement names: prefer BG TOLL > KML > TollTracker
+    # Settlement names: BG TOLL > KML > TollTracker (see docstring). The
+    # published `description` is built from whichever pair wins here.
     start_settlement = None
     end_settlement = None
     for src in [bg, kml, tt]:
@@ -445,17 +511,39 @@ def merge_match(m: ZoneMatch) -> Zone:
             end_latin = src.end.settlement_latin
             break
 
-    # Speed limits: per-field priority KML (official per-category) > TollTracker
-    # > BG TOLL > OSM. Merged independently so e.g. a missing motorcycle limit on
-    # the top source falls back to a lower one instead of taking the whole object
-    # all-or-nothing (which would drop a populated field from a lower source).
+    # Speed limits: **BG TOLL is the authority — and for limits that means the
+    # KML, not the `bgtoll` scraper.** Both are BG TOLL sources, but only the
+    # KML (BG TOLL's own Google My Maps) publishes per-category limits. The
+    # `bgtoll` FAQ tables carry road + km markers + settlements and *no* limits
+    # at all: `bgtoll_scraper` fills in `MOTORWAY_SPEED_LIMITS` /
+    # `NATIONAL_ROAD_SPEED_LIMITS`, which are our own statutory-maximum
+    # assumption keyed on `is_motorway`, not anything BG TOLL said. Ranking
+    # `bg` above `kml` here would therefore let a hardcoded constant outrank
+    # the authority it claims to represent — on АМ Европа that publishes 140
+    # over BG TOLL's own 120, telling drivers to hold 20 km/h more than the
+    # camera allows. So: KML (real BG TOLL values) > TollTracker (secondary,
+    # car only) > the `bgtoll` road-class default > OSM.
+    #
+    # Merged per field, not all-or-nothing, so a gap in one source is filled
+    # from the next instead of dropping a populated value.
+    road_for_limits = (bg or tt or kml or osm).road
+    _demoted: list[str] = []
+
     def _pick_limit(field: str) -> int | None:
+        fallback: int | None = None
         for src in [kml, tt, bg, osm]:
             if src is not None:
                 val = getattr(src.speed_limits, field)
                 if val is not None:
-                    return val
-        return None
+                    if _limit_is_plausible(road_for_limits, field, val):
+                        return val
+                    if src is kml:
+                        _demoted.append(f"{field} {val}")
+                    if fallback is None:
+                        fallback = val
+        # Every source is implausible — keep the top-ranked value rather than
+        # publishing None, and let validate() warn about it.
+        return fallback
 
     speed_limits = SpeedLimits(
         car=_pick_limit("car"),
@@ -463,6 +551,20 @@ def merge_match(m: ZoneMatch) -> Zone:
         bus=_pick_limit("bus"),
         motorcycle=_pick_limit("motorcycle"),
     )
+
+    if _demoted:
+        # Overriding the authority is a serious step, so say so out loud every
+        # run. Logged rather than raised as a validate() warning: an upstream
+        # error we have deliberately corrected is not a defect in *this* run,
+        # and a warning would fail `test_data_sanity` until BG TOLL fixes their
+        # map. Visible in the scrape output and the cron log either way.
+        logger.warning(
+            "%s %s: BG TOLL's KML limit is impossible for this road class and "
+            "was overridden (%s) — see _limit_is_plausible",
+            road,
+            direction,
+            ", ".join(_demoted),
+        )
 
     # Distance: prefer KML > TollTracker > BG TOLL
     distance_m = (kml or tt or bg or osm).distance_m
@@ -474,9 +576,9 @@ def merge_match(m: ZoneMatch) -> Zone:
             centerline = src.centerline
             break
 
-    # Road type
+    # Road type: KML (authority) > TollTracker
     road_type = None
-    for src in [tt, kml]:
+    for src in [kml, tt]:
         if src and src.road_type:
             road_type = src.road_type
             break
@@ -734,6 +836,21 @@ def validate(zones: list[Zone]) -> tuple[list[Zone], list[str]]:
         if z.start.lat == 0 and z.start.lng == 0:
             warnings.append(f"Zone {z.id} has no GPS coordinates")
 
+        # A road absent from the direction tables gets its label from two
+        # different fallbacks depending on the source — the bearing quadrant
+        # for coordinate-bearing sources, "increasing km = east" for BG TOLL.
+        # On a diagonal section those disagree, `match_zones` groups by
+        # (road, direction), and the same physical section publishes twice:
+        # once without coordinates, once without truck/bus limits (Път I-8,
+        # 2026-08). Warn by name — the fix is one entry in each table.
+        canonical = normalize_road(z.road)
+        if canonical not in ROAD_AXIS or canonical not in ROAD_DIRECTIONS:
+            warnings.append(
+                f"Zone {z.id}: road {canonical!r} is missing from "
+                f"roads.ROAD_AXIS / ROAD_DIRECTIONS — its direction label is a "
+                f"guess and may not match across sources"
+            )
+
         # Check distance
         if z.distance_m <= 0:
             warnings.append(f"Zone {z.id} has invalid distance: {z.distance_m}")
@@ -743,8 +860,18 @@ def validate(zones: list[Zone]) -> tuple[list[Zone], list[str]]:
         # and BG TOLL carry truck/bus limits (TollTracker tiles have a single
         # speed_limit), so a gap here means a zone merged without either.
         for vehicle in ("car", "truck", "bus"):
-            if getattr(z.speed_limits, vehicle) is None:
+            limit = getattr(z.speed_limits, vehicle)
+            if limit is None:
                 warnings.append(f"Zone {z.id} has no {vehicle} speed limit")
+            elif not _limit_is_plausible(z.road, vehicle, limit):
+                # _pick_limit already prefers a plausible source; reaching here
+                # means every source disagreed with the road class.
+                road_class = "motorway" if is_motorway(normalize_road(z.road)) else "road"
+                warnings.append(
+                    f"Zone {z.id} ({z.road}) has an impossible {vehicle} limit "
+                    f"{limit} km/h — no source offered one at or under "
+                    f"{MAX_LIMIT_KMH[road_class][vehicle]} for a {road_class}"
+                )
 
         # Centerline orientation guard (defense-in-depth post-condition of
         # align_centerline_to_endpoints, which merge_all runs just above). The
@@ -885,6 +1012,42 @@ def snap_junction_seams(
     return zones
 
 
+# The sources that are BG TOLL: the FAQ tables and BG TOLL's own Google My Maps
+# export. TollTracker and OSM are third parties reading the same world.
+OFFICIAL_SOURCES = frozenset({"bgtoll", "kml"})
+
+
+def drop_unofficial_zones(zones: list[Zone]) -> tuple[list[Zone], list[Zone]]:
+    """Split zones by whether BG TOLL corroborates them at all.
+
+    BG TOLL operates the cameras, so a section it publishes nowhere — neither in
+    the FAQ tables nor on its own map — is a section we have no authority for.
+    TollTracker is a third party; it can be ahead, but it can equally be wrong,
+    and an app that announces an enforcement zone which does not exist is worse
+    than one that stays quiet. Such zones are dropped rather than published.
+
+    Dropping rather than failing the run is deliberate, and the aggregate guards
+    are what express "too inconsistent to ship": if the drops take the count
+    under `MIN_PUBLISH_ZONES`, remove a required motorway, or collapse the count
+    against what is currently served, `output.publish_guard_errors` refuses the
+    whole publish. One unsupported zone should not freeze `/api` for everyone;
+    a systematic collapse should.
+
+    This is also what keeps the missing-limit case theoretical: a
+    TollTracker-only zone is precisely the one that arrives with a `car` limit
+    and nothing else (the tiles carry a single `speed_limit`), which is the
+    payload that fails the whole iOS 1.x decode.
+    """
+    kept: list[Zone] = []
+    dropped: list[Zone] = []
+    for zone in zones:
+        if OFFICIAL_SOURCES & set(zone.source.split("+")):
+            kept.append(zone)
+        else:
+            dropped.append(zone)
+    return kept, dropped
+
+
 def merge_all(
     bgtoll: list[Zone],
     tolltracker: list[Zone],
@@ -894,6 +1057,19 @@ def merge_all(
     """Top-level orchestrator: match -> merge -> assign IDs -> validate."""
     matches = match_zones(bgtoll, tolltracker, osm, kml)
     merged = [merge_match(m) for m in matches]
+
+    # Before IDs are assigned, so numbering has no gaps.
+    merged, unofficial = drop_unofficial_zones(merged)
+    for zone in unofficial:
+        logger.warning(
+            "Dropping %s %s (%s): source is %s — BG TOLL publishes this section "
+            "nowhere, so we have no authority for it",
+            zone.road,
+            zone.direction,
+            zone.description,
+            zone.source or "(none)",
+        )
+
     with_ids = assign_ids(merged)
     snapped = snap_junction_seams(with_ids)
     aligned = [align_centerline_to_endpoints(z) for z in snapped]

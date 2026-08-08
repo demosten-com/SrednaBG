@@ -9,6 +9,7 @@ import pytest
 
 from src.bgtoll_scraper import scrape as bgtoll_scrape
 from src.validator import (
+    OFFICIAL_SOURCES,
     ZoneMatch,
     _coords_close,
     _haversine,
@@ -17,6 +18,7 @@ from src.validator import (
     _polyline_length_m,
     align_centerline_to_endpoints,
     assign_ids,
+    drop_unofficial_zones,
     match_zones,
     merge_all,
     merge_match,
@@ -796,3 +798,287 @@ class TestValidateConsistencyChecks:
         ).model_copy(update={"id": "trakiya-03-east"})
         _, warnings = validate([a, b])
         assert not any("junction gap" in w for w in warnings)
+
+
+class TestRoadClassLimitPlausibility:
+    """The 2026-08 Път I-8 regression: the BG TOLL KML publishes motorway
+    limits (140/90/100) for a class-I road, and KML outranks every other
+    source for limits."""
+
+    def test_kml_motorway_limit_on_a_class_i_road_loses_to_bgtoll(self):
+        kml = _make_zone(
+            road="Път I-8",
+            start_settlement="Ихтиман",
+            end_settlement="Мирово",
+            start_km="123+404",
+            end_km="134+876",
+            start_lat=42.4606211,
+            start_lng=23.803103,
+            end_lat=42.3793752,
+            end_lng=23.8763595,
+            source="kml",
+            car=140,
+            truck=90,
+            bus=100,
+        )
+        bg = _make_zone(
+            road="Път I-8",
+            start_settlement="Ихтиман",
+            end_settlement="Мирово",
+            start_km="123+404",
+            end_km="134+876",
+            source="bgtoll",
+            car=90,
+            truck=80,
+            bus=80,
+        )
+        merged = merge_match(ZoneMatch(bgtoll=bg, kml=kml, confidence=1.0))
+        assert merged.speed_limits.car == 90
+        assert merged.speed_limits.truck == 80
+        assert merged.speed_limits.bus == 80
+
+    def test_motorway_keeps_its_140(self):
+        kml = _make_zone(
+            road="АМ Тракия",
+            start_lat=42.5432,
+            start_lng=23.8234,
+            end_lat=42.4321,
+            end_lng=23.9876,
+            source="kml",
+            car=140,
+        )
+        bg = _make_zone(road="АМ Тракия", source="bgtoll", car=130)
+        merged = merge_match(ZoneMatch(bgtoll=bg, kml=kml, confidence=1.0))
+        assert merged.speed_limits.car == 140
+
+    def test_implausible_everywhere_keeps_top_source_and_warns(self):
+        kml = _make_zone(
+            road="Път I-8",
+            start_lat=42.46,
+            start_lng=23.80,
+            end_lat=42.37,
+            end_lng=23.87,
+            source="kml",
+            car=140,
+            truck=90,
+            bus=100,
+        )
+        merged = merge_match(ZoneMatch(kml=kml, confidence=1.0))
+        assert merged.speed_limits.car == 140
+        _, warnings = validate(assign_ids([merged]))
+        assert any("impossible car limit" in w for w in warnings)
+
+
+class TestUnknownRoadWarning:
+    def test_road_missing_from_the_direction_tables_is_named(self):
+        z = _make_zone(
+            road="Път I-9",
+            start_lat=42.46,
+            start_lng=23.80,
+            end_lat=42.37,
+            end_lng=23.87,
+            car=90,
+            truck=80,
+            bus=80,
+        )
+        _, warnings = validate(assign_ids([z]))
+        assert any("ROAD_AXIS" in w and "Път I-9" in w for w in warnings)
+
+    def test_a_known_road_produces_no_such_warning(self):
+        z = _make_zone(
+            road="Път I-8",
+            start_lat=42.46,
+            start_lng=23.80,
+            end_lat=42.37,
+            end_lng=23.87,
+            car=90,
+            truck=80,
+            bus=80,
+        )
+        _, warnings = validate(assign_ids([z]))
+        assert not any("ROAD_AXIS" in w for w in warnings)
+
+
+class TestBgTollAuthorityForLimits:
+    """BG TOLL is the authority — and for *limits* that means the KML.
+
+    `bgtoll_scraper` scrapes no limits; it substitutes a statutory road-class
+    constant. Letting that constant outrank BG TOLL's own published KML value
+    would ship 140 on АМ Европа where BG TOLL says 120.
+    """
+
+    def _europa(self, source, car, motorcycle):
+        z = _make_zone(
+            road="АМ Европа",
+            direction="east",
+            start_settlement="м/у 18 и п.в.Илиянци",
+            end_settlement="Чепинци",
+            start_km="50+427",
+            end_km="60+705",
+            start_lat=42.7653671,
+            start_lng=23.2969379,
+            end_lat=42.7196194,
+            end_lng=23.4004068,
+            distance_m=10260,
+            source=source,
+            car=car,
+            truck=90,
+            bus=100,
+        )
+        return z.model_copy(
+            update={"speed_limits": SpeedLimits(
+                car=car, truck=90, bus=100, motorcycle=motorcycle,
+            )}
+        )
+
+    def test_kml_beats_the_bgtoll_road_class_default(self):
+        # The real regression: 140 here is our own MOTORWAY_SPEED_LIMITS
+        # constant, not anything BG TOLL published.
+        kml = self._europa("kml", car=120, motorcycle=120)
+        bg = self._europa("bgtoll", car=140, motorcycle=140)
+        merged = merge_match(ZoneMatch(bgtoll=bg, kml=kml, confidence=1.0))
+        assert merged.speed_limits.car == 120
+        assert merged.speed_limits.motorcycle == 120
+
+    def test_the_bgtoll_default_still_fills_a_gap_the_kml_leaves(self):
+        kml = self._europa("kml", car=120, motorcycle=120).model_copy(
+            update={"speed_limits": SpeedLimits(car=120, truck=None, bus=None)}
+        )
+        bg = self._europa("bgtoll", car=140, motorcycle=140)
+        merged = merge_match(ZoneMatch(bgtoll=bg, kml=kml, confidence=1.0))
+        assert merged.speed_limits.car == 120       # authority wins
+        assert merged.speed_limits.truck == 90      # gap filled from the default
+        assert merged.speed_limits.bus == 100
+
+
+class TestKmlIsTheAuthority:
+    """The BG TOLL KML wins every field it *authors*.
+
+    The carve-outs below are pinned just as hard: each was measured to make the
+    data worse (see scrapers/CLAUDE.md "The BG TOLL KML is the authority"), so a
+    future tidy-up that "makes the precedence consistent" must fail here rather
+    than silently ship coarser geometry or crossed settlement names.
+    """
+
+    def _pair(self):
+        common = dict(
+            start_settlement="Ихтиман",
+            end_settlement="Мирово",
+            start_km="123+404",
+            end_km="134+876",
+        )
+        kml = _make_zone(
+            road="Път I-8",
+            start_lat=42.4606211, start_lng=23.803103,
+            end_lat=42.3793752, end_lng=23.8763595,
+            source="kml", car=90, truck=80, bus=80, **common,
+        )
+        # Deliberately different coordinates so precedence is observable.
+        tt = _make_zone(
+            road="Път I-8",
+            start_lat=42.4600000, start_lng=23.804000,
+            end_lat=42.3800000, end_lng=23.875000,
+            source="tolltracker", car=90, truck=80, bus=80, **common,
+        )
+        bg = _make_zone(road="Път I-8", source="bgtoll", car=90, truck=80, bus=80, **common)
+        return kml, tt, bg
+
+    def test_kml_wins_road_type(self):
+        kml, tt, _ = self._pair()
+        kml = kml.model_copy(update={"road_type": "road"})
+        tt = tt.model_copy(update={"road_type": "motorway"})
+        merged = merge_match(ZoneMatch(tolltracker=tt, kml=kml, confidence=1.0))
+        assert merged.road_type == "road"
+
+    def test_kml_wins_the_centerline(self):
+        kml, tt, _ = self._pair()
+        merged = merge_match(ZoneMatch(tolltracker=tt, kml=kml, confidence=1.0))
+        assert merged.centerline == kml.centerline
+
+    # ── carve-outs ──────────────────────────────────────────────────────────
+
+    def test_carveout_coordinates_come_from_tolltracker_not_kml(self):
+        """Instrument precision, not authority — KML endpoints broke 2 of 24
+        junction seams and added 9 backwards-jog zones when measured."""
+        kml, tt, _ = self._pair()
+        merged = merge_match(ZoneMatch(tolltracker=tt, kml=kml, confidence=1.0))
+        assert merged.start.lat == tt.start.lat
+        assert merged.start.lng == tt.start.lng
+
+    def test_carveout_settlements_come_from_bgtoll_not_kml(self):
+        """The KML splits one segment title and assigns halves by proximity, so
+        they can cross (they do on I-8). BG TOLL states them per endpoint.
+
+        TollTracker is included because it is the orientation primary in
+        production: BG TOLL carries no coordinates, so `_orient_to` falls back
+        to matching *settlement names* against the primary — with the KML as
+        primary a crossed pair there would drag BG TOLL's names across with it.
+        Another reason the coordinate carve-out matters.
+        """
+        kml, tt, bg = self._pair()
+        kml = kml.model_copy(update={
+            "start": kml.start.model_copy(update={"settlement": "Мирово"}),
+            "end": kml.end.model_copy(update={"settlement": "Ихтиман"}),
+        })
+        merged = merge_match(
+            ZoneMatch(bgtoll=bg, tolltracker=tt, kml=kml, confidence=1.0)
+        )
+        assert merged.start.settlement == "Ихтиман"
+        assert merged.end.settlement == "Мирово"
+
+    def test_carveout_km_markers_come_from_bgtoll_not_kml(self):
+        kml, tt, bg = self._pair()
+        kml = kml.model_copy(update={
+            "start": kml.start.model_copy(update={"km_marker": "999+999"}),
+        })
+        merged = merge_match(
+            ZoneMatch(bgtoll=bg, tolltracker=tt, kml=kml, confidence=1.0)
+        )
+        assert merged.start.km_marker == "123+404"
+
+
+class TestOnlyBgTollBackedZonesShip:
+    """BG TOLL runs the cameras, so a section it publishes nowhere is one we
+    have no authority for. Announcing an enforcement zone that does not exist is
+    worse than staying quiet, so TollTracker-only zones are dropped."""
+
+    def _z(self, source, **kw):
+        return _make_zone(
+            start_lat=42.5432, start_lng=23.8234,
+            end_lat=42.4321, end_lng=23.9876,
+            source=source, **kw,
+        )
+
+    def test_tolltracker_only_zone_is_dropped(self):
+        kept, dropped = drop_unofficial_zones([self._z("tolltracker")])
+        assert kept == []
+        assert len(dropped) == 1
+
+    def test_osm_only_zone_is_dropped(self):
+        kept, dropped = drop_unofficial_zones([self._z("osm")])
+        assert kept == []
+        assert len(dropped) == 1
+
+    def test_a_zone_the_kml_backs_is_kept(self):
+        """The KML *is* BG TOLL — its own published map."""
+        kept, dropped = drop_unofficial_zones([self._z("tolltracker+kml")])
+        assert len(kept) == 1
+        assert dropped == []
+
+    def test_a_zone_the_faq_tables_back_is_kept(self):
+        kept, dropped = drop_unofficial_zones([self._z("bgtoll+tolltracker")])
+        assert len(kept) == 1
+        assert dropped == []
+
+    def test_the_shipped_data_is_entirely_bg_toll_backed(self):
+        import json
+        from pathlib import Path
+
+        zones = json.loads(
+            (Path(__file__).parent.parent / "data" / "zones.json").read_text("utf-8")
+        )["zones"]
+        unbacked = [
+            z["id"] for z in zones
+            if not (OFFICIAL_SOURCES & set(z["source"].split("+")))
+        ]
+        assert unbacked == [], f"shipped zones with no BG TOLL source: {unbacked}"

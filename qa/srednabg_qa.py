@@ -99,6 +99,9 @@ HISTORY_SCENARIOS = [
 ]
 SYNC_SCENARIOS = [
     "zones_happy",
+    # Tripwire on the *served* data, not the client: fails when the backend
+    # publishes a zone with no usable geometry (the 2026-08 Път I-8 outage).
+    "zones_all_usable",
     # Keep network-dependent scenarios before `zones_offline` — it toggles
     # connectivity and the emulator's DNS can take a few seconds to recover.
     "zones_toggle_off",

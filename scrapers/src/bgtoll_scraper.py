@@ -32,7 +32,16 @@ logger = logging.getLogger(__name__)
 
 BGTOLL_URL = "https://bgtoll.bg/vaprosi-i-otgovori"
 
-# Default speed limits by road type (km/h)
+# Statutory road-class defaults (km/h) — **assumptions, not BG TOLL data.**
+#
+# The BG TOLL FAQ tables carry road + km markers + settlements and no speed
+# limits whatsoever, so every zone from this scraper gets the statutory maximum
+# for its road class. BG TOLL *does* publish real per-category limits, but in
+# its Google My Maps export (`kml_scraper`) — which is why `merge_match` ranks
+# `kml` above `bgtoll` for limits despite BG TOLL being the authority overall.
+# Ranking these constants first would let an assumption outrank the authority
+# it stands in for: on АМ Европа that means publishing 140 where BG TOLL's own
+# map says 120. Treat these as the floor of the limit hierarchy, not the top.
 MOTORWAY_SPEED_LIMITS = SpeedLimits(car=140, truck=90, bus=100, motorcycle=140)
 NATIONAL_ROAD_SPEED_LIMITS = SpeedLimits(car=90, truck=80, bus=80, motorcycle=90)
 

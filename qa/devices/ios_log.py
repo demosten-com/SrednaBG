@@ -29,13 +29,33 @@ from qa.log_observer import LogObserver
 from qa.parsers import parse_message
 
 
+def _target_udid() -> str:
+    """The UDID of the simulator under test, falling back to `booted`.
+
+    Resolved from the active device so the log stream and the control channel
+    can never address different simulators.
+    """
+    from qa import device as device_mod
+
+    dev = device_mod.current()
+    udid = getattr(dev, "udid", None)
+    return udid if isinstance(udid, str) and udid else "booted"
+
+
 @dataclass
 class IosLogObserver(LogObserver):
     def _cmd(self) -> list[str]:
         # `--info --debug` so we get info-level lines (default is default+).
         # Predicate filters by subsystem so the stream is tractable.
+        #
+        # Address the simulator by the UDID the active `IosDevice` resolved,
+        # NOT the `booted` alias: with more than one simulator booted (an
+        # everyday state — several runtimes open in Simulator.app) `booted` is
+        # ambiguous, so the stream can attach to a device the app isn't even
+        # installed on. Every scenario then times out waiting for a line that
+        # was logged somewhere else.
         return [
-            "xcrun", "simctl", "spawn", "booted", "log", "stream",
+            "xcrun", "simctl", "spawn", _target_udid(), "log", "stream",
             "--style", "ndjson",
             "--info", "--debug",
             "--predicate", f'subsystem == "{BUNDLE_ID}"',

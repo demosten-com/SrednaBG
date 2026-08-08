@@ -1,0 +1,141 @@
+{
+  "name": "wire-v1",
+  "_comment": [
+    "The /api/zones shape the published 1.x clients can consume. Shared by 1.0.4",
+    "and 1.1.0 — their decode surface is byte-identical (verified 2026-08-08: the",
+    "diffs between those tags are `.use {}` resource-closing in ZoneApi.kt, an",
+    "avgSpeed change on a non-wire type, and doc comments).",
+    "",
+    "Every rule below is transcribed from the source files in `derived_from` and",
+    "is proved by a fixture under `fixtures/` — see contracts/README.md. A rule no",
+    "fixture can demonstrate is a guess; do not add one without its fixture.",
+    "",
+    "Note `zone_schema` serializes with exclude_none=True, so a null field is",
+    "OMITTED from the wire entirely. `required` therefore means 'must not be None'."
+  ],
+  "derived_from": {
+    "_comment": "decode_surface files are fingerprinted by check_drift.py; render_rules are recorded for provenance only — they contain no field declarations, and their constraint (MapLibre's LineString arity) is proved on-device by qa/scenarios/sync/zones_all_usable.py instead.",
+    "decode_surface": {
+      "android": [
+        "android/core/src/main/kotlin/com/demosten/srednabg/core/Models.kt",
+        "android/app/src/main/kotlin/com/demosten/srednabg/app/data/remote/ZoneApi.kt"
+      ],
+      "ios": [
+        "ios/Packages/SrednaBGCore/Sources/SrednaBGCore/Models.swift",
+        "ios/Packages/SrednaBGData/Sources/SrednaBGData/ApiTypes.swift"
+      ]
+    },
+    "render_rules": {
+      "android": [
+        "android/app/src/main/kotlin/com/demosten/srednabg/app/ui/screens/ZoneMapScreen.kt"
+      ]
+    }
+  },
+  "response": {
+    "required": {
+      "version": "string",
+      "hash": "string",
+      "zones": "array"
+    }
+  },
+  "zone": {
+    "required": {
+      "id": "string",
+      "road": "string",
+      "direction": "string",
+      "description": "string",
+      "start": "object",
+      "end": "object",
+      "distance_m": "integer",
+      "speed_limits": "object",
+      "centerline": "array",
+      "source": "string",
+      "last_verified": "string"
+    },
+    "optional": {
+      "road_latin": "string",
+      "road_type": "string"
+    }
+  },
+  "endpoint": {
+    "required": {
+      "lat": "number",
+      "lng": "number"
+    },
+    "optional": {
+      "km_marker": "string",
+      "settlement": "string",
+      "settlement_latin": "string"
+    }
+  },
+  "speed_limits": {
+    "required": {
+      "car": "integer",
+      "truck": "integer",
+      "bus": "integer"
+    },
+    "optional": {
+      "motorcycle": "integer"
+    }
+  },
+  "constraints": [
+    {
+      "id": "centerline-min-points",
+      "rule": "centerline_min_points",
+      "value": 2,
+      "why": "MapLibre rejects the ENTIRE zone FeatureCollection on one invalid LineString ('must have two or more coordinate points'), so a single degenerate zone blanks the whole map on Android 1.x. Gson parses it happily, so this is a render rule the decoder cannot catch.",
+      "breaks": [
+        "android"
+      ]
+    },
+    {
+      "id": "centerline-point-arity",
+      "rule": "centerline_point_arity",
+      "value": 2,
+      "why": "Both clients subscript point[0]/point[1] unguarded when building geometry; a short pair traps on iOS and throws on Android.",
+      "breaks": [
+        "android",
+        "ios"
+      ]
+    },
+    {
+      "id": "endpoints-not-null-island",
+      "rule": "endpoints_non_zero",
+      "why": "A (0, 0) endpoint is the placeholder a BG TOLL zone keeps when it fails to merge with a coordinate-bearing source. The engine can never detect such a zone, and it drags map camera fits toward the Gulf of Guinea.",
+      "breaks": [
+        "android",
+        "ios"
+      ]
+    },
+    {
+      "id": "distance-positive",
+      "rule": "positive_integer",
+      "field": "distance_m",
+      "why": "Zero or negative distance divides through the average-speed and remainder math.",
+      "breaks": [
+        "android",
+        "ios"
+      ]
+    },
+    {
+      "id": "limits-positive",
+      "rule": "positive_limits",
+      "fields": [
+        "car",
+        "truck",
+        "bus"
+      ],
+      "why": "A 0 km/h limit reads as permanently over-limit for that vehicle class. Android 1.x Gson zero-fills an absent key, which is how this arises in practice.",
+      "breaks": [
+        "android",
+        "ios"
+      ]
+    }
+  ],
+  "surface_fingerprint": {
+    "android/core/src/main/kotlin/com/demosten/srednabg/core/Models.kt": "948b5b18fbd1188d",
+    "android/app/src/main/kotlin/com/demosten/srednabg/app/data/remote/ZoneApi.kt": "0247206475753c74",
+    "ios/Packages/SrednaBGCore/Sources/SrednaBGCore/Models.swift": "ffbfa6a307cd5ce9",
+    "ios/Packages/SrednaBGData/Sources/SrednaBGData/ApiTypes.swift": "1d028adf58435376"
+  }
+}

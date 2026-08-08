@@ -40,7 +40,7 @@ python -m unittest discover qa/tests
 |-------|------|----------|
 | `smoke` | ~5 min | 1 zone, 1 settings combo, 1 sync, parser self-test |
 | `representative` | ~30 min | 6 hand-picked zones × 4 settings combos + sync set |
-| `full-zones` | ~75 min @ 4× | All 72 zones × constant-speed pass × 4 minimal asserts |
+| `full-zones` | ~75 min @ 4× | All 74 zones × constant-speed pass × 4 minimal asserts |
 | `scenarios` | ~20 min | 14 edge cases (stop, dropout, off-ramp, U-turn, swap, auto-stop, dense-centerline, stop-silences-TTS, etc.) |
 | `sync` | ~5 min | Zones happy + offline; map happy + integrity |
 | `ui` | <1 min | Phone UI walk via mobile-mcp / adb input |

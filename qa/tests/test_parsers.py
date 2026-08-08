@@ -27,6 +27,8 @@ from qa.events import (
     TtsSpeak,
     UnparsedLog,
     ZoneStateChange,
+    ZonesDropped,
+    ZonesRepaired,
     ZonesLoaded,
 )
 
@@ -73,9 +75,42 @@ class LocTests(unittest.TestCase):
         self.assertIsInstance(ev, DisplaySpeed)
 
     def test_zones_loaded(self):
-        ev = parsers.parse_threadtime_line(line("SrednaBG.Loc", "zones changed (n=72)"))
+        ev = parsers.parse_threadtime_line(line("SrednaBG.Loc", "zones changed (n=74)"))
         self.assertIsInstance(ev, ZonesLoaded)
-        self.assertEqual(ev.count, 72)
+        self.assertEqual(ev.count, 74)
+
+    def test_zones_dropped(self):
+        """The unusable-zone tripwire — body is identical on both platforms."""
+        ev = parsers.parse_threadtime_line(line(
+            "SrednaBG.Loc",
+            "zones dropped (n=2) ids=[i8-02-east, i8-02-west] "
+            "origin=server 2026-08-03T06:11:22Z"))
+        self.assertIsInstance(ev, ZonesDropped)
+        self.assertEqual(ev.count, 2)
+        self.assertEqual(ev.ids, ["i8-02-east", "i8-02-west"])
+        self.assertEqual(ev.origin, "server 2026-08-03T06:11:22Z")
+
+    def test_zones_repaired(self):
+        """Distinct from dropped: fatal on shipped 1.x, invisible on current."""
+        ev = parsers.parse_threadtime_line(line(
+            "SrednaBG.Loc",
+            "zones repaired (n=2) ids=[i8-01-north, i8-01-south] "
+            "origin=server 2026-08-03T06:11:22Z"))
+        self.assertIsInstance(ev, ZonesRepaired)
+        self.assertEqual(ev.count, 2)
+        self.assertEqual(ev.ids, ["i8-01-north", "i8-01-south"])
+
+    def test_repaired_and_dropped_are_not_confused(self):
+        rep = parsers.parse_threadtime_line(line(
+            "SrednaBG.Loc", "zones repaired (n=1) ids=[a] origin=server x"))
+        drop = parsers.parse_threadtime_line(line(
+            "SrednaBG.Loc", "zones dropped (n=1) ids=[b] origin=server x"))
+        self.assertNotIsInstance(rep, ZonesDropped)
+        self.assertNotIsInstance(drop, ZonesRepaired)
+
+    def test_zones_loaded_is_not_confused_with_dropped(self):
+        ev = parsers.parse_threadtime_line(line("SrednaBG.Loc", "zones changed (n=74)"))
+        self.assertNotIsInstance(ev, ZonesDropped)
 
     def test_auto_stop(self):
         ev = parsers.parse_threadtime_line(line(

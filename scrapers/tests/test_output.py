@@ -13,6 +13,7 @@ import pytest
 
 from src import output, validator
 from src.bgtoll_scraper import scrape as bgtoll_scrape
+from src.output import client_contract_errors, publish_guard_errors
 from src.validator import merge_all
 from src.zone_schema import SpeedLimits, Zone, ZoneDatabase, ZoneEndpoint
 
@@ -348,3 +349,54 @@ class TestPublishGuard:
             output.main()
         assert exc.value.code == 1
         assert (tmp_path / "zones.json").read_text() == zones_before
+
+
+class TestIncompleteLimitGuard:
+    """A missing truck/bus limit is a publish blocker, not a warning: the key is
+    omitted on the wire and iOS 1.x — what the stores serve — fails the decode
+    of the *whole* /api/zones response on it.
+
+    The rule itself now lives in `contracts/wire-v1.json` (one source of truth
+    with the fixtures that prove it); these cases pin that it is still reachable
+    through the publish gate.
+    """
+
+    def _db(self, **limits):
+        z = Zone(
+            id="i8-01-north",
+            road="Път I-8",
+            direction="north",
+            description="Мирово – Ихтиман",
+            start=ZoneEndpoint(lat=42.3793752, lng=23.8763595, settlement="Мирово"),
+            end=ZoneEndpoint(lat=42.4606211, lng=23.803103, settlement="Ихтиман"),
+            distance_m=11440,
+            speed_limits=SpeedLimits(**limits),
+            centerline=[[42.3793752, 23.8763595], [42.4606211, 23.803103]],
+            source="tolltracker",
+            last_verified="2026-08-03",
+        )
+        return ZoneDatabase(version="2026-08-03T06:11:22Z", zones=[z])
+
+    def test_missing_truck_and_bus_blocks_publishing(self):
+        errors = client_contract_errors(self._db(car=90))
+        # One error per absent key, each naming the zone and the clients it breaks.
+        assert len(errors) == 2, errors
+        assert all("i8-01-north" in e for e in errors)
+        assert any("'truck'" in e for e in errors)
+        assert any("'bus'" in e for e in errors)
+        assert all("1.0.4" in e and "1.1.0" in e for e in errors)
+
+    def test_missing_truck_alone_blocks_publishing(self):
+        errors = client_contract_errors(self._db(car=90, bus=80))
+        assert len(errors) == 1
+        assert "truck" in errors[0]
+
+    def test_a_complete_zone_publishes(self):
+        assert client_contract_errors(self._db(car=90, truck=80, bus=80)) == []
+
+    def test_the_guard_is_wired_into_publish_guard_errors(self):
+        """The whole point is that it *blocks* — not that it exists."""
+        assert any(
+            "speed_limits is missing required key" in e
+            for e in publish_guard_errors(self._db(car=90))
+        )

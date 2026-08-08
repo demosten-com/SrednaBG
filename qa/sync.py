@@ -40,10 +40,23 @@ def force_sync_map() -> None:
     device_mod.current().force_sync_map()
 
 
-def wait_for_sync(obs: LogObserver, action_suffix: str, *, timeout_s: float = 30.0) -> SyncResult:
+def wait_for_sync(
+    obs: LogObserver,
+    action_suffix: str,
+    *,
+    timeout_s: float = 30.0,
+    collect: Optional[list] = None,
+) -> SyncResult:
     """Block until a `DebugSync` event shows the action completed.
 
     `action_suffix` is the short tail (`SYNC_ZONES`, `SYNC_MAP`).
+
+    Pass `collect` to keep the events consumed along the way. Everything the
+    app logs *during* a sync — the zones-loaded count, an unusable-zone drop —
+    arrives on the queue **before** the `DebugSync` line that closes it, so a
+    caller that drains afterwards sees an empty queue and asserts vacuously
+    (this is exactly how `sync.zones_all_usable` first passed against data it
+    was written to reject).
     """
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
@@ -53,6 +66,8 @@ def wait_for_sync(obs: LogObserver, action_suffix: str, *, timeout_s: float = 30
             continue
         if isinstance(ev, SyncResult) and ev.action == action_suffix:
             return ev
+        if collect is not None:
+            collect.append(ev)
     raise TimeoutError(f"no DebugSync result for {action_suffix} within {timeout_s}s")
 
 

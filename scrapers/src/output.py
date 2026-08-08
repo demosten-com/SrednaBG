@@ -29,6 +29,7 @@ from src import (  # noqa: E402
     # osm_overpass,  # disabled for now — see run_pipeline()
     tolltracker_fetcher,
 )
+from src.client_contract import ContractError, contract_violations  # noqa: E402
 from src.validator import (  # noqa: E402
     REQUIRED_MOTORWAYS,
     align_centerline_to_endpoints,
@@ -173,7 +174,33 @@ def publish_guard_errors(db: ZoneDatabase, prev_count: int | None = None) -> lis
             f"zone count dropped {prev_count} -> {count} "
             f"(more than {int((1 - MIN_PREV_RATIO) * 100)}%)"
         )
+    errors.extend(client_contract_errors(db))
     return errors
+
+
+def client_contract_errors(db: ZoneDatabase) -> list[str]:
+    """Reasons the published 1.x clients could not consume ``db``.
+
+    Delegates to `src/client_contract.py`, which reads `contracts/*.json` — the
+    transcribed decode surface of every client actually in the stores. This is
+    the fleet's only protection: an app-side fix cannot reach installs that
+    already exist, so a violation here is a hard publish failure rather than a
+    warning. See `scrapers/CLAUDE.md` "Never serve data a published client
+    can't parse".
+
+    Checked against the **wire form** (`exclude_none=True`), not the model: a
+    null field is omitted from the JSON entirely, and an omitted key is exactly
+    what fails the iOS 1.x decode.
+    """
+    payload = json.loads(db.model_dump_json(exclude_none=True))
+    try:
+        return contract_violations(payload)
+    except ContractError as exc:
+        # A broken/missing contract must fail the publish, never wave it
+        # through: "no rules loaded" would otherwise read as "no violations".
+        return [f"client contract could not be evaluated: {exc}"]
+
+
 
 
 def write_target_dir(db: ZoneDatabase, dir_: Path) -> str:

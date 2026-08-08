@@ -1,0 +1,46 @@
+{
+  "_comment": [
+    "What each fixture is expected to do when decoded by a RELEASED client's",
+    "Swift models. `verify_against_clients.sh` asserts reality matches, so these",
+    "are pinned facts rather than notes — if a client change flips any of them,",
+    "the script fails and the contract gets revisited.",
+    "",
+    "'fails' means the payload breaks the iOS decode outright, taking the whole",
+    "catalog with it. 'tolerated' means it decodes cleanly and the rule exists",
+    "for a reason the Swift decoder cannot see — the Android map, or the engine.",
+    "Both are legitimate reasons to refuse to publish; only the first is a reason",
+    "the *decoder* would notice."
+  ],
+  "compliant": {
+    "swift_decode": "succeeds",
+    "why": "The baseline. If this ever fails, the contract is too loose and the gate would publish data that bricks the fleet."
+  },
+  "violation-missing-limits": {
+    "swift_decode": "fails",
+    "why": "SpeedLimits.truck/bus are non-optional Int with a synthesized Codable, so an absent key throws keyNotFound and fails the ENTIRE ZonesResponse decode. This is the 2026-08 Път I-8 outage — every published iOS install lost zone sync for five days."
+  },
+  "violation-missing-key": {
+    "swift_decode": "fails",
+    "why": "Any non-optional Zone key behaves the same way; `description` stands in for the class."
+  },
+  "violation-short-point": {
+    "swift_decode": "fails",
+    "why": "Decodes as [[Double]] but the released map layer subscripts point[0]/point[1] unguarded, so a 1-element point traps. The driver reproduces that access rather than only the decode."
+  },
+  "violation-empty-centerline": {
+    "swift_decode": "tolerated",
+    "why": "Decodes cleanly on iOS. Refused because MapLibre on Android rejects the ENTIRE zone FeatureCollection over one invalid LineString — all 76 zones vanished from the map in 2026-08 while sync reported success. Pinned as tolerated so nobody 'fixes' the Swift check to expect a failure that will never come."
+  },
+  "violation-zero-endpoint": {
+    "swift_decode": "tolerated",
+    "why": "(0, 0) is a valid Double pair. Refused because the engine can never detect such a zone and map camera fits get dragged toward the Gulf of Guinea."
+  },
+  "violation-zero-distance": {
+    "swift_decode": "tolerated",
+    "why": "Valid Int. Refused because it divides through the average-speed and remainder math."
+  },
+  "violation-zero-limit": {
+    "swift_decode": "tolerated",
+    "why": "Valid Int. Refused because a 0 km/h limit reads as permanently over-limit for that vehicle class — which is exactly what Android 1.x's Gson produces when it zero-fills an absent key."
+  }
+}

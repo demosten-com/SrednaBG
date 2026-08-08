@@ -45,7 +45,9 @@ from .events import (
     TtsSuppressed,
     UnparsedLog,
     ZoneStateChange,
+    ZonesDropped,
     ZonesLoaded,
+    ZonesRepaired,
 )
 
 TAGS = ["SrednaBG.Loc", "SrednaBG.LocSrc", "SrednaBG.TTS", "DebugSync", "DebugSettings"]
@@ -82,6 +84,14 @@ SPEAK_DROPPED_RE = re.compile(r'^speak: TTS not initialized, dropping: "(?P<text
 LEAD_IN_RE = re.compile(r"^speak: cold start, (?P<ms>\d+)ms lead-in$")
 SUPPRESS_RE = re.compile(r"suppressing exit TTS — entry was (?P<age>\d+)ms ago")
 ZONES_RE = re.compile(r"zones changed \(n=(?P<n>\d+)\)")
+# Emitted only when the client refuses a served/bundled zone — see ZonesDropped.
+ZONES_DROPPED_RE = re.compile(
+    r"zones dropped \(n=(?P<n>\d+)\) ids=\[(?P<ids>[^\]]*)\] origin=(?P<origin>.*)$"
+)
+# Emitted only when a served zone omitted a truck/bus limit — see ZonesRepaired.
+ZONES_REPAIRED_RE = re.compile(
+    r"zones repaired \(n=(?P<n>\d+)\) ids=\[(?P<ids>[^\]]*)\] origin=(?P<origin>.*)$"
+)
 INTERVAL_RE = re.compile(r"requestLocationWithInterval intervalMs=(?P<i>\d+)")
 SYNC_RE = re.compile(
     r"(?P<action>[\w.]+\.debug\.SYNC_\w+) -> (?:SyncResult\.)?(?P<outcome>\w+)(?:\((?P<detail>.*)\))?"
@@ -146,6 +156,26 @@ def parse_message(tag: str, msg: str, raw: str) -> Optional[Event]:
         mz = ZONES_RE.search(msg)
         if mz:
             return ZonesLoaded(monotonic_ms=ts, raw=raw, count=int(mz.group("n")))
+        mzd = ZONES_DROPPED_RE.search(msg)
+        if mzd:
+            ids = [i.strip() for i in mzd.group("ids").split(",") if i.strip()]
+            return ZonesDropped(
+                monotonic_ms=ts,
+                raw=raw,
+                count=int(mzd.group("n")),
+                ids=ids,
+                origin=mzd.group("origin").strip(),
+            )
+        mzr = ZONES_REPAIRED_RE.search(msg)
+        if mzr:
+            ids = [i.strip() for i in mzr.group("ids").split(",") if i.strip()]
+            return ZonesRepaired(
+                monotonic_ms=ts,
+                raw=raw,
+                count=int(mzr.group("n")),
+                ids=ids,
+                origin=mzr.group("origin").strip(),
+            )
         mi = INTERVAL_RE.search(msg)
         if mi:
             return IntervalChanged(monotonic_ms=ts, raw=raw, interval_ms=int(mi.group("i")))

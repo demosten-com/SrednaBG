@@ -1,0 +1,32 @@
+{
+  "_comment": [
+    "Which SrednaBG clients are in the field, and therefore what /api/zones must",
+    "stay parseable by. `src/client_contract.py` enforces every entry listed here",
+    "at publish time; a violation is a hard publish failure (see `severity`).",
+    "",
+    "Only versions that were actually PUBLISHED to a store belong here. Tags",
+    "v1.0.1-v1.0.3 exist in git but were never released to anyone, so they impose",
+    "no obligation and are deliberately absent.",
+    "",
+    "`status` is documentation today: every published client is enforced at ERROR,",
+    "because a client-side fix can never reach an install that already exists. When",
+    "v2.x ships, a version may be retired to WARN by adding a `severity` key here —",
+    "see `client_contract.SEVERITY_FOR_STATUS`. Retirement should be a deliberate",
+    "act, not a side effect of shipping something newer: on the day 2.0.0 goes live,",
+    "1.1.0 is still the entire installed base."
+  ],
+  "clients": [
+    {
+      "version": "1.1.0",
+      "status": "live",
+      "platforms": ["android", "ios"],
+      "contract": "wire-v1.json"
+    },
+    {
+      "version": "1.0.4",
+      "status": "published",
+      "platforms": ["android", "ios"],
+      "contract": "wire-v1.json"
+    }
+  ]
+}

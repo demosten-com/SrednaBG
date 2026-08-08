@@ -11,7 +11,7 @@ You are running an automated QA orchestrator that drives a real Android phone em
 
 - `smoke` (default if no arg) — ~5 min, 1 zone + 1 sync
 - `representative` — ~30 min, 6 zones × 4 settings + sync set
-- `full-zones` — ~75 min @ 4× compression, all 72 zones
+- `full-zones` — ~75 min @ 4× compression, all 74 zones
 - `scenarios` — ~20 min, 10 edge cases (stop, dropout, off-ramp, U-turn, swap, recovery, wrong-direction, auto-stop, …)
 - `sync` — ~5 min, zones happy/offline + map happy
 - `ui` — <1 min, phone UI walk

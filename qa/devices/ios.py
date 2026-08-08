@@ -72,17 +72,36 @@ def _run(args: list[str], *, timeout: float = 30.0, check: bool = True,
     )
 
 
-def _booted_udid() -> Optional[str]:
-    """Return the UDID of the (first) booted simulator, or None."""
+def _booted_udids() -> list[str]:
+    """UDIDs of every booted simulator, in `simctl` listing order."""
     p = _run(["simctl", "list", "devices", "booted"], check=False)
     if p.returncode != 0:
-        return None
+        return []
     # Lines look like: "    iPhone 15 (UDID) (Booted)"
-    for ln in p.stdout.splitlines():
-        m = re.search(r"\(([0-9A-Fa-f-]{36})\)\s+\(Booted\)", ln)
-        if m:
-            return m.group(1)
-    return None
+    return [
+        m.group(1)
+        for ln in p.stdout.splitlines()
+        if (m := re.search(r"\(([0-9A-Fa-f-]{36})\)\s+\(Booted\)", ln))
+    ]
+
+
+def _booted_udid() -> Optional[str]:
+    """The simulator to test against, or None if none is booted.
+
+    Prefers a booted simulator that actually has the app installed. Booting
+    several runtimes at once is an everyday state (Simulator.app keeps them
+    around), and taking the first one listed picked a device with no SrednaBG
+    on it — every scenario then timed out waiting for log lines that were
+    never going to be emitted. Falls back to the first booted device so the
+    "not installed anywhere" case still fails with the harness's own clear
+    message rather than here.
+    """
+    booted = _booted_udids()
+    for udid in booted:
+        p = _run(["simctl", "get_app_container", udid, BUNDLE_ID], check=False)
+        if p.returncode == 0:
+            return udid
+    return booted[0] if booted else None
 
 
 class IosDevice(Device):
@@ -92,6 +111,15 @@ class IosDevice(Device):
     @property
     def platform(self) -> str:
         return "ios"
+
+    @property
+    def udid(self) -> Optional[str]:
+        """The resolved simulator UDID, or None before `require_device()`.
+
+        `IosLogObserver` reads this so the log stream addresses the same
+        simulator as the control channel instead of the ambiguous `booted`.
+        """
+        return self._udid
 
     @property
     def package_id(self) -> str:

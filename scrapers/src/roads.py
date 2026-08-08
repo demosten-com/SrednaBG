@@ -43,6 +43,7 @@ ROAD_NAME_ALIASES: dict[str, str] = {
     "Път I-4": "Път I-4",
     "Път I-5": "Път I-5",
     "Път I-6": "Път I-6",
+    "Път I-8": "Път I-8",
     "Път II-55": "Път II-55",
     "I-1": "Път I-1",
     "I-2": "Път I-2",
@@ -50,6 +51,7 @@ ROAD_NAME_ALIASES: dict[str, str] = {
     "I-4": "Път I-4",
     "I-5": "Път I-5",
     "I-6": "Път I-6",
+    "I-8": "Път I-8",
     "II-55": "Път II-55",
 }
 
@@ -80,6 +82,7 @@ ROAD_DIRECTIONS: dict[str, tuple[str, str]] = {
     "Път I-4": ("east", "west"),        # Sofia -> V. Tarnovo (W->E)
     "Път I-5": ("south", "north"),      # Ruse -> Stara Zagora -> Kardzhali (N->S)
     "Път I-6": ("east", "west"),        # Sofia -> Karlovo -> Burgas (W->E)
+    "Път I-8": ("east", "west"),        # Kalotina -> Sofia -> Plovdiv -> Svilengrad (W->E)
     "Път II-55": ("south", "north"),    # V. Tarnovo -> Stara Zagora (N->S)
 }
 
@@ -101,6 +104,11 @@ ROAD_AXIS: dict[str, str] = {
     "Път I-4": "lng",
     "Път I-5": "lat",
     "Път I-6": "lng",
+    # The enforced Ihtiman–Mirovo section runs diagonally (NW–SE), so the
+    # bearing-quadrant fallback read it as north/south while BG TOLL's km
+    # markers read east/west — the two sources landed in different match
+    # groups and shipped as four half-populated zones instead of two.
+    "Път I-8": "lng",
     "Път II-55": "lat",
 }
 

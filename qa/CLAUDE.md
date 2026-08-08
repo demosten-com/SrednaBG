@@ -35,9 +35,9 @@ python qa/srednabg_qa.py --suite smoke           # ~5 min — 1 zone + 1 sync + 
 python qa/srednabg_qa.py --suite representative  # ~30 min — 6 hand-picked zones × 4 settings combos + sync set
 python qa/srednabg_qa.py --suite scenarios       # ~20 min — edge cases (stop, dropout, off-ramp, U-turn, swap, auto-stop, dense-centerline, stop-silences-TTS, noisy-fix-rejected, parallel-motorway, mid-zone-join, …)
 python qa/srednabg_qa.py --suite history         # ~7 min — History: records a traversal, retention=none records nothing, retention key round-trips (cross-platform)
-python qa/srednabg_qa.py --suite sync            # ~5 min — zones happy + toggle-off + freshness + remote-older (recency gate) + offline; map disabled-gate
+python qa/srednabg_qa.py --suite sync            # ~5 min — zones happy + all-usable (served-data tripwire) + toggle-off + freshness + remote-older (recency gate) + offline; map disabled-gate
 python qa/srednabg_qa.py --suite ui              # ~1 min — phone UI walk + font-scale cards + History "Show on map" gating
-python qa/srednabg_qa.py --suite full-zones      # ~75 min @4× — all 72 zones, minimal asserts
+python qa/srednabg_qa.py --suite full-zones      # ~75 min @4× — all 74 zones, minimal asserts
 python qa/srednabg_qa.py --suite nightly         # ~2 hr — representative + full-zones + scenarios + ui
 ```
 
@@ -103,6 +103,7 @@ python qa/srednabg_qa.py --suite representative  --platform ios
 #### iOS-specific caveats
 
 - **Headless on a Mac mini**: the iOS Simulator needs an active GUI session (Metal rendering). No workaround.
+- **Several simulators booted at once**: `IosDevice` picks the booted simulator that actually has SrednaBG installed (`_booted_udid`), and `IosLogObserver` streams from that resolved UDID rather than the `booted` alias. Both matter — `simctl ... booted` is ambiguous with more than one runtime open (Simulator.app routinely keeps several), and before this the control channel and the log stream could address *different* devices, which showed up as every scenario timing out on a `DebugSync` line that had been logged elsewhere.
 - **TTS muting**: there's no OS-level mute toggle on the simulator. The harness's `mute_audio()` POSTs `/mute?on=1` to the debug listener, which swaps the `AVSpeechTTSEngine` for a no-op while still emitting `speak:` log lines (so the parser self-test still trips on broken phrase changes).
 - **Network offline**: `simctl status_bar` doesn't actually gate the network. `IosDevice.go_offline()` flips a `QAFlags.networkOffline` UserDefaults flag that makes the `DebugActionRouter` short-circuit sync requests to `Failed`. Observable behavior matches Android's airplane-mode path.
 - **Mid-route GPS mutation**: the pump feeds the iOS debug listener's `/inject` endpoint (not `simctl location set`), which carries speed + bearing **and honors the pump's `time_ms` stamp** (forwarded into the injected `CLLocation`; injected fixes bypass the wall-clock age gate since they're fresh by delivery). Compressed plans therefore present the encoded cadence on iOS too — without the stamp, 4×-faster wall delivery used to infer 4× the encoded speed and clamp the display at 250 km/h. The compression-dependent edge scenarios (`gps_dropout`, `wrong_direction`, `u_turn`, `vehicle_swap`, `vehicle_type_limit_badge`) were written Android-first and are **now verified green on iOS** (full scenarios run, 2026-06).
@@ -135,6 +136,7 @@ fixtures (committed under `qa/fixtures/gpx-xcode/`):
   - `tts_cold_start_leadin.py` — Android-only: a cold audio-focus session must prepend silent lead-in so the AA/Bluetooth route-open delay can't clip announcement starts.
   - `parallel_motorway.py` — driving the A3 past Кочериново must not open a phantom traversal of the I-1 zone beside it, replayed from the real OSM geometry in `qa/fixtures/a3_kocherinovo_corridor.yaml`. Carries an anti-vacuous guard that re-derives the *old* engine's entry gates and fails loudly if the geometry ever stops tripping them — the fixture was verified to FAIL against a temporarily-reverted engine and PASS against the fix, so it genuinely discriminates. It forbids `Unmeasured` as well as `InZone`, since the third zone state made the failure *softer* (quiet, no History row) but no less wrong on a road the car was never on.
   - `mid_zone_join.py` — start feeding fixes 5.8 km into `trakiya-01-east`, never crossing its entry camera, and assert the full `ZoneState.Unmeasured` contract end-to-end: the state is reached, no measured traversal ever opens, nothing is spoken, and `DUMP_HISTORY` reports no new row.
+  - `sync/zones_all_usable.py` — a tripwire on the **served** data rather than the client. Forces a real re-fetch (requiring `Updated`) and fails on either line `ZoneSanitizer` emits, identically on both platforms: `zones repaired (n=…) ids=[…]` (a zone missing its truck/bus limit) or `zones dropped (n=…) ids=[…]` (placeholder `(0, 0)` endpoints, an empty centerline, no car limit). **The `repaired` half is the point of the scenario**: current builds handle that payload perfectly, and the 1.x clients the stores serve do not — iOS 1.x fails the whole `/api/zones` decode on it, so it is a silent fleet outage that looks like healthy data to QA. Three separate ways this scenario tried to pass vacuously, all now closed, all worth knowing before editing it: (1) the log lines arrive *before* the closing `DebugSync` event, so it must pass `collect=` to `sync.wait_for_sync` or the wait consumes them; (2) the recency gate returns `UpToDate` whenever the app bundles a fresher scrape than the cron has published (the normal state after `refresh-zones.sh`), so it backdates `cached_zone_version` and requires `Updated`; (3) it originally checked only `dropped`, which meant it stayed green on `i8-01-north` — the exact zone that broke every published install.
   - `jog_start_measured.py` — the positive-path companion to the above on `i3-02-north`, an ISSUE-001 zone whose centerline opens with a ~121 m backwards jog. A genuine approach there projects past 100 m of arc on its first matching fix, so it must still be **measured**: the run asserts `InZone` opens and `Unmeasured` never appears. Pairs with the core unit test `ZoneUnmeasuredTest."a zone whose centerline starts with a backwards jog is still measurable"`, which covers the same path at unit level.
 
 ## Manual zone feeding + full-zone direction validation (Android, debug build)
@@ -210,7 +212,7 @@ feeding:
   makes `dt→0`, the filter's process noise vanishes, and the smoothed dot lags
   off the road on bends → spurious off-road exits. `validate_zones.py` feeds as
   fast as adb allows but stamps each fix `--sim-dt-ms` (default 1000) apart, so
-  the pipeline sees a realistic ~1 s cadence while the whole 72-zone sweep still
+  the pipeline sees a realistic ~1 s cadence while the whole 74-zone sweep still
   finishes in minutes instead of hours. `feed-zone.sh` omits `time_ms` (real
   wall-clock), which is fine at its 1 s default `INTERVAL`.
 - **Fix accuracy**: `FEED_POINT` also accepts an optional `accuracy` (meters)
