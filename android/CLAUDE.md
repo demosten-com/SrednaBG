@@ -136,7 +136,7 @@ adb shell am broadcast -n com.demosten.srednabg/com.demosten.srednabg.app.debug.
     -a com.demosten.srednabg.debug.STOP_TRACKING
 ```
 
-Settable keys: `vehicle_type`, `app_language`, `voice_enabled`, `periodic_voice_updates`, `announce_only_when_over`, `map_heading_up`, `map_theme_mode`, `auto_stop_hours`, `history_retention`, `zone_sync_enabled`, `overlay_enabled`, `cached_zone_hash`, `cached_zone_version`, `cached_map_hash`, and the DEBUG-only `debug_auto_stop_seconds` / `debug_max_speed_override` overrides used by the QA harness.
+Settable keys: `vehicle_type` (`car` | `truck` | `bus` | `motorcycle` — the tokens on `VehicleType.setting`, shared verbatim with the iOS raw values), `app_language`, `voice_enabled`, `periodic_voice_updates`, `announce_only_when_over`, `map_heading_up`, `map_theme_mode`, `auto_stop_hours`, `history_retention`, `zone_sync_enabled`, `overlay_enabled`, `cached_zone_hash`, `cached_zone_version`, `cached_map_hash`, and the DEBUG-only `debug_auto_stop_seconds` / `debug_max_speed_override` overrides used by the QA harness.
 
 `DebugControlReceiver` also accepts `DUMP_HISTORY` (no extras) — logs `DUMP_HISTORY count=<n> …` (count + latest-record summary) under tag `DebugSettings` so the QA `history` suite can assert on the History DB without reading Room. See `qa/CLAUDE.md`.
 

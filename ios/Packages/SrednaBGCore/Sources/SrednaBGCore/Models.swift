@@ -27,6 +27,25 @@ public struct ZoneEndpoint: Sendable, Equatable, Hashable, Codable {
     }
 }
 
+/// Per-vehicle-class limits in km/h, as published in `zones.json`.
+///
+/// These are **licence categories, not vehicle shapes**. BG TOLL publishes three
+/// limits per zone and `scrapers/src/kml_scraper.py` parses the category strings
+/// verbatim:
+///
+/// - `car` — `Категория А,А2,В`: motorcycle, car, van up to 3.5 t.
+/// - `bus` — `Категория BE,C1,C1E,D,D1,D1E,DE`: bus, minibus, truck 3.5–7.5 t,
+///   **and anything in category B towing a trailer**. One statutory value covers
+///   the lot, so a car with a caravan reads this field, not `car`.
+/// - `truck` — `Категория C и CE`: truck over 7.5 t.
+///
+/// The field names are kept as-is despite covering more than they say: renaming
+/// them would change the wire format the published 1.x clients decode. The
+/// Settings picker labels its rows for the whole class instead.
+///
+/// `motorcycle` is a per-zone override for the rare case where a zone names a
+/// separate motorcycle limit; it falls back to `car`. BG TOLL's own TollPass
+/// feed has no motorcycle category at all, so the fallback is the norm.
 public struct SpeedLimits: Sendable, Equatable, Hashable, Codable {
     public let car: Int
     public let truck: Int

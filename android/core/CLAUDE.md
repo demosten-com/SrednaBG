@@ -7,7 +7,7 @@ Pure Kotlin library (no Android deps) with zone detection, average speed calcula
 - `GpsFilter` — Kalman-like noise smoothing
 - `RoadMatcher` — road/direction matching
 - `GeoUtils` — Haversine, bearing, polyline distance
-- `VehicleType` — `CAR`/`TRUCK`/`BUS`/`MOTORCYCLE` enum with per-vehicle `limit(speedLimits)` selection
+- `VehicleType` — `CAR`/`TRUCK`/`BUS`/`MOTORCYCLE` enum with per-vehicle `limit(speedLimits)` selection. These are BG TOLL **licence categories, not vehicle shapes** — `BUS` is the whole `BE,C1,C1E,D,D1,D1E,DE` class, so a car towing a trailer selects it too
 - `MapThemeResolver` — picks the light or dark MapLibre style URI for a given setting + system appearance
 - `ZoneStatusColor` — packed-`Int` mapping from `ZoneState` / over-limit flag to the green / amber / red traffic-light value used by both the SwiftUI and UIKit/Compose surfaces, plus `ZONE_COLOR_NEUTRAL` for `ZoneState.Unmeasured` (which gets no verdict)
 
@@ -52,7 +52,7 @@ Pure Kotlin library (no Android deps) with zone detection, average speed calcula
 
 ## Vehicle-type-aware speed limit
 
-`ZoneDetector.update(point, vehicleType)` takes a `VehicleType` (`CAR`/`TRUCK`/`BUS`/`MOTORCYCLE`, default `CAR`) and passes `vehicleType.limit(zone.speedLimits)` into every `AverageSpeedCalc.calculate(...)`, so a user who sets `vehicle_type` to truck/bus/motorcycle gets that limit (motorcycle falls back to the car limit when a zone has none). `LocationTrackingService` mirrors `SettingsRepository.vehicleType` into `currentVehicleType` via a `lifecycleScope` collector and threads it into the detector call. Regression: `ZoneDetectorTest."vehicle type changes effective limit"`. This was ported from the Swift core; the iOS `ZoneDetector.update(_:vehicleType:)` is the equivalent.
+`ZoneDetector.update(point, vehicleType)` takes a `VehicleType` (`CAR`/`TRUCK`/`BUS`/`MOTORCYCLE`, default `CAR`) and passes `vehicleType.limit(zone.speedLimits)` into every `AverageSpeedCalc.calculate(...)`, so a user who sets `vehicle_type` to truck/bus/motorcycle gets that limit (motorcycle falls back to the car limit when a zone has none). The three fields are **licence classes**, not vehicle shapes — `speedLimits.bus` is BG TOLL's `BE,C1,C1E,D,D1,D1E,DE` value, covering bus, minibus, truck 3.5–7.5 t and anything towing a trailer, which is why the Settings rows are labelled for the class and there is no separate car-with-trailer type (it would resolve an identical limit). See the note on `SpeedLimits` in `Models.kt`. Each case owns a `setting` token (`car`, `truck`, `bus`, `motorcycle`) that equals the Swift raw value and is what gets persisted to settings and to history rows — never `name.lowercase()`, which would diverge from iOS's camelCase raw values for any multi-word case added later. Regression: `VehicleTypeTest` / `VehicleTypeTests.swift`. `LocationTrackingService` mirrors `SettingsRepository.vehicleType` into `currentVehicleType` via a `lifecycleScope` collector and threads it into the detector call. Regression: `ZoneDetectorTest."vehicle type changes effective limit"`. This was ported from the Swift core; the iOS `ZoneDetector.update(_:vehicleType:)` is the equivalent.
 
 ## History statistics (`HistoryStats.kt`)
 

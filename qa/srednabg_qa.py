@@ -62,6 +62,7 @@ EDGE_SCENARIOS = [
     "u_turn",
     "vehicle_swap",
     "vehicle_type_limit_badge",
+    "bus_class_limit",
     "over_limit_recovery",
     "off_ramp",
     "cold_start_spike",

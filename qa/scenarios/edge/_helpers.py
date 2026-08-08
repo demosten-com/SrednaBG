@@ -56,7 +56,7 @@ def scenario_setup(ctx: RunContext, *, settings_id: str = "S1") -> None:
     # CoreLocation pipeline is alive and Live Activities can be created.
     device_mod.current().start_main()
     time.sleep(2.0)
-    combo = next(c for c in settings_mod.ALL_COMBOS if c.id == settings_id)
+    combo = settings_mod.combo_by_id(settings_id)
     combo.apply(ctx.obs)
     settings_mod.start_tracking()
     time.sleep(2.5)

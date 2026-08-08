@@ -146,7 +146,11 @@ class HistoryRecorder @Inject constructor(
             roadLatin = capture.zone.roadLatin,
             direction = capture.zone.direction,
             speedLimitKmh = limitKmh,
-            vehicleType = vehicleType.name.lowercase(),
+            // `.setting`, not `.name.lowercase()` — the token must match what the
+            // iOS recorder writes (`VehicleType.rawValue`) so history rows agree
+            // across platforms. They coincide for today's single-word cases; iOS
+            // spells raw values in camelCase, so a multi-word case would diverge.
+            vehicleType = vehicleType.setting,
             entryTimeMs = capture.entryTimeMs,
             exitTimeMs = exitTimeMs,
             avgSpeedKmh = finalAvg,

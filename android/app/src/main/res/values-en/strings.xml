@@ -59,7 +59,7 @@
     <string name="setting_vehicle_type">Vehicle type</string>
     <string name="vehicle_car">Car/Motorcycle</string>
     <string name="vehicle_truck">Truck</string>
-    <string name="vehicle_bus">Bus</string>
+    <string name="vehicle_bus">Bus/Minibus/With trailer</string>
     <string name="setting_auto_stop">Automatic stop</string>
     <string name="setting_auto_stop_desc">Stops tracking after a period without zone activity</string>
     <string name="auto_stop_3h">3 hours</string>

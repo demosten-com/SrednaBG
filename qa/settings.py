@@ -71,6 +71,21 @@ COMBO_S3 = SettingsCombo("S3", False, True, True, "system", "bus")
 COMBO_S4 = SettingsCombo("S4", True, True, False, "bg", "car")
 ALL_COMBOS = [COMBO_S1, COMBO_S2, COMBO_S3, COMBO_S4]
 
+# Combos a specific scenario asks for by id but that are deliberately NOT in the
+# representative matrix — adding one to ALL_COMBOS multiplies that suite's
+# runtime by (zones x combos) for no extra coverage.
+# S3 is also `bus`, but with voice OFF — a TTS-asserting scenario needs its own.
+COMBO_S5 = SettingsCombo("S5", True, False, False, "en", "bus")
+EXTRA_COMBOS = [COMBO_S5]
+
+
+def combo_by_id(combo_id: str) -> SettingsCombo:
+    """Resolve a combo id across the matrix and the scenario-only extras."""
+    for combo in (*ALL_COMBOS, *EXTRA_COMBOS):
+        if combo.id == combo_id:
+            return combo
+    raise KeyError(f"unknown settings combo id: {combo_id}")
+
 
 def start_tracking() -> None:
     device_mod.current().start_tracking()

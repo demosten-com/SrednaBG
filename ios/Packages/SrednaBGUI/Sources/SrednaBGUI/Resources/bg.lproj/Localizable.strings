@@ -48,7 +48,7 @@
 "settingVehicleType" = "Тип превозно средство";
 "vehicleCar" = "Кола/Мотоциклет";
 "vehicleTruck" = "Камион";
-"vehicleBus" = "Автобус";
+"vehicleBus" = "Автобус/Бус/С ремарке";
 "settingAutoStop" = "Автоматично спиране";
 "settingAutoStopDesc" = "Спира проследяването след период без активност в зона.";
 "autoStop3h" = "3 часа";

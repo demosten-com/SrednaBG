@@ -122,7 +122,8 @@ internal object HistorySeeder {
                 roadLatin = zone.roadLatin,
                 direction = zone.direction,
                 speedLimitKmh = limit,
-                vehicleType = scenario.vehicle.name.lowercase(),
+                // `.setting` matches the iOS seeder's `scenario.vehicle.rawValue`.
+                vehicleType = scenario.vehicle.setting,
                 entryTimeMs = entryMs,
                 exitTimeMs = exitMs,
                 avgSpeedKmh = avg,

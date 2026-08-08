@@ -59,7 +59,7 @@
     <string name="setting_vehicle_type">Тип превозно средство</string>
     <string name="vehicle_car">Кола/Мотоциклет</string>
     <string name="vehicle_truck">Камион</string>
-    <string name="vehicle_bus">Автобус</string>
+    <string name="vehicle_bus">Автобус/Бус/С ремарке</string>
     <string name="setting_auto_stop">Автоматично спиране</string>
     <string name="setting_auto_stop_desc">Спира проследяването след период без активност в зона</string>
     <string name="auto_stop_3h">3 часа</string>
