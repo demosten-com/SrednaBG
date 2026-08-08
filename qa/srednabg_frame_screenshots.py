@@ -49,7 +49,7 @@ require("yaml", "PIL")
 from PIL import Image, ImageDraw, ImageFont  # noqa: E402
 
 from qa.screenshots import loader  # noqa: E402
-from qa.screenshots.loader import (
+from qa.screenshots.loader import (  # noqa: E402
     ChromeMaskSpec,
     FrameConfig,
     FrameSpec,

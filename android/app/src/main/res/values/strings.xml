@@ -9,7 +9,10 @@
     <string name="nav_history">История</string>
 
     <!-- Home screen -->
-    <string name="zones_loaded">%d заредени зони</string>
+    <plurals name="zones_loaded">
+        <item quantity="one">%d заредена зона</item>
+        <item quantity="other">%d заредени зони</item>
+    </plurals>
     <string name="status_not_tracking">Не наблюдава</string>
     <string name="status_tracking_outside">Наблюдение на зони</string>
     <string name="status_in_zone">В зона: %s</string>

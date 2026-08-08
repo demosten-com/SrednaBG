@@ -16,9 +16,9 @@ from __future__ import annotations
 import time
 
 from ... import settings as settings_mod
-from ...assertions import expect, expect_in_order
+from ...assertions import expect
 from ...drive import pump
-from ...events import TtsSpeak, ZoneStateChange
+from ...events import ZoneStateChange
 from ...runner import RunContext, Scenario, step_lambda
 from ._helpers import base_plan, scenario_setup, scenario_teardown
 

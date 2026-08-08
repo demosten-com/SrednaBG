@@ -5,7 +5,6 @@
 
 """Tests for the TollTracker.eu vector-tile fetcher."""
 
-import math
 
 import pytest
 

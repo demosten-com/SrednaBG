@@ -77,6 +77,8 @@ bash ../scripts/setup-python.sh && source ../.venv/bin/activate
 
 python -m pytest                         # All tests
 python -m pytest tests/test_validator.py # One file
+ruff check .                             # Lint (config at scrapers/ruff.toml)
+ruff check . --fix                       # ... with the safe autofixes applied
 bash scripts/refresh-zones.sh            # Refresh bundled data: full scrape -> scrapers/data/ + sync backend/data/ (use this before a release cut)
 python -m src.output                     # Regenerate zones.json only (full scrape, scrapers/data/)
 python -m src.output --realign data/zones.json   # Network-free: re-align geometry of an existing file in place
@@ -84,6 +86,20 @@ python scripts/make_test_route.py --out /tmp/route.gpx  # Emulator drive GPX
 # make_test_route.py flags: --zone-id, --speed-kmh, --approach-km, --exit-km, --hz
 # Default: trakiya-01-east @ 130 km/h, 1 Hz
 ```
+
+### Definition of done
+
+**Scraper work is not complete until both pass, from `scrapers/`:**
+
+1. `ruff check .` — "All checks passed!". Rule set is `E, F, I, B, UP` (E501 off)
+   per `scrapers/ruff.toml`.
+2. `python -m pytest` — all tests green.
+
+Anything deliberately left unfixed needs a reasoned entry in
+`test-data/known-lint-issues.md` (gitignored); a finding that is neither fixed nor
+registered there is a skipped lint, not an inherited one. Narrow `# noqa: <RULE>`
+with a comment is the only acceptable suppression. See the repo-root `CLAUDE.md`
+"Definition of done — linting".
 
 CI: `.github/workflows/scraper.yml` is **PR validation only** (scrape + pytest on PRs touching `scrapers/**`, plus `workflow_dispatch`). The committed `zones.json` is a manually-refreshed snapshot — run `refresh-zones.sh` locally before a release cut.
 

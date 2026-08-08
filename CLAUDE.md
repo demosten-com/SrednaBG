@@ -66,6 +66,40 @@ Store assets (Play Store + App Store screenshots) are produced locally by the `/
 
 Use Sonnet 4 as default; escalate to Opus 4 for architecture decisions or when stuck.
 
+### Definition of done — linting
+
+**Every subproject that has a linter must be lint-green before its work is called
+done.** Each linted subproject's `CLAUDE.md` states its own command; the set is:
+
+| Subproject | Command |
+|---|---|
+| `android/` | `cd android && ./gradlew lint` |
+| `ios/` | `cd ios && swiftlint --strict` |
+| `scrapers/` | `ruff check scrapers/` |
+| `qa/` | `ruff check qa/` |
+
+(`android/core/` is pure-JVM Kotlin with no linter wired up — its bar is
+`:core:test`. `backend/`, `web/`, `scripts/` hold only a few Python helpers,
+covered by `ruff check backend/ web/ scripts/`.)
+
+There is **no such thing as "a pre-existing warning unrelated to my change"** on
+this repo — the LLM is the sole developer, so an unexplained finding means a lint
+run was skipped. Therefore:
+
+1. Run the linter for every subproject you touched, before reporting done.
+2. Anything you choose not to fix needs a **specific, reasoned entry** in
+   `test-data/known-lint-issues.md` (gitignored) — the rule, the count, the
+   files, and why. A finding that is neither fixed nor registered there is a
+   skipped lint.
+3. If you find a finding that predates your change and is *not* in that file,
+   you own it too: fix it, or add it there with the reason.
+4. Suppressions stay narrow (per-rule, per-site) and carry a comment. No blanket
+   disables, and no widening a baseline to make a new finding go away.
+
+Android's `app/lint-baseline.xml` is the one bulk suppression, and every class of
+entry in it is justified in `known-lint-issues.md`. Do **not** regenerate it to
+absorb a new finding.
+
 ### Git policy
 
 **Never use git for write operations** (no `add`, `commit`, `push`, `merge`, `rebase`, `reset`, `checkout -- <file>`, `branch -d`, `tag`, etc.). Read-only (`status`, `log`, `diff`, `show`, `blame`, `branch -l`) and local restore (`git restore`, `git checkout <file>`) are fine. The user handles all commits and pushes.

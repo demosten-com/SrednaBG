@@ -49,6 +49,8 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -62,6 +64,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.createBitmap
 import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -147,7 +150,7 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
     val isFollowing by viewModel.isFollowing.collectAsStateWithLifecycle()
     // Last bearing seen while speed was above the noise threshold — held while stopped so
     // the map doesn't snap back to north at traffic lights.
-    var effectiveBearing by remember { mutableStateOf(0.0) }
+    var effectiveBearing by remember { mutableDoubleStateOf(0.0) }
 
     LaunchedEffect(displayPosition) {
         val point = displayPosition ?: return@LaunchedEffect
@@ -193,7 +196,7 @@ fun ZoneMapScreen(viewModel: ZoneMapViewModel = hiltViewModel()) {
     // that draw zones / endpoints / user arrow re-fire and reapply their
     // GeoJSON state — `setStyle` wipes all sources and layers, so without
     // this the overlays would silently disappear on a theme swap.
-    var styleEpoch by remember { mutableStateOf(0) }
+    var styleEpoch by remember { mutableIntStateOf(0) }
     // Snapshot once: if a previous Map session left a camera state in the VM,
     // restore it so tab-switching doesn't yank the user back to the default
     // Bulgaria-wide zoom or a fresh zone-fit.
@@ -964,7 +967,7 @@ private fun Context.bitmapFromVectorDrawable(@DrawableRes resId: Int): Bitmap? {
     val drawable = ContextCompat.getDrawable(this, resId) ?: return null
     val width = drawable.intrinsicWidth.takeIf { it > 0 } ?: return null
     val height = drawable.intrinsicHeight.takeIf { it > 0 } ?: return null
-    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val bitmap = createBitmap(width, height)
     val canvas = Canvas(bitmap)
     drawable.setBounds(0, 0, canvas.width, canvas.height)
     drawable.draw(canvas)

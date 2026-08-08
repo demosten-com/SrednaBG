@@ -26,7 +26,7 @@ import com.demosten.srednabg.app.permissions.PermissionRepository
  * dialog with full context.
  */
 @Composable
-fun rememberPermissionHandler(repository: PermissionRepository) {
+fun PermissionHandler(repository: PermissionRepository) {
     fun refresh() = repository.refresh()
 
     val backgroundLocationLauncher = rememberLauncherForActivityResult(

@@ -50,6 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -57,6 +58,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -502,7 +504,7 @@ private fun OutsideCard(modifier: Modifier, currentSpeedKmh: Double?, zoneCount:
                 }
             }
             Text(
-                text = stringResource(R.string.zones_loaded, zoneCount),
+                text = pluralStringResource(R.plurals.zones_loaded, zoneCount, zoneCount),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -778,7 +780,7 @@ private fun openAppSettings(context: Context) {
 private fun requestIgnoreBatteryOptimizations(context: Context) {
     val pkg = context.packageName
     val direct = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-        data = Uri.parse("package:$pkg")
+        data = "package:$pkg".toUri()
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
     val resolved = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

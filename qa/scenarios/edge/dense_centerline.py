@@ -33,7 +33,7 @@ from ... import geo
 from ...assertions import AssertionFailure
 from ...events import ZoneStateChange
 from ...runner import RunContext, Scenario, step_lambda
-from ._helpers import ZONES_JSON, load_zone, scenario_setup, scenario_teardown
+from ._helpers import load_zone, scenario_setup, scenario_teardown
 
 ZONE_ID = "struma-02-south"
 SPEED_MS = 30.0          # 108 km/h, under the 140 limit; > avg segment so the

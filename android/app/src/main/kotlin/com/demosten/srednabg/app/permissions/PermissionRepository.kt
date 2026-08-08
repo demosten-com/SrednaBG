@@ -51,7 +51,7 @@ data class PermissionState(
 /**
  * Single source of truth for runtime permissions + battery-optimization
  * status. Singleton so the prompt-driving Composable
- * (`rememberPermissionHandler`) and the gate inside `HomeViewModel` see the
+ * (`PermissionHandler`) and the gate inside `HomeViewModel` see the
  * same state without an event bus.
  */
 @Singleton

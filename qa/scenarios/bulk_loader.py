@@ -30,16 +30,16 @@ import json
 import os
 import queue
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
 
 from .. import device as device_mod, settings as settings_mod
-from ..assertions import expect, expect_in_order, expect_never, expect_crash_free, AssertionFailure
-from ..drive import DrivePlan, parse_gpx, pump
-from ..events import Crash, DisplaySpeed, ZoneStateChange
+from ..assertions import expect_crash_free, AssertionFailure
+from ..drive import parse_gpx
+from ..events import DisplaySpeed, ZoneStateChange
 from ..log_observer import LogObserver
-from ..runner import RunContext, Scenario, Step, step_drive, step_lambda, step_wait
+from ..runner import RunContext, Scenario, Step, step_drive, step_lambda
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 # The single source of truth both apps bundle (see root CLAUDE.md);

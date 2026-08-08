@@ -16,7 +16,7 @@ Spec: https://github.com/mapbox/vector-tile-spec/tree/master/2.1
 import gzip
 import math
 import struct
-from typing import Iterator
+from collections.abc import Iterator
 
 # Layer message fields
 _LAYER_NAME = 1

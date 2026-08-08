@@ -10,7 +10,7 @@ Asserts the TTS pipeline announces over-limit + (later) recovered.
 
 from __future__ import annotations
 
-from ...assertions import expect, expect_in_order
+from ...assertions import expect
 from ...drive import pump
 from ...events import TtsSpeak, ZoneStateChange
 from ...runner import RunContext, Scenario, step_lambda

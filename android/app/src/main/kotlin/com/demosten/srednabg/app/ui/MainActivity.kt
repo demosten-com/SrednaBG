@@ -36,7 +36,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.demosten.srednabg.app.permissions.PermissionRepository
 import com.demosten.srednabg.app.service.LocationTrackingService
-import com.demosten.srednabg.app.ui.components.rememberPermissionHandler
+import com.demosten.srednabg.app.ui.components.PermissionHandler
 import com.demosten.srednabg.app.ui.navigation.NavRoute
 import com.demosten.srednabg.app.ui.navigation.SrednaBGNavHost
 import com.demosten.srednabg.app.ui.theme.SrednaBGTheme
@@ -74,7 +74,7 @@ class MainActivity : AppCompatActivity() {
                     it.route == NavRoute.Map.route
                 } == true
 
-                rememberPermissionHandler(permissionRepository)
+                PermissionHandler(permissionRepository)
 
                 // Drive status-bar icon contrast from the device theme on
                 // Home/Settings. Map overrides this from its resolved MapTheme

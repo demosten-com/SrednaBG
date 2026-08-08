@@ -19,7 +19,7 @@ forbids is a crash and a phantom never-enter.
 
 from __future__ import annotations
 
-from ...assertions import expect, expect_in_order
+from ...assertions import expect_in_order
 from ...drive import DrivePlan, TrackPoint, pump
 from ...events import ZoneStateChange
 from ...runner import RunContext, Scenario, step_lambda

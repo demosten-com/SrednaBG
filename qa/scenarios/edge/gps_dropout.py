@@ -16,7 +16,7 @@ pushing fixes.
 
 from __future__ import annotations
 
-from ...assertions import expect_in_order, expect_never
+from ...assertions import expect_in_order
 from ...drive import pump
 from ...events import ZoneStateChange
 from ...runner import RunContext, Scenario, step_lambda

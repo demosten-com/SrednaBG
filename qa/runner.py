@@ -27,11 +27,11 @@ import traceback
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Iterable, Iterator, Optional
+from typing import Any, Callable, Iterator, Optional
 
 from . import device as device_mod
 from . import drive as drive_mod
-from .assertions import AssertionFailure, expect_crash_free
+from .assertions import AssertionFailure
 from .drive import DrivePlan, DriveAborted, pump
 from .log_observer import LogObserver, for_current_device
 

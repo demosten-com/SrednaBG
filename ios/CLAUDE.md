@@ -44,6 +44,8 @@ cd ios && xcodebuild -scheme SrednaBG -project SrednaBG.xcodeproj \
 
 Do not mark iOS work done when either check is red. If SwiftLint flags something and the rule is genuinely wrong for this codebase, narrow-disable it in `.swiftlint.yml` (with a comment explaining why) or add a file-level `// swiftlint:disable <rule>` with a matching `enable` — don't leave blanket disables.
 
+There is no "pre-existing warning unrelated to my change" here: SwiftLint is at **zero violations** and must stay there. Anything deliberately left unfixed needs a reasoned entry in `test-data/known-lint-issues.md` naming the rule and the reason — see the repo-root `CLAUDE.md` "Definition of done — linting".
+
 ## Offline map bundle (iOS side)
 
 Produced by `backend/scripts/build-map-bundle.sh` — see `backend/CLAUDE.md` for the build pipeline.

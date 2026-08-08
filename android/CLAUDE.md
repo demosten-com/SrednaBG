@@ -16,7 +16,7 @@ Kotlin app using Jetpack Compose, Car App Library, MapLibre, Room, Hilt. ~45 Kot
 
 ## Permission gate
 
-`PermissionRepository` (singleton, Hilt) is the single source of truth for `ACCESS_FINE_LOCATION`, `ACCESS_BACKGROUND_LOCATION`, `POST_NOTIFICATIONS`, and `isIgnoringBatteryOptimizations`. `rememberPermissionHandler` (called from `MainActivity`) drives the first-launch prompt sequence, auto-chaining fine → background only — `POST_NOTIFICATIONS` is intentionally NOT auto-chained because surfacing it without context confused users into denying it. `HomeScreen` observes the repository's `StateFlow` and calls `refresh()` on every `Lifecycle.Event.ON_RESUME` so changes the user makes in app-Settings show up immediately on return.
+`PermissionRepository` (singleton, Hilt) is the single source of truth for `ACCESS_FINE_LOCATION`, `ACCESS_BACKGROUND_LOCATION`, `POST_NOTIFICATIONS`, and `isIgnoringBatteryOptimizations`. `PermissionHandler` (called from `MainActivity`) drives the first-launch prompt sequence, auto-chaining fine → background only — `POST_NOTIFICATIONS` is intentionally NOT auto-chained because surfacing it without context confused users into denying it. `HomeScreen` observes the repository's `StateFlow` and calls `refresh()` on every `Lifecycle.Event.ON_RESUME` so changes the user makes in app-Settings show up immediately on return.
 
 While tracking, HomeScreen picks a live card by zone state — `InZoneCard` / `ExitingCard` / **`UnmeasuredCard`** / `OutsideCard`. The `Unmeasured` branch must sit **above** the plain `isTracking ->` fallback in the `when`, or a zone we can't measure silently renders the idle "monitoring zones" card and the driver never learns they're inside one. Otherwise the state machine swaps the StartStop button for one of three advisory cards in priority order: **PermissionCard** (fine or background missing — only blocker; "Open Settings" is the recovery path), **NotificationCard** (T+ POST_NOTIFICATIONS missing — fires the system dialog inline, with Open Settings as the fallback for "Don't ask again"), **BatteryOptimizationCard** (whitelist nudge — fires `Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` directly via `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` permission, no Settings excursion). `HomeViewModel.startTracking()` re-checks `PermissionState.canStartTracking` server-side as a defense-in-depth gate. `MainActivity` toggles `FLAG_KEEP_SCREEN_ON` on the activity window while `LocationTrackingService.isTracking` is true (any tab); it's cleared on dispose to avoid leaking the flag. It also locks **screen orientation per route**: Home and Settings are pinned to `SCREEN_ORIENTATION_USER_PORTRAIT` (neither was designed for landscape; `userPortrait` still honors the system auto-rotate lock), while the Map tab is `SCREEN_ORIENTATION_UNSPECIFIED` (free-rotate). This is driven centrally from the observed nav route — a single `DisposableEffect(isMapRoute)` flips `requestedOrientation` — rather than per-screen, so swapping between the two portrait screens can't race a restore-on-dispose back to free-rotate. Since the only routes are Home/Map/Settings, "not Map" is exactly the two portrait screens.
 
@@ -36,8 +36,34 @@ UI has BG + EN. **`res/values/strings.xml` is the Bulgarian default and `res/val
 ./gradlew :app:assembleGmsDebug       # gms Debug APK (FusedLocationProvider; Play Store)
 ./gradlew :app:assembleAospRelease    # aosp Release APK (R8 minified) — GitHub Releases
 ./gradlew :app:assembleGmsRelease     # gms Release APK (R8 minified) — Play Store
-./gradlew lint                        # Lint
+./gradlew lint                        # Lint (see "Definition of done" below)
 ```
+
+### Definition of done
+
+**Android work is not complete until all three pass, from `android/`:**
+
+1. `./gradlew lint` — BUILD SUCCESSFUL.
+2. `./gradlew :app:test :core:test` — unit tests green.
+3. `./gradlew :app:assembleGmsDebug` — the flavor QA installs (see
+   `feedback_android_gms_flavor`) still compiles.
+
+Lint runs against `app/lint-baseline.xml`, which freezes a set of pre-existing
+findings so only *new* ones fail the build. That baseline is **not** a dumping
+ground: every class of entry in it is justified by name, count and reason in
+`test-data/known-lint-issues.md` (gitignored — LINT-A01…A07). The rules:
+
+- **Never regenerate or extend the baseline to absorb a finding you introduced.**
+  Fix it, or register it in `known-lint-issues.md` with the reason.
+- If you find a baselined entry that is *not* in `known-lint-issues.md`, you own
+  it: fix it or document it. A finding that is neither is a skipped lint, not an
+  inherited one.
+- Suppressions stay narrow (`@Suppress` / `tools:ignore` at the specific site)
+  and carry a comment.
+
+The baseline is regenerated only when a fix pass genuinely clears entries: delete
+it, run `./gradlew lint` once (it recreates the file and fails by design), run it
+again to confirm green, then diff the rule counts against `known-lint-issues.md`.
 
 ### Product flavors (`distribution` dimension)
 

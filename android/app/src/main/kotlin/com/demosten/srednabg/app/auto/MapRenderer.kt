@@ -9,6 +9,7 @@ import android.graphics.Canvas
 import android.graphics.DashPathEffect
 import android.graphics.Paint
 import android.graphics.Path
+import androidx.core.graphics.withSave
 import com.demosten.srednabg.core.GpsPoint
 import com.demosten.srednabg.core.Zone
 import com.demosten.srednabg.core.ZONE_COLOR_GREEN
@@ -89,54 +90,53 @@ class MapRenderer {
         val cy = height / 2f
 
         // World-aligned elements (zones, endpoints) rotate with the map in heading-up mode.
-        canvas.save()
-        if (headingUp) {
-            canvas.rotate(-bearing.toFloat(), cx, cy)
-        }
-
-        for (zone in zones) {
-            if (zone == activeZone) continue
-            drawPolyline(canvas, zone.centerline, pos.lat, pos.lng, zoom, width, height, inactiveZonePaint)
-        }
-
-        if (activeZone != null) {
-            activeZonePaint.color = when (zoneState) {
-                is ZoneState.InZone -> zoneStatusColor(zoneState, pos.speed)
-                // Neutral, not green: the traffic light is a verdict on the
-                // driver, and an entry we never witnessed earns no verdict.
-                is ZoneState.Unmeasured -> ZONE_COLOR_NEUTRAL
-                else -> ZONE_COLOR_GREEN
+        canvas.withSave {
+            if (headingUp) {
+                rotate(-bearing.toFloat(), cx, cy)
             }
-            drawPolyline(canvas, activeZone.centerline, pos.lat, pos.lng, zoom, width, height, activeZonePaint)
 
-            endpointPaint.color = 0xFF66BB6A.toInt()
-            drawEndpoint(canvas, activeZone.start.lat, activeZone.start.lng, pos.lat, pos.lng, zoom, width, height)
+            for (zone in zones) {
+                if (zone == activeZone) continue
+                drawPolyline(this, zone.centerline, pos.lat, pos.lng, zoom, width, height, inactiveZonePaint)
+            }
 
-            endpointPaint.color = 0xFFEF5350.toInt()
-            drawEndpoint(canvas, activeZone.end.lat, activeZone.end.lng, pos.lat, pos.lng, zoom, width, height)
+            if (activeZone != null) {
+                activeZonePaint.color = when (zoneState) {
+                    is ZoneState.InZone -> zoneStatusColor(zoneState, pos.speed)
+                    // Neutral, not green: the traffic light is a verdict on the
+                    // driver, and an entry we never witnessed earns no verdict.
+                    is ZoneState.Unmeasured -> ZONE_COLOR_NEUTRAL
+                    else -> ZONE_COLOR_GREEN
+                }
+                drawPolyline(this, activeZone.centerline, pos.lat, pos.lng, zoom, width, height, activeZonePaint)
+
+                endpointPaint.color = 0xFF66BB6A.toInt()
+                drawEndpoint(this, activeZone.start.lat, activeZone.start.lng, pos.lat, pos.lng, zoom, width, height)
+
+                endpointPaint.color = 0xFFEF5350.toInt()
+                drawEndpoint(this, activeZone.end.lat, activeZone.end.lng, pos.lat, pos.lng, zoom, width, height)
+            }
         }
-
-        canvas.restore()
 
         // Screen-aligned elements (user marker, arrow) render unrotated.
         canvas.drawCircle(cx, cy, 12f, positionBorderPaint)
         canvas.drawCircle(cx, cy, 10f, positionFillPaint)
 
         if (pos.speed > 5.0) {
-            canvas.save()
-            // In heading-up mode the map is rotated to match heading, so the arrow
-            // points up on screen when drawn unrotated. In north-up mode we rotate
-            // the arrow to show direction of travel relative to north.
-            if (!headingUp) {
-                canvas.rotate(bearing.toFloat(), cx, cy)
+            canvas.withSave {
+                // In heading-up mode the map is rotated to match heading, so the arrow
+                // points up on screen when drawn unrotated. In north-up mode we rotate
+                // the arrow to show direction of travel relative to north.
+                if (!headingUp) {
+                    rotate(bearing.toFloat(), cx, cy)
+                }
+                path.reset()
+                path.moveTo(cx, cy - 20f)
+                path.lineTo(cx - 7f, cy - 8f)
+                path.lineTo(cx + 7f, cy - 8f)
+                path.close()
+                drawPath(path, positionFillPaint)
             }
-            path.reset()
-            path.moveTo(cx, cy - 20f)
-            path.lineTo(cx - 7f, cy - 8f)
-            path.lineTo(cx + 7f, cy - 8f)
-            path.close()
-            canvas.drawPath(path, positionFillPaint)
-            canvas.restore()
         }
     }
 

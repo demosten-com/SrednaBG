@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import abc
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
@@ -207,9 +208,6 @@ class Device(abc.ABC):
 
 # Re-exported here so qa.sync's data class stays its canonical home but
 # Device's abstract method can reference it without an import cycle.
-from dataclasses import dataclass
-
-
 @dataclass(frozen=True)
 class MapIntegrityResult:
     style_present: bool  # True only when ALL required style files are installed

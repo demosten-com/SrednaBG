@@ -10,7 +10,6 @@ Restores network on teardown so subsequent scenarios aren't broken.
 
 from __future__ import annotations
 
-import time
 
 from ... import sync
 from ...assertions import AssertionFailure, expect_crash_free

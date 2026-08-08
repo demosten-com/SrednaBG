@@ -9,7 +9,10 @@
     <string name="nav_history">History</string>
 
     <!-- Home screen -->
-    <string name="zones_loaded">%d zones loaded</string>
+    <plurals name="zones_loaded">
+        <item quantity="one">%d zone loaded</item>
+        <item quantity="other">%d zones loaded</item>
+    </plurals>
     <string name="status_not_tracking">Not tracking</string>
     <string name="status_tracking_outside">Monitoring zones</string>
     <string name="status_in_zone">In zone: %s</string>

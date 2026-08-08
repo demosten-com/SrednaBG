@@ -1,0 +1,26 @@
+# ruff config for the QA harness.
+#
+# Without this file ruff falls back to its built-in defaults, which is what the
+# harness has effectively been linted against all along. Pinning them makes the
+# bar explicit and reproducible instead of "whatever this ruff version defaults
+# to".
+#
+# Note the deliberate difference from `scrapers/ruff.toml`, which additionally
+# selects I (import sorting), B (bugbear) and UP (pyupgrade): applying that set
+# here reports ~158 mostly-mechanical findings across the harness, and the
+# harness can only be regression-tested against a booted emulator/simulator.
+# That widening is tracked as LINT-Q01 in `test-data/known-lint-issues.md` —
+# do it as its own change, not as a side effect of a feature.
+
+line-length = 88
+target-version = "py311"
+
+[lint]
+# ruff's default selection: pyflakes (F) + the pycodestyle errors that catch
+# real defects (E4 imports, E7 statements, E9 syntax/IO). Style-only rules are
+# out by design; see the note above.
+select = ["E4", "E7", "E9", "F"]
+
+[format]
+quote-style = "double"
+indent-style = "space"

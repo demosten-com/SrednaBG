@@ -143,8 +143,8 @@ def _find_and_tap(*matchers: dict, timeout_s: float = 10.0) -> tuple[int, int, i
         for m in matchers:
             bounds = _find_bounds(root, **m)
             if bounds:
-                l, t, r, b = bounds
-                adb.shell(f"input tap {(l + r) // 2} {(t + b) // 2}")
+                left, t, r, b = bounds
+                adb.shell(f"input tap {(left + r) // 2} {(t + b) // 2}")
                 return bounds
         time.sleep(0.5)
     raise RuntimeError(f"no UI node matched any of: {matchers}")

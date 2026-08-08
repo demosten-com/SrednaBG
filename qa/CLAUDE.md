@@ -125,6 +125,21 @@ fixtures (committed under `qa/fixtures/gpx-xcode/`):
 - `qa/fixtures/gpx_to_xcode.py <in.gpx> [out.gpx]` — converts an existing harness
   track-form GPX into Xcode `<wpt>` form.
 
+## Definition of done
+
+**Harness work is not complete until `ruff check qa/` reports "All checks
+passed!"** (config at `qa/ruff.toml`), on top of actually running the suites the
+change affects on a device.
+
+The harness pins ruff's **default** rule set (`E4`, `E7`, `E9`, `F`) — real
+defects: unused/misplaced imports, undefined names, dead locals. That is
+deliberately narrower than `scrapers/ruff.toml`'s `E, F, I, B, UP`; the reason and
+the migration path are recorded as LINT-Q01 in `test-data/known-lint-issues.md`
+(gitignored). Anything else you choose not to fix belongs in that file too, with
+the rule and the reason — a finding that is neither fixed nor registered is a
+skipped lint, not an inherited one. See the repo-root `CLAUDE.md` "Definition of
+done — linting".
+
 ## Adding scenarios
 
 - YAML for "drive zone X at speed Y" variations.

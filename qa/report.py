@@ -12,7 +12,6 @@ back to the user.
 
 from __future__ import annotations
 
-import html
 import time
 from pathlib import Path
 from xml.sax.saxutils import escape

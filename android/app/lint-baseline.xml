@@ -8,7 +8,7 @@
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/demosten/srednabg/app/service/LocationTrackingService.kt"
-            line="323"
+            line="327"
             column="13"/>
     </issue>
 
@@ -47,7 +47,7 @@
 
     <issue
         id="AndroidGradlePluginVersion"
-        message="A newer version of com.android.application than 8.9.3 is available: 9.3.0"
+        message="A newer version of com.android.application than 8.9.3 is available: 9.3.1"
         errorLine1="agp = &quot;8.9.3&quot;"
         errorLine2="      ~~~~~~~">
         <location
@@ -58,7 +58,7 @@
 
     <issue
         id="AndroidGradlePluginVersion"
-        message="A newer version of com.android.application than 8.9.3 is available: 9.3.0"
+        message="A newer version of com.android.application than 8.9.3 is available: 9.3.1"
         errorLine1="agp = &quot;8.9.3&quot;"
         errorLine2="      ~~~~~~~">
         <location
@@ -69,7 +69,7 @@
 
     <issue
         id="AndroidGradlePluginVersion"
-        message="A newer version of com.android.application than 8.9.3 is available: 9.3.0"
+        message="A newer version of com.android.application than 8.9.3 is available: 9.3.1"
         errorLine1="agp = &quot;8.9.3&quot;"
         errorLine2="      ~~~~~~~">
         <location
@@ -80,7 +80,7 @@
 
     <issue
         id="AndroidGradlePluginVersion"
-        message="A newer version of com.android.library than 8.9.3 is available: 9.3.0"
+        message="A newer version of com.android.library than 8.9.3 is available: 9.3.1"
         errorLine1="agp = &quot;8.9.3&quot;"
         errorLine2="      ~~~~~~~">
         <location
@@ -91,7 +91,7 @@
 
     <issue
         id="AndroidGradlePluginVersion"
-        message="A newer version of com.android.library than 8.9.3 is available: 9.3.0"
+        message="A newer version of com.android.library than 8.9.3 is available: 9.3.1"
         errorLine1="agp = &quot;8.9.3&quot;"
         errorLine2="      ~~~~~~~">
         <location
@@ -102,7 +102,7 @@
 
     <issue
         id="AndroidGradlePluginVersion"
-        message="A newer version of com.android.library than 8.9.3 is available: 9.3.0"
+        message="A newer version of com.android.library than 8.9.3 is available: 9.3.1"
         errorLine1="agp = &quot;8.9.3&quot;"
         errorLine2="      ~~~~~~~">
         <location
@@ -736,17 +736,6 @@
             file="$HOME/work/ai/SrednaBG/android/gradle/libs.versions.toml"
             line="29"
             column="14"/>
-    </issue>
-
-    <issue
-        id="ComposableNaming"
-        message="Composable functions that return Unit should start with an uppercase letter"
-        errorLine1="fun rememberPermissionHandler(repository: PermissionRepository) {"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/com/demosten/srednabg/app/ui/components/PermissionHandler.kt"
-            line="29"
-            column="5"/>
     </issue>
 
     <issue
@@ -778,7 +767,7 @@
         errorLine2="            ^">
         <location
             file="src/main/kotlin/com/demosten/srednabg/app/service/AudioAlertManager.kt"
-            line="153"
+            line="156"
             column="13"/>
     </issue>
 
@@ -789,7 +778,7 @@
         errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/demosten/srednabg/app/service/AudioAlertManager.kt"
-            line="207"
+            line="231"
             column="25"/>
     </issue>
 
@@ -800,7 +789,7 @@
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/demosten/srednabg/app/service/AudioAlertManager.kt"
-            line="285"
+            line="329"
             column="13"/>
     </issue>
 
@@ -811,7 +800,7 @@
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/demosten/srednabg/app/service/AudioAlertManager.kt"
-            line="303"
+            line="347"
             column="13"/>
     </issue>
 
@@ -822,7 +811,7 @@
         errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/demosten/srednabg/app/service/AudioAlertManager.kt"
-            line="306"
+            line="350"
             column="17"/>
     </issue>
 
@@ -833,7 +822,7 @@
         errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/demosten/srednabg/app/service/AudioAlertManager.kt"
-            line="310"
+            line="354"
             column="9"/>
     </issue>
 
@@ -844,7 +833,7 @@
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/demosten/srednabg/app/service/AudioAlertManager.kt"
-            line="318"
+            line="362"
             column="13"/>
     </issue>
 
@@ -1064,7 +1053,7 @@
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/demosten/srednabg/app/service/HistoryRecorder.kt"
-            line="127"
+            line="133"
             column="13"/>
     </issue>
 
@@ -1075,7 +1064,7 @@
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/demosten/srednabg/app/service/HistoryRecorder.kt"
-            line="155"
+            line="161"
             column="13"/>
     </issue>
 
@@ -1240,7 +1229,7 @@
         errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/demosten/srednabg/app/service/LocationTrackingService.kt"
-            line="318"
+            line="322"
             column="9"/>
     </issue>
 
@@ -1251,7 +1240,7 @@
         errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/demosten/srednabg/app/service/LocationTrackingService.kt"
-            line="356"
+            line="360"
             column="21"/>
     </issue>
 
@@ -1262,7 +1251,7 @@
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/demosten/srednabg/app/service/LocationTrackingService.kt"
-            line="364"
+            line="368"
             column="13"/>
     </issue>
 
@@ -1273,7 +1262,7 @@
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/demosten/srednabg/app/service/LocationTrackingService.kt"
-            line="366"
+            line="370"
             column="13"/>
     </issue>
 
@@ -1284,7 +1273,7 @@
         errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/demosten/srednabg/app/service/LocationTrackingService.kt"
-            line="371"
+            line="375"
             column="21"/>
     </issue>
 
@@ -1295,7 +1284,7 @@
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/demosten/srednabg/app/service/LocationTrackingService.kt"
-            line="390"
+            line="394"
             column="13"/>
     </issue>
 
@@ -1306,7 +1295,7 @@
         errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/demosten/srednabg/app/service/LocationTrackingService.kt"
-            line="393"
+            line="397"
             column="9"/>
     </issue>
 
@@ -1317,7 +1306,7 @@
         errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/demosten/srednabg/app/service/LocationTrackingService.kt"
-            line="429"
+            line="433"
             column="9"/>
     </issue>
 
@@ -1361,8 +1350,30 @@
         errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/demosten/srednabg/app/data/ZoneRepository.kt"
-            line="122"
+            line="124"
             column="9"/>
+    </issue>
+
+    <issue
+        id="LogNotTimber"
+        message="Using &apos;Log&apos; instead of &apos;Timber&apos;"
+        errorLine1="            Log.w("
+        errorLine2="            ^">
+        <location
+            file="src/main/kotlin/com/demosten/srednabg/app/data/ZoneRepository.kt"
+            line="143"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="LogNotTimber"
+        message="Using &apos;Log&apos; instead of &apos;Timber&apos;"
+        errorLine1="            Log.w("
+        errorLine2="            ^">
+        <location
+            file="src/main/kotlin/com/demosten/srednabg/app/data/ZoneRepository.kt"
+            line="153"
+            column="13"/>
     </issue>
 
     <issue
@@ -1372,19 +1383,8 @@
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/demosten/srednabg/app/data/ZoneRepository.kt"
-            line="137"
+            line="170"
             column="13"/>
-    </issue>
-
-    <issue
-        id="PluralsCandidate"
-        message="Formatting %d followed by words (&quot;zones&quot;): This should probably be a plural rather than a string"
-        errorLine1="    &lt;string name=&quot;zones_loaded&quot;>%d zones loaded&lt;/string>"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/values-en/strings.xml"
-            line="12"
-            column="5"/>
     </issue>
 
     <issue
@@ -1454,28 +1454,6 @@
     </issue>
 
     <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableDoubleStateOf` instead of `mutableStateOf`"
-        errorLine1="    var effectiveBearing by remember { mutableStateOf(0.0) }"
-        errorLine2="                                       ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/com/demosten/srednabg/app/ui/screens/ZoneMapScreen.kt"
-            line="149"
-            column="40"/>
-    </issue>
-
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
-        errorLine1="    var styleEpoch by remember { mutableStateOf(0) }"
-        errorLine2="                                 ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/com/demosten/srednabg/app/ui/screens/ZoneMapScreen.kt"
-            line="195"
-            column="34"/>
-    </issue>
-
-    <issue
         id="UnusedResources"
         message="The resource `R.xml.automotive_app_desc` appears to be unused"
         errorLine1="&lt;automotiveApp>"
@@ -1484,50 +1462,6 @@
             file="src/main/res/xml/automotive_app_desc.xml"
             line="2"
             column="1"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `String.toUri` instead?"
-        errorLine1="        data = Uri.parse(&quot;package:$pkg&quot;)"
-        errorLine2="               ~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/com/demosten/srednabg/app/ui/screens/HomeScreen.kt"
-            line="679"
-            column="16"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `String.toUri` instead?"
-        errorLine1="        data = Uri.parse(&quot;package:$pkg&quot;)"
-        errorLine2="               ~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/com/demosten/srednabg/app/ui/screens/HomeScreen.kt"
-            line="679"
-            column="16"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `Canvas.withSave` instead?"
-        errorLine1="            canvas.save()"
-        errorLine2="            ~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/com/demosten/srednabg/app/auto/MapRenderer.kt"
-            line="122"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX function `createBitmap` instead?"
-        errorLine1="    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)"
-        errorLine2="                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/com/demosten/srednabg/app/ui/screens/ZoneMapScreen.kt"
-            line="958"
-            column="18"/>
     </issue>
 
 </issues>
