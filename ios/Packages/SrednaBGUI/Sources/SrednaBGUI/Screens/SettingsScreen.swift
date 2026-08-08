@@ -15,17 +15,22 @@ public struct SettingsScreen: View {
     @Bindable public var settings: SettingsStore
     public let onSyncTap: () async -> SyncResult
     public let onZoneSyncToggle: (Bool) -> Void
+    /// Size of the catalog the app actually holds — read from the live zone
+    /// list by the caller so SwiftUI observation stays on that owner.
+    public let zoneCount: Int
     @State private var snackbar: SnackbarMessage?
     @State private var isSyncing = false
 
     public init(
         settings: SettingsStore,
         onSyncTap: @escaping () async -> SyncResult,
-        onZoneSyncToggle: @escaping (Bool) -> Void = { _ in }
+        onZoneSyncToggle: @escaping (Bool) -> Void = { _ in },
+        zoneCount: Int = 0
     ) {
         self.settings = settings
         self.onSyncTap = onSyncTap
         self.onZoneSyncToggle = onZoneSyncToggle
+        self.zoneCount = zoneCount
     }
 
     public var body: some View {
@@ -177,6 +182,10 @@ public struct SettingsScreen: View {
             .font(.footnote)
             .foregroundStyle(.secondary)
             .accessibilityIdentifier("settings-zone-data-date")
+            Text(String(format: L10n.settingZoneDataCount, zoneCount))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("settings-zone-data-count")
             Text(String(format: L10n.settingZoneDataHash, ZoneDataFormat.shortHash(settings.cachedZoneHash)))
                 .font(.footnote)
                 .foregroundStyle(.secondary)

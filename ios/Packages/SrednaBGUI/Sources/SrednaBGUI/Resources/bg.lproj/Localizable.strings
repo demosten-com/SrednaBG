@@ -69,6 +69,7 @@
 "syncUpToDate" = "Данните вече са актуални";
 "syncFailed" = "Неуспешна синхронизация — опитайте отново";
 "settingZoneDataDate" = "дата на зоните: %@";
+"settingZoneDataCount" = "брой зони: %d";
 "settingZoneDataHash" = "хеш: %@";
 
 /* AboutScreen */

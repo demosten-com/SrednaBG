@@ -84,6 +84,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
     val zoneDataVersion by viewModel.zoneDataVersion.collectAsStateWithLifecycle()
     val zoneDataHash by viewModel.zoneDataHash.collectAsStateWithLifecycle()
+    val zoneCount by viewModel.zoneCount.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
@@ -524,6 +525,11 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
 
         Text(
             text = stringResource(R.string.setting_zone_data_date, formatZoneVersion(zoneDataVersion)),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = stringResource(R.string.setting_zone_data_count, zoneCount),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

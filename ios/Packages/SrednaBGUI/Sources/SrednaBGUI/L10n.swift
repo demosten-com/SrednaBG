@@ -91,6 +91,7 @@ public enum L10n {
     public static var settingZoneSyncDesc: String { loc("settingZoneSyncDesc") }
     public static var settingSyncNow: String { loc("settingSyncNow") }
     public static var settingZoneDataDate: String { loc("settingZoneDataDate") }          // "%@"
+    public static var settingZoneDataCount: String { loc("settingZoneDataCount") }        // "%d"
     public static var settingZoneDataHash: String { loc("settingZoneDataHash") }          // "%@"
     public static var syncUpdated: String { loc("syncUpdated") }
     public static var syncUpToDate: String { loc("syncUpToDate") }

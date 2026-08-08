@@ -69,6 +69,7 @@
 "syncUpToDate" = "Already up to date";
 "syncFailed" = "Sync failed — try again";
 "settingZoneDataDate" = "zone date: %@";
+"settingZoneDataCount" = "zone count: %d";
 "settingZoneDataHash" = "hash: %@";
 
 /* AboutScreen */

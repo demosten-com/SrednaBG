@@ -159,7 +159,12 @@ private struct RootTabs: View {
             .accessibilityIdentifier("tab-history")
 
             NavigationStack {
-                SettingsScreen(settings: settings, onSyncTap: onSyncTap, onZoneSyncToggle: onZoneSyncToggle)
+                SettingsScreen(
+                    settings: settings,
+                    onSyncTap: onSyncTap,
+                    onZoneSyncToggle: onZoneSyncToggle,
+                    zoneCount: tracking.zones.count
+                )
             }
             .tabItem { Label(L10n.navSettings, systemImage: "gearshape") }
             .tag(DebugTabName.settings)
