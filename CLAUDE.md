@@ -113,6 +113,6 @@ absorb a new finding.
 ## Open Questions
 
 - BG TOLL tolerance rumored at +3 km/h (≤100) / +3% (>100) — factor into the over-limit check if confirmed
-- Per-vehicle limits are now modeled (car/truck/bus/motorcycle); motorcycle falls back to the car limit where a zone has no explicit value. BG TOLL's own TollPass feed has **no motorcycle category at all** (and its BE limit equals D on every zone), so the fallback matches the authority's model — treat the motorcycle question as closed
+- Per-vehicle limits are now modeled (car/truck/bus/motorcycle); motorcycle falls back to the car limit where a zone has no explicit value. the other public data sources have **no motorcycle category at all** (and their BE limit equals D on every zone), so the fallback matches the published model — treat the motorcycle question as closed
 - Custom user-reported zones — support for zones not yet officially certified?
 - Cloudflare CDN for tiles — consider if user base grows

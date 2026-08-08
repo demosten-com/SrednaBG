@@ -44,8 +44,8 @@ public struct ZoneEndpoint: Sendable, Equatable, Hashable, Codable {
 /// Settings picker labels its rows for the whole class instead.
 ///
 /// `motorcycle` is a per-zone override for the rare case where a zone names a
-/// separate motorcycle limit; it falls back to `car`. BG TOLL's own TollPass
-/// feed has no motorcycle category at all, so the fallback is the norm.
+/// separate motorcycle limit; it falls back to `car`. The other public data
+/// sources have no motorcycle category at all, so the fallback is the norm.
 public struct SpeedLimits: Sendable, Equatable, Hashable, Codable {
     public let car: Int
     public let truck: Int
