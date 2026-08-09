@@ -58,7 +58,9 @@ def build() -> Scenario:
         settings.set_setting("cached_zone_version", _ANCIENT_VERSION)
         ctx.obs.clear()
         sync.force_sync_zones()
-        first = sync.wait_for_sync(ctx.obs, "SYNC_ZONES", timeout_s=20)
+        first = sync.wait_for_sync(
+            ctx.obs, "SYNC_ZONES", timeout_s=sync.REFETCH_TIMEOUT_S
+        )
         if first.outcome != "Updated":
             raise AssertionFailure(
                 "poisoned cached hash must force a full re-fetch: "
@@ -86,5 +88,6 @@ def build() -> Scenario:
         name="sync.zones_freshness",
         steps=[step_lambda("manual_sync_force_refetch", go)],
         teardown=teardown,
-        timeout_s=90,
+        # One full re-fetch at REFETCH_TIMEOUT_S plus a cheap UpToDate check.
+        timeout_s=120,
     )

@@ -90,32 +90,7 @@ public final class DebugActionRouter {
             return Result(status: 400, body: "unknown setting key")
 
         case "/sync":
-            guard let action = params["action"] else {
-                return Result(status: 400, body: "sync requires action")
-            }
-            let label = action == "zones" ? "SYNC_ZONES" : "SYNC_MAP"
-            if QAFlags.networkOffline {
-                DebugSyncHook.log(action: label, outcome: .failed, detail: "offline")
-                return Result(status: 200, body: "Failed(offline)")
-            }
-            // Map sync is gated on FeatureFlags.isMapSyncEnabled (off until the
-            // production backend serves the map bundle). Emit a "Skipped" line
-            // mirroring Android's DebugSyncReceiver so the QA regression
-            // scenario can assert the gate is in place on both platforms.
-            if action == "map", !FeatureFlags.isMapSyncEnabled {
-                QALog.sync.info(
-                    "\(DebugSyncHook.actionPrefix, privacy: .public)\(label, privacy: .public) -> Skipped (feature disabled)"
-                )
-                return Result(status: 200, body: "Skipped(feature disabled)")
-            }
-            let outcome: DebugSyncOutcome
-            switch action {
-            case "zones": outcome = await handlers.runZoneSync()
-            case "map": outcome = await handlers.runMapSync()
-            default: return Result(status: 400, body: "unknown sync action")
-            }
-            DebugSyncHook.log(action: label, outcome: outcome, detail: nil)
-            return Result(status: 200, body: outcome.rawValue)
+            return dispatchSync(params: params)
 
         case "/tracking":
             guard let action = params["action"] else {
@@ -180,6 +155,51 @@ public final class DebugActionRouter {
         default:
             return Result(status: 404, body: "no such endpoint: \(path)")
         }
+    }
+
+    /// `/sync?action=zones|map` — kick a sync and report the outcome on the
+    /// `DebugSync` log channel.
+    ///
+    /// The sync itself runs **fire-and-forget** (same reasoning as
+    /// `/tracking`): a full zone re-fetch is a network round trip plus a
+    /// whole-catalog persist, which on a loaded CI box outruns the harness's
+    /// 10 s HTTP read timeout — nightly drives both platforms at once. The
+    /// harness never reads this response body; it waits for the `DebugSync`
+    /// line via `wait_for_sync`, so returning immediately drops a second,
+    /// tighter deadline that was racing the one the scenario sets.
+    private func dispatchSync(params: [String: String]) -> Result {
+        guard let action = params["action"] else {
+            return Result(status: 400, body: "sync requires action")
+        }
+        let label = action == "zones" ? "SYNC_ZONES" : "SYNC_MAP"
+        if QAFlags.networkOffline {
+            DebugSyncHook.log(action: label, outcome: .failed, detail: "offline")
+            return Result(status: 200, body: "Failed(offline)")
+        }
+        // Map sync is gated on FeatureFlags.isMapSyncEnabled (off until the
+        // production backend serves the map bundle). Emit a "Skipped" line
+        // mirroring Android's DebugSyncReceiver so the QA regression
+        // scenario can assert the gate is in place on both platforms.
+        if action == "map", !FeatureFlags.isMapSyncEnabled {
+            QALog.sync.info(
+                "\(DebugSyncHook.actionPrefix, privacy: .public)\(label, privacy: .public) -> Skipped (feature disabled)"
+            )
+            return Result(status: 200, body: "Skipped(feature disabled)")
+        }
+        let h = handlers
+        switch action {
+        case "zones":
+            Task { @MainActor in
+                DebugSyncHook.log(action: label, outcome: await h.runZoneSync(), detail: nil)
+            }
+        case "map":
+            Task { @MainActor in
+                DebugSyncHook.log(action: label, outcome: await h.runMapSync(), detail: nil)
+            }
+        default:
+            return Result(status: 400, body: "unknown sync action")
+        }
+        return Result(status: 200, body: "ok")
     }
 
     /// History DB actions:

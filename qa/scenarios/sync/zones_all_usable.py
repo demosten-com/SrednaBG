@@ -78,7 +78,9 @@ def build() -> Scenario:
         # reaches the queue before the closing DebugSync event and would be
         # consumed (and discarded) by the wait itself.
         during: list = []
-        result = sync.wait_for_sync(ctx.obs, "SYNC_ZONES", timeout_s=25, collect=during)
+        result = sync.wait_for_sync(
+            ctx.obs, "SYNC_ZONES", timeout_s=sync.REFETCH_TIMEOUT_S, collect=during
+        )
         if result.outcome != "Updated":
             raise AssertionFailure(
                 "the served catalog must be fetched and decoded here — a "

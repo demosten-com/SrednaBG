@@ -32,6 +32,15 @@ from .events import SyncResult
 from .log_observer import LogObserver
 
 
+# A sync that ends in `UpToDate` is one `/api/version` round trip and lands in
+# a second or two; a *full re-fetch* pulls the whole catalog and persists every
+# zone, and neither platform's debug surface blocks the trigger call until it's
+# done (Android `goAsync`, iOS fire-and-forget) — the wait below is the only
+# deadline it has to beat. On a nightly box running both platforms at once that
+# has been measured well past 20 s, so re-fetch waits get their own budget.
+REFETCH_TIMEOUT_S = 45.0
+
+
 def force_sync_zones() -> None:
     device_mod.current().force_sync_zones()
 

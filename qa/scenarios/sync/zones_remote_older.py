@@ -55,7 +55,9 @@ def build() -> Scenario:
         settings.set_setting("cached_zone_version", "")
         ctx.obs.clear()
         sync.force_sync_zones()
-        second = sync.wait_for_sync(ctx.obs, "SYNC_ZONES", timeout_s=20)
+        second = sync.wait_for_sync(
+            ctx.obs, "SYNC_ZONES", timeout_s=sync.REFETCH_TIMEOUT_S
+        )
         if second.outcome != "Updated":
             raise AssertionFailure(
                 "legacy (empty) cached version must fall back to a re-fetch: "
@@ -73,7 +75,7 @@ def build() -> Scenario:
         ctx.obs.clear()
         sync.force_sync_zones()
         try:
-            sync.wait_for_sync(ctx.obs, "SYNC_ZONES", timeout_s=20)
+            sync.wait_for_sync(ctx.obs, "SYNC_ZONES", timeout_s=sync.REFETCH_TIMEOUT_S)
         except TimeoutError:
             pass  # restore is best-effort; asserting here would double-fail
         expect_crash_free(ctx.obs)
@@ -82,5 +84,6 @@ def build() -> Scenario:
         name="sync.zones_remote_older",
         steps=[step_lambda("remote_older_is_skipped", go)],
         teardown=teardown,
-        timeout_s=90,
+        # Three syncs, two of them full re-fetches at REFETCH_TIMEOUT_S each.
+        timeout_s=180,
     )
