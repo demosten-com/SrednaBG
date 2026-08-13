@@ -40,6 +40,18 @@ CONTRACTS_DIR = Path(__file__).parent.parent / "contracts"
 # shipping something newer. See contracts/manifest.json.
 SEVERITY_FOR_STATUS = {"live": "error", "published": "error"}
 
+# Feed lifecycle. `active` is served and maintained; `unsupported` is still
+# served but stamped with `"unsupported": 1` so clients on it can tell the user
+# to update; `retired` is no longer written at all. Only the first two produce
+# files, and both are enforced against their clients — a feed we still serve is
+# a feed we must not break.
+FEED_STATUSES = ("active", "unsupported", "retired")
+SERVED_FEED_STATUSES = ("active", "unsupported")
+
+# The feed a client entry belongs to when it doesn't say. Every client that
+# existed before feeds were introduced fetched `/api/zones`, which is feed 1.
+DEFAULT_FEED = 1
+
 _TYPE_CHECKS = {
     "string": lambda v: isinstance(v, str),
     "integer": lambda v: isinstance(v, int) and not isinstance(v, bool),
@@ -53,38 +65,90 @@ class ContractError(Exception):
     """The contract files themselves are missing or malformed."""
 
 
-def load_manifest(contracts_dir: Path | None = None) -> list[dict[str, Any]]:
-    """Published clients whose contracts must hold, newest first."""
-    root = contracts_dir or CONTRACTS_DIR
+def _read_manifest(root: Path) -> dict[str, Any]:
     path = root / "manifest.json"
     try:
-        manifest = json.loads(path.read_text(encoding="utf-8"))
+        return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
         # Never fall through to "no contracts, therefore no violations" — that
         # would silently disable the fleet's only protection.
         raise ContractError(f"cannot read {path}: {exc}") from exc
 
+
+def load_feeds(contracts_dir: Path | None = None) -> list[dict[str, Any]]:
+    """Declared data feeds, in ascending feed order.
+
+    A feed is a served payload variant — feed 1 at `/api/zones`, feed N>1 at
+    `/api/zones.N`. Validated strictly rather than defaulted: an unreadable
+    feed list would otherwise read as "publish nothing", which looks like a
+    quiet success in cron.
+    """
+    root = contracts_dir or CONTRACTS_DIR
+    path = root / "manifest.json"
+    feeds = _read_manifest(root).get("feeds")
+    if not feeds:
+        raise ContractError(f"{path} declares no feeds — nothing would be published")
+
+    for feed in feeds:
+        version = feed.get("version")
+        if not isinstance(version, int) or isinstance(version, bool) or version < 1:
+            raise ContractError(
+                f"{path}: feed version {version!r} must be a positive integer"
+            )
+        if feed.get("status") not in FEED_STATUSES:
+            raise ContractError(
+                f"{path}: feed {version} has status {feed.get('status')!r}, "
+                f"expected one of {', '.join(FEED_STATUSES)}"
+            )
+    versions = [f["version"] for f in feeds]
+    if len(set(versions)) != len(versions):
+        raise ContractError(f"{path}: duplicate feed version(s) in `feeds`")
+    return sorted(feeds, key=lambda f: f["version"])
+
+
+def load_manifest(contracts_dir: Path | None = None) -> list[dict[str, Any]]:
+    """Published clients whose contracts must hold, newest first."""
+    root = contracts_dir or CONTRACTS_DIR
+    path = root / "manifest.json"
+    manifest = _read_manifest(root)
+
     clients = manifest.get("clients")
     if not clients:
         raise ContractError(f"{path} lists no clients — nothing would be enforced")
 
+    declared_feeds = {f["version"] for f in load_feeds(root)}
     for client in clients:
         contract_path = root / client["contract"]
         try:
             client["_contract"] = json.loads(contract_path.read_text(encoding="utf-8"))
         except (OSError, ValueError) as exc:
             raise ContractError(f"cannot read {contract_path}: {exc}") from exc
+        client.setdefault("feed", DEFAULT_FEED)
+        if client["feed"] not in declared_feeds:
+            raise ContractError(
+                f"{path}: client {client['version']} names feed "
+                f"{client['feed']!r}, which is not declared in `feeds`"
+            )
     return clients
 
 
 def contract_violations(
-    payload: dict[str, Any], contracts_dir: Path | None = None
+    payload: dict[str, Any],
+    *,
+    feed: int = DEFAULT_FEED,
+    contracts_dir: Path | None = None,
 ) -> list[str]:
-    """Reasons ``payload`` must not be published, or [] if it may be.
+    """Reasons ``payload`` must not be published on ``feed``, or [] if it may be.
 
     ``payload`` is the serialized `/api/zones` body — the wire form, **not** the
     `ZoneDatabase` model, because the wire is what clients see and
     `exclude_none=True` means a null field is absent rather than null.
+
+    Only clients compiled against ``feed`` are enforced. That filter is the
+    whole point of feeds: a shape 1.x cannot parse becomes publishable on feed 2
+    precisely because no 1.x install will ever fetch it. It also means a feed
+    with no clients is unconstrained — deliberately, that is what a
+    not-yet-shipped feed is.
 
     Distinct clients sharing one contract are checked once and reported against
     every version that shares it, so the message names who breaks.
@@ -94,6 +158,8 @@ def contract_violations(
     seen: dict[str, list[str]] = {}
 
     for client in clients:
+        if client["feed"] != feed:
+            continue
         if SEVERITY_FOR_STATUS.get(client.get("status"), "error") != "error":
             continue
         seen.setdefault(client["contract"], []).append(client["version"])

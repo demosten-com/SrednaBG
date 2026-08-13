@@ -323,6 +323,11 @@ final class AppContainer {
     func runZoneSync() async -> SyncResult {
         do {
             let version = try await syncClient.fetchVersion()
+            // Record the feed's support state before the recency gate: an
+            // unsupported feed is by definition one whose data has stopped
+            // changing, so the branch that learns about it is the one that
+            // decides nothing needs downloading.
+            settings.zoneFeedUnsupported = version.isFeedUnsupported
             switch ZoneDataRecency.decide(
                 remoteHash: version.hash,
                 remoteVersion: version.version,

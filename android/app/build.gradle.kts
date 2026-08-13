@@ -1,6 +1,16 @@
 import java.time.Duration
 import java.time.Instant
 
+// Zone-data feed this build is compiled against. A feed is a served payload
+// variant: feed 1 is `/api/zones` + `/api/version` and the unsuffixed
+// backend/data/zones.json; feed N>1 is `/api/zones.N` and zones.N.json. The
+// choice is compile-time and never negotiated at runtime, so this literal is
+// the whole answer to "which data does this build see" — both over the network
+// and in the APK. Bump it only alongside a matching entry in
+// scrapers/contracts/manifest.json and a Feed row in VERSIONS.md.
+val zoneFeedVersion = 1
+val zoneFeedSuffix = if (zoneFeedVersion == 1) "" else ".$zoneFeedVersion"
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -30,6 +40,7 @@ android {
         // Both debug and release hit the production Namecheap host so dev
         // builds always test against real zone data.
         buildConfigField("String", "ZONE_API_BASE_URL", "\"https://srednabg.com\"")
+        buildConfigField("int", "ZONE_FEED_VERSION", "$zoneFeedVersion")
         buildConfigField("String", "MAP_STYLE_URL", "\"https://srednabg.com/tiles/styles/basic-preview/style.json\"")
     }
 
@@ -253,7 +264,11 @@ val prepareMapAssets by tasks.registering(Copy::class) {
 // gitignored (NOT committed), so the two platforms can never ship different
 // zone data for the same release. The build FAILS if the source is missing —
 // offline-first means shipping without zones would break the app.
-val zonesSource = rootProject.file("../backend/data/zones.json")
+//
+// Which file is picked follows `zoneFeedVersion` (top of this file): a build on
+// feed N must bundle feed N's data, or its offline catalog would disagree with
+// everything it later syncs.
+val zonesSource = rootProject.file("../backend/data/zones$zoneFeedSuffix.json")
 val zonesAssetDest = layout.projectDirectory.file("src/main/assets/zones.json")
 val zoneRefreshCmd = "bash scrapers/scripts/refresh-zones.sh"
 

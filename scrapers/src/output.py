@@ -30,6 +30,17 @@ from src import (  # noqa: E402
     tolltracker_fetcher,
 )
 from src.client_contract import ContractError, contract_violations  # noqa: E402
+from src.feeds import (  # noqa: E402
+    DEFAULT_FEED,
+    FeedError,
+    is_unsupported,
+    project,
+    served_feeds,
+    snapshot_glob,
+    snapshot_name,
+    version_filename,
+    zones_filename,
+)
 from src.validator import (  # noqa: E402
     REQUIRED_MOTORWAYS,
     align_centerline_to_endpoints,
@@ -132,11 +143,21 @@ def atomic_write_text(path: Path, text: str) -> None:
 
 
 def write_output(db: ZoneDatabase, path: Path = DEFAULT_OUTPUT) -> None:
-    """Write the zone database to a single JSON file."""
+    """Write the zone database to ``path``, plus a sibling per extra feed.
+
+    ``path`` names the feed-1 file (the caller's choice of name is honoured);
+    any further served feed is written beside it under its canonical
+    ``zones.N.json``. Local runs and the committed snapshot therefore carry the
+    same set of files the host serves, which is what lets each app bundle the
+    feed it was built for.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
-    json_str = db.model_dump_json(indent=2, exclude_none=True)
-    atomic_write_text(path, json_str)
-    logger.info("Wrote %d zones to %s", len(db.zones), path)
+    for entry in served_feeds():
+        feed = entry["version"]
+        target = path if feed == DEFAULT_FEED else path.parent / zones_filename(feed)
+        projected = project(db, feed)
+        atomic_write_text(target, projected.model_dump_json(indent=2, exclude_none=True))
+        logger.info("Wrote %d zones to %s (feed=%d)", len(projected.zones), target, feed)
 
 
 def _read_version_meta(version_path: Path) -> dict:
@@ -153,11 +174,15 @@ def _read_prev_hash(version_path: Path) -> str:
     return _read_version_meta(version_path).get("hash", "")
 
 
-def publish_guard_errors(db: ZoneDatabase, prev_count: int | None = None) -> list[str]:
-    """Reasons ``db`` must NOT be published, or an empty list if it may be.
+def publish_guard_errors(
+    db: ZoneDatabase,
+    prev_count: int | None = None,
+    feed: int = DEFAULT_FEED,
+) -> list[str]:
+    """Reasons ``db`` must NOT be published on ``feed``, or [] if it may be.
 
-    ``prev_count`` is the zone count currently being served (from
-    version.json), when known.
+    ``prev_count`` is the zone count currently being served on that feed (from
+    its version.json), when known.
     """
     errors: list[str] = []
     count = len(db.zones)
@@ -174,12 +199,35 @@ def publish_guard_errors(db: ZoneDatabase, prev_count: int | None = None) -> lis
             f"zone count dropped {prev_count} -> {count} "
             f"(more than {int((1 - MIN_PREV_RATIO) * 100)}%)"
         )
-    errors.extend(client_contract_errors(db))
+    errors.extend(client_contract_errors(db, feed))
     return errors
 
 
-def client_contract_errors(db: ZoneDatabase) -> list[str]:
-    """Reasons the published 1.x clients could not consume ``db``.
+def all_feeds_guard_errors(
+    db: ZoneDatabase, prev_counts: dict[int, int | None] | None = None
+) -> list[str]:
+    """Guard every served feed, labelled by feed.
+
+    Deliberately all-or-nothing at the call site: if any feed refuses, nothing
+    is written for any feed. A half-updated `/api` — feed 1 fresh, feed 2 stale
+    — is worse than a uniformly stale one, because nothing downstream can tell
+    the two apart.
+    """
+    prev_counts = prev_counts or {}
+    errors: list[str] = []
+    for entry in served_feeds():
+        feed = entry["version"]
+        projected = project(db, feed)
+        label = "" if feed == DEFAULT_FEED else f"feed {feed}: "
+        errors.extend(
+            f"{label}{err}"
+            for err in publish_guard_errors(projected, prev_counts.get(feed), feed)
+        )
+    return errors
+
+
+def client_contract_errors(db: ZoneDatabase, feed: int = DEFAULT_FEED) -> list[str]:
+    """Reasons the published clients on ``feed`` could not consume ``db``.
 
     Delegates to `src/client_contract.py`, which reads `contracts/*.json` — the
     transcribed decode surface of every client actually in the stores. This is
@@ -194,7 +242,7 @@ def client_contract_errors(db: ZoneDatabase) -> list[str]:
     """
     payload = json.loads(db.model_dump_json(exclude_none=True))
     try:
-        return contract_violations(payload)
+        return contract_violations(payload, feed=feed)
     except ContractError as exc:
         # A broken/missing contract must fail the publish, never wave it
         # through: "no rules loaded" would otherwise read as "no violations".
@@ -203,47 +251,63 @@ def client_contract_errors(db: ZoneDatabase) -> list[str]:
 
 
 
-def write_target_dir(db: ZoneDatabase, dir_: Path) -> str:
-    """Write zones.json + version.json into ``dir_`` for live serving.
+def write_target_dir(db: ZoneDatabase, dir_: Path) -> dict[int, str]:
+    """Write every served feed into ``dir_`` for live serving.
 
-    Snapshots the prior ``zones.json`` to ``zones-<UTC-timestamp>.json`` only
-    when content actually changes. Retains the newest ``SNAPSHOT_RETENTION``
-    snapshots and prunes the rest. Returns the previous hash (empty if none).
+    Each feed gets its own zones/version pair and its own snapshot history —
+    feed 1 keeps the unsuffixed names it has always had. Returns the previous
+    hash per feed (empty string where there was none).
     """
     dir_.mkdir(parents=True, exist_ok=True)
-    zones_path = dir_ / "zones.json"
-    version_path = dir_ / "version.json"
+    ts = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    prev_hashes: dict[int, str] = {}
+    for entry in served_feeds():
+        prev_hashes[entry["version"]] = _write_feed(db, dir_, entry, ts)
+    return prev_hashes
+
+
+def _write_feed(db: ZoneDatabase, dir_: Path, entry: dict, ts: str) -> str:
+    """Write one feed's zones + version files. Returns its previous hash."""
+    feed = entry["version"]
+    projected = project(db, feed)
+    zones_path = dir_ / zones_filename(feed)
+    version_path = dir_ / version_filename(feed)
 
     prev_hash = _read_prev_hash(version_path)
-    new_text = db.model_dump_json(indent=2, exclude_none=True)
+    new_text = projected.model_dump_json(indent=2, exclude_none=True)
 
     # Snapshot only on a genuine content change. Gate on the data hash, not the
     # file bytes: ``last_verified`` is re-stamped to today on every zone every run
     # (validator.merge_match), so a byte comparison would rotate a spurious
     # snapshot every cron run. ``db.hash`` excludes ``last_verified`` (HASH_EXCLUDE),
     # so it only differs when the zone data actually changed.
-    if zones_path.exists() and prev_hash and db.hash != prev_hash:
-        ts = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-        shutil.copy2(zones_path, dir_ / f"zones-{ts}.json")
+    if zones_path.exists() and prev_hash and projected.hash != prev_hash:
+        shutil.copy2(zones_path, dir_ / snapshot_name(feed, ts))
 
     atomic_write_text(zones_path, new_text)
 
     version_meta = {
-        "version": db.version,
-        "hash": db.hash,
+        "version": projected.version,
+        "hash": projected.hash,
+        "feed": feed,
         "min_app_version": MIN_APP_VERSION,
-        "zone_count": len(db.zones),
+        "zone_count": len(projected.zones),
         "map_hash": None,
     }
+    if is_unsupported(entry):
+        # Present only while the feed is unsupported; clients read any non-zero
+        # value as "tell the user to update". Absent is the supported state —
+        # `"unsupported": 0` would be a third state nobody needs to handle.
+        version_meta["unsupported"] = 1
     atomic_write_text(version_path, json.dumps(version_meta, indent=2) + "\n")
 
-    snapshots = sorted(dir_.glob("zones-*.json"), reverse=True)
+    snapshots = sorted(dir_.glob(snapshot_glob(feed)), reverse=True)
     for old in snapshots[SNAPSHOT_RETENTION:]:
         old.unlink()
 
     logger.info(
-        "Wrote %d zones to %s (prev_hash=%s)",
-        len(db.zones), zones_path, prev_hash or "(none)",
+        "Wrote %d zones to %s (feed=%d, prev_hash=%s)",
+        len(projected.zones), zones_path, feed, prev_hash or "(none)",
     )
     return prev_hash
 
@@ -334,12 +398,23 @@ def main() -> None:
         )
         sys.exit(1)
 
-    prev_count = None
-    if args.target_dir is not None:
-        prev_count = _read_version_meta(args.target_dir / "version.json").get(
-            "zone_count"
-        )
-    guard_errors = publish_guard_errors(db, prev_count)
+    try:
+        prev_counts: dict[int, int | None] = {}
+        if args.target_dir is not None:
+            for entry in served_feeds():
+                feed = entry["version"]
+                prev_counts[feed] = _read_version_meta(
+                    args.target_dir / version_filename(feed)
+                ).get("zone_count")
+
+        # All-or-nothing across feeds: a half-updated /api is worse than a
+        # uniformly stale one, so every feed is guarded before any is written.
+        guard_errors = all_feeds_guard_errors(db, prev_counts)
+    except (FeedError, ContractError) as exc:
+        logger.error("Feed configuration: %s", exc)
+        logger.error("Refusing to write output — existing data left untouched")
+        sys.exit(1)
+
     if guard_errors:
         for err in guard_errors:
             logger.error("Publish guard: %s", err)
@@ -349,7 +424,7 @@ def main() -> None:
         sys.exit(1)
 
     if args.target_dir is not None:
-        prev_hash = write_target_dir(db, args.target_dir)
+        prev_hash = write_target_dir(db, args.target_dir).get(DEFAULT_FEED, "")
     else:
         write_output(db, args.output or DEFAULT_OUTPUT)
         prev_hash = ""
@@ -357,9 +432,13 @@ def main() -> None:
 
     print_summary(db)
 
-    # Machine-readable result line for the cron wrapper.
+    # Machine-readable result line for the cron wrapper. Reports feed 1 — the
+    # cron's `state/last_hash` and the Telegram "changed?" line have always
+    # tracked `/api/zones`, so read the hash off that feed rather than off the
+    # canonical db, which need not be what feed 1 serves.
+    served = project(db, DEFAULT_FEED)
     print(
-        f"RESULT zone_count={len(db.zones)} hash={db.hash} "
+        f"RESULT zone_count={len(served.zones)} hash={served.hash} "
         f"prev_hash={prev_hash or '-'} duration_s={duration_s}",
         file=sys.stdout,
     )

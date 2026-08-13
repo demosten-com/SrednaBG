@@ -14,10 +14,10 @@ shipped to anyone.
 
 ## Currently published
 
-| Version | Status | Tag | Commit | versionCode | Released | Play | App Store | F-Droid | GitHub |
-|---|---|---|---|---|---|---|---|---|---|
-| 1.1.0 | `live` | `v1.1.0` | `fbdaa36` | 10100 | 2026-06-29 | ✅ | ✅ | ✅ | ✅ |
-| 1.0.4 | `published` | `v1.0.4` | `dba1ef7` | 10004 | 2026-06-02 | superseded | superseded | superseded | superseded |
+| Version | Status | Tag | Commit | versionCode | Feed | Released | Play | App Store | F-Droid | GitHub |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1.1.0 | `live` | `v1.1.0` | `fbdaa36` | 10100 | 1 | 2026-06-29 | ✅ | ✅ | ✅ | ✅ |
+| 1.0.4 | `published` | `v1.0.4` | `dba1ef7` | 10004 | 1 | 2026-06-02 | superseded | superseded | superseded | superseded |
 
 **Latest published: 1.1.0** — live on every channel (Play, App Store, F-Droid,
 GitHub Releases).
@@ -31,6 +31,16 @@ Status vocabulary, shared with `contracts/manifest.json`:
 - A version is only exempted by explicitly marking it retired in
   `contracts/manifest.json`. On the day 2.0.0 goes live, 1.1.0 is still the
   entire installed base.
+
+**Feed** is the data feed that release fetches: feed 1 is `/api/zones` +
+`/api/version`, feed N>1 is `/api/zones.N` + `/api/version.N`. Every version
+published so far is on **feed 1**, and every future row must state its feed —
+a release whose feed nobody can look up is a release whose wire obligations
+nobody can look up. The feed is chosen at compile time and never negotiated, so
+this column is the whole answer to "what would breaking the payload break?":
+the publish guard enforces a feed only against the clients listed against it.
+`contracts/manifest.json` is the machine-readable twin, and
+`test_client_contract.py` fails if the two disagree — including on this column.
 
 ## Tagged but never published
 

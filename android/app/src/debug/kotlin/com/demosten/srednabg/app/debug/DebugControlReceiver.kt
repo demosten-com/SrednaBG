@@ -232,6 +232,10 @@ class DebugControlReceiver : BroadcastReceiver() {
             "cached_zone_hash" -> settings.setCachedZoneHash(raw)
             "cached_zone_version" -> settings.setCachedZoneVersion(raw)
             "cached_map_hash" -> settings.setCachedMapHash(raw)
+            // QA only: the real value arrives from /api/version's `unsupported`
+            // flag, which no live feed sets — the notice would otherwise be
+            // untestable until the day we actually retire a feed.
+            "zone_feed_unsupported" -> settings.setZoneFeedUnsupported(raw.toBooleanStrict())
             "zone_sync_enabled" -> settings.setZoneSyncEnabled(raw.toBooleanStrict())
             "overlay_enabled" -> settings.setOverlayEnabled(raw.toBooleanStrict())
             else -> throw IllegalArgumentException("unknown setting key: $key")

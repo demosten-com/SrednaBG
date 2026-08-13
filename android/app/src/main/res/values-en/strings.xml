@@ -81,6 +81,7 @@
     <string name="setting_zone_data_date">zone date: %s</string>
     <string name="setting_zone_data_count">zone count: %d</string>
     <string name="setting_zone_data_hash">hash: %s</string>
+    <string name="setting_zone_data_unsupported">This version no longer receives updated zone data. Please update SrednaBG.</string>
     <string name="about_title">About</string>
     <string name="about_version">Version %s</string>
     <string name="about_license">Open source — MIT License</string>

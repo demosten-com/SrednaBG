@@ -18,11 +18,38 @@ days — while a sibling zone with an empty centerline made MapLibre reject the
 whole zone layer on Android, blanking the map. Both shipped through a guard that
 "looked right".
 
+## Feeds
+
+A **feed** is a served payload variant, named by a positive integer. Feed 1 is
+`/api/zones` + `/api/version`; feed N>1 is `/api/zones.N` + `/api/version.N`.
+Clients pick their feed at compile time (`BuildConfig.ZONE_FEED_VERSION` /
+`BackendURLs.feedVersion`) and never negotiate, so a feed is only ever fetched
+by builds made for it.
+
+That is the escape hatch from the constraint this whole directory describes. The
+rules below pin the wire to what the 1.x installs can parse, and they must keep
+pinning it for as long as those installs exist — which is indefinitely. A new
+**contract** describes a shape; only a new **feed** lets you *serve* one the
+older clients could not consume, because they will never ask for it. Adding
+`wire-v2.json` and pointing feed 1 at it would break exactly the fleet the
+contract exists to protect.
+
+`manifest.json` declares the feeds and gives each client entry a `feed`.
+`contract_violations(payload, feed=N)` enforces only the clients on feed N, so a
+feed with no clients is deliberately unconstrained — that is what a
+not-yet-shipped feed is. Feed `status` is `active` (served, maintained),
+`unsupported` (still served, and its `version*.json` carries `"unsupported": 1`
+so clients can tell the user to update), or `retired` (no longer written).
+
+The projection that produces each feed's payload lives in `src/feeds.py`; feed
+1's is the identity, and a test pins its bytes and its hash against the
+committed `zones.json` — feed 1 must not move because feeds now exist.
+
 ## Layout
 
 | File | What |
 |---|---|
-| `manifest.json` | Which client versions are in the field, and their status |
+| `manifest.json` | Which client versions are in the field, their status, and their feed; which feeds are served |
 | `wire-v1.json` | The contract itself — required keys, types, constraints |
 | `fixtures/*.json` | One payload per rule, violating exactly that rule |
 | `fixtures/expectations.json` | What each fixture does on a *released* client |
@@ -63,8 +90,9 @@ to protect no one.
 
 When you ship a release:
 
-1. Add it to `manifest.json` with `status: "live"`, demote the previous entry to
-   `"published"`.
+1. Add it to `manifest.json` with `status: "live"` and its `feed`, demote the
+   previous entry to `"published"`, and add the matching **Feed** cell to the
+   `VERSIONS.md` row — `test_client_contract.py` compares the two.
 2. If its decode surface changed, add a new `wire-vN.json` and point the new
    version at it. If not, reuse the existing contract — 1.0.4 and 1.1.0 share
    `wire-v1.json` because their decode surface is byte-identical.

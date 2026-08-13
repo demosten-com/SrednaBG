@@ -71,6 +71,7 @@
 "settingZoneDataDate" = "дата на зоните: %@";
 "settingZoneDataCount" = "брой зони: %d";
 "settingZoneDataHash" = "хеш: %@";
+"settingZoneDataUnsupported" = "Тази версия вече не получава обновени данни за зоните. Обновете SrednaBG.";
 
 /* AboutScreen */
 "aboutTitle" = "За приложението";

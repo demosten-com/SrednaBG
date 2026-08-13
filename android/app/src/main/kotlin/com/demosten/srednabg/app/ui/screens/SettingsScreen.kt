@@ -85,6 +85,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val zoneDataVersion by viewModel.zoneDataVersion.collectAsStateWithLifecycle()
     val zoneDataHash by viewModel.zoneDataHash.collectAsStateWithLifecycle()
     val zoneCount by viewModel.zoneCount.collectAsStateWithLifecycle()
+    val zoneFeedUnsupported by viewModel.zoneFeedUnsupported.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
@@ -537,7 +538,27 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
             text = stringResource(R.string.setting_zone_data_hash, shortZoneHash(zoneDataHash)),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            // Tagged as the QA anchor for the zone-data block: it's the last
+            // row that is *always* present, so a scenario can scroll to it and
+            // then assert on the conditional notice below. Same id as the iOS
+            // row's accessibilityIdentifier.
+            modifier = Modifier
+                .semantics { testTagsAsResourceId = true }
+                .testTag("settings-zone-data-hash"),
         )
+        // Shown only once the server says this build's data feed is retired.
+        // Deliberately below the hash: the three lines above say *what* data is
+        // installed, and this one says why it has stopped changing.
+        if (zoneFeedUnsupported) {
+            Text(
+                text = stringResource(R.string.setting_zone_data_unsupported),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier
+                    .semantics { testTagsAsResourceId = true }
+                    .testTag("settings-zone-data-unsupported"),
+            )
+        }
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 

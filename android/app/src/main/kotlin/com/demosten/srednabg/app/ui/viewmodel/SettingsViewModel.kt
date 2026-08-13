@@ -87,6 +87,10 @@ class SettingsViewModel @Inject constructor(
     val zoneDataHash: StateFlow<String> = settingsRepository.cachedZoneHash
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
 
+    /** True once the server reports this build's zone-data feed as retired. */
+    val zoneFeedUnsupported: StateFlow<Boolean> = settingsRepository.zoneFeedUnsupported
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
     val zoneCount: StateFlow<Int> = zoneRepository.zones
         .map { it.size }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)

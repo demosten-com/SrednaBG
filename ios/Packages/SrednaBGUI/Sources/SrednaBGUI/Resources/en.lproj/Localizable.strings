@@ -71,6 +71,7 @@
 "settingZoneDataDate" = "zone date: %@";
 "settingZoneDataCount" = "zone count: %d";
 "settingZoneDataHash" = "hash: %@";
+"settingZoneDataUnsupported" = "This version no longer receives updated zone data. Please update SrednaBG.";
 
 /* AboutScreen */
 "aboutTitle" = "About";

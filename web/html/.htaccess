@@ -56,10 +56,18 @@ RedirectMatch 404 ~$
 #    both atomically. Timestamped snapshots (zones-YYYYMMDDTHHMMSSZ.json)
 #    are reachable directly under /api/ for rollback / debugging and are
 #    immutable once written.
+#
+#    Data feeds: the bare paths are feed 1 — the feed every published
+#    install fetches, so those two rules must never move. Feed N>1 is served
+#    from the parallel /api/zones.N + /api/version.N (files zones.N.json /
+#    version.N.json), which exist so a payload the older clients cannot parse
+#    can be published without reaching them. See scrapers/src/feeds.py.
 # ---------------------------------------------------------------------------
 <IfModule mod_rewrite.c>
     RewriteRule ^api/zones$   api/zones.json   [L]
     RewriteRule ^api/version$ api/version.json [L]
+    RewriteRule ^api/zones\.([0-9]+)$   api/zones.$1.json   [L]
+    RewriteRule ^api/version\.([0-9]+)$ api/version.$1.json [L]
     # Clean URL for the privacy policy (linked from the Play Store listing
     # and the iOS App Store privacy URL field).
     RewriteRule ^privacy$     privacy.html     [L]
@@ -68,7 +76,9 @@ RedirectMatch 404 ~$
 </IfModule>
 
 <IfModule mod_headers.c>
-    <FilesMatch "^(zones|version|zones-[0-9TZ]+)\.json$">
+    # `(\.[0-9]+)?` is the data-feed suffix — zones.json is feed 1,
+    # zones.2.json is feed 2, and each feed keeps its own snapshot history.
+    <FilesMatch "^(zones|version)(\.[0-9]+)?(-[0-9TZ]+)?\.json$">
         Header set Content-Type "application/json; charset=utf-8"
     </FilesMatch>
 
@@ -76,13 +86,13 @@ RedirectMatch 404 ~$
     # mod_expires + LSCache on Namecheap insist on the type-level 1h for
     # application/json (observed: /api/version returned max-age=3600 even with
     # <FilesMatch> ExpiresDefault overrides). `Header set` runs late and wins.
-    <FilesMatch "^version\.json$">
+    <FilesMatch "^version(\.[0-9]+)?\.json$">
         Header set Cache-Control "public, max-age=300"
     </FilesMatch>
-    <FilesMatch "^zones\.json$">
+    <FilesMatch "^zones(\.[0-9]+)?\.json$">
         Header set Cache-Control "public, max-age=3600"
     </FilesMatch>
-    <FilesMatch "^zones-[0-9TZ]+\.json$">
+    <FilesMatch "^zones(\.[0-9]+)?-[0-9TZ]+\.json$">
         Header set Cache-Control "public, max-age=31536000, immutable"
     </FilesMatch>
 </IfModule>

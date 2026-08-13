@@ -7,7 +7,7 @@ Scripts:
 - `compute-map-hash.py` — deterministic content hash for `map_hash` (see below).
 - `derive-dark-style.py` — derives `style-dark.json` from the light style.
 - `fetch-fdroid-map-bundle.sh` — F-Droid prebuild fetch+verify of `map-bundle-<tag>.zip` from the GitHub Release (tag derived from `versionName`, digest read from `web/fdroid/map-bundle-checksums.txt` — no per-release edit).
-- `update-zones.sh` — local-inspection helper that stages `scrapers/data/zones.json` → `data/` + writes a `version.json`. Not the release path: `bash scrapers/scripts/refresh-zones.sh` is the canonical refresh, syncing the scraper output into `backend/data/zones.json`.
+- `update-zones.sh` — local-inspection helper that stages `scrapers/data/zones.json` → `data/` + writes a `version.json`. Stages **every data feed** it finds beside the source (`zones.json` = feed 1, plus any `zones.N.json`), since each app bundles the file matching the feed it was compiled against — see `scrapers/CLAUDE.md` "Data feeds". Not the release path: `bash scrapers/scripts/refresh-zones.sh` is the canonical refresh, syncing the scraper output into `backend/data/zones.json`.
 - `map-assets/` — vendored static style template + Noto Sans glyph PBFs (the build's inputs; see `map-assets/LICENSE-NOTES.md`).
 
 `backend/data/zones.json` is the **single source of truth** both apps bundle at build time (iOS `Bundled Zones` phase, Android `prepareZonesAsset` task); it is committed, byte-identical to `scrapers/data/zones.json`. The map bundle below is independent of zone data.
@@ -32,6 +32,6 @@ Fully self-contained MapLibre style + MBTiles + glyphs so the phone UI works wit
 
 This `map_hash` is the runtime sync change-detector and is distinct from the zip checksum that `web/fdroid/scripts/publish-map-bundle.sh` pins in `map-bundle-checksums.txt` (a single current-bundle digest, updated only when the map is rebuilt; the zip is not byte-reproducible, so it changes on every rebuild).
 
-`/api/version` response carries `hash` (zones), `map_hash` (bundle), and `zone_count`; each hash gates its own re-fetch on the client.
+`/api/version` response carries `hash` (zones), `map_hash` (bundle), `zone_count`, and `feed`; each hash gates its own re-fetch on the client.
 
 Design choice: map bundle ships inside the APK / iOS app bundle (mbtiles capped at z12), **not** via Play Asset Delivery — keeps F-Droid / sideload open.

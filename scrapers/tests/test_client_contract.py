@@ -115,8 +115,11 @@ class TestUnknownRuleIsNotSilentlySkipped:
         }
         (tmp_path / "c.json").write_text(json.dumps(contract), encoding="utf-8")
         (tmp_path / "manifest.json").write_text(
-            json.dumps({"clients": [{"version": "9.9.9", "status": "live",
-                                     "contract": "c.json"}]}),
+            json.dumps({
+                "feeds": [{"version": 1, "status": "active"}],
+                "clients": [{"version": "9.9.9", "status": "live", "feed": 1,
+                             "contract": "c.json"}],
+            }),
             encoding="utf-8",
         )
         errors = contract_violations(_fixture("compliant"), contracts_dir=tmp_path)
@@ -168,9 +171,14 @@ class TestVersionsDocMatchesTheManifest:
 
     VERSIONS_MD = Path(__file__).parent.parent.parent / "VERSIONS.md"
 
-    def _published_from_markdown(self) -> dict[str, str]:
-        """Parse the 'Currently published' table: version -> status."""
-        rows: dict[str, str] = {}
+    def _published_from_markdown(self) -> dict[str, dict[str, str]]:
+        """Parse the 'Currently published' table: version -> {column: value}.
+
+        Columns are read by header name rather than position, so inserting one
+        (as `Feed` was) cannot silently start comparing the wrong cell.
+        """
+        rows: dict[str, dict[str, str]] = {}
+        header: list[str] = []
         in_table = False
         for line in self.VERSIONS_MD.read_text(encoding="utf-8").splitlines():
             if line.startswith("## Currently published"):
@@ -181,15 +189,18 @@ class TestVersionsDocMatchesTheManifest:
             if not in_table or not line.startswith("|"):
                 continue
             cells = [c.strip() for c in line.strip("|").split("|")]
-            if len(cells) < 2 or cells[0] in ("Version", "---"):
+            if not header:
+                header = cells
                 continue
             if set(cells[0]) <= {"-", ":"}:
                 continue
-            rows[cells[0]] = cells[1].strip("`")
+            rows[cells[0]] = {
+                key: value.strip("`") for key, value in zip(header, cells, strict=False)
+            }
         return rows
 
     def test_the_same_versions_are_listed(self):
-        documented = self._published_from_markdown()
+        documented = {v: row["Status"] for v, row in self._published_from_markdown().items()}
         enforced = {c["version"]: c["status"] for c in load_manifest()}
         assert documented == enforced, (
             "VERSIONS.md and contracts/manifest.json disagree about which "
@@ -197,8 +208,22 @@ class TestVersionsDocMatchesTheManifest:
             f"  manifest.json: {enforced}"
         )
 
+    def test_the_same_feeds_are_listed(self):
+        """The Feed column decides what a payload change can break, so it has
+        the same drift problem as the status column and the same cure."""
+        documented = {v: row["Feed"] for v, row in self._published_from_markdown().items()}
+        enforced = {c["version"]: str(c["feed"]) for c in load_manifest()}
+        assert documented == enforced, (
+            "VERSIONS.md and contracts/manifest.json disagree about which data "
+            f"feed each release fetches.\n  VERSIONS.md: {documented}\n"
+            f"  manifest.json: {enforced}"
+        )
+
     def test_exactly_one_version_is_live(self):
-        live = [v for v, s in self._published_from_markdown().items() if s == "live"]
+        live = [
+            v for v, row in self._published_from_markdown().items()
+            if row["Status"] == "live"
+        ]
         assert len(live) == 1, f"expected one `live` version, found {live}"
 
     def test_the_parser_is_not_vacuous(self):

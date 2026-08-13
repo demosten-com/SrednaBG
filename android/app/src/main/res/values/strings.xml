@@ -81,6 +81,7 @@
     <string name="setting_zone_data_date">дата на зоните: %s</string>
     <string name="setting_zone_data_count">брой зони: %d</string>
     <string name="setting_zone_data_hash">хеш: %s</string>
+    <string name="setting_zone_data_unsupported">Тази версия вече не получава обновени данни за зоните. Обновете SrednaBG.</string>
     <string name="about_title">За приложението</string>
     <string name="about_version">Версия %s</string>
     <string name="about_license">Отворен код — MIT лиценз</string>

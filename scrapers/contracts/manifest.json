@@ -13,18 +13,34 @@
     "v2.x ships, a version may be retired to WARN by adding a `severity` key here —",
     "see `client_contract.SEVERITY_FOR_STATUS`. Retirement should be a deliberate",
     "act, not a side effect of shipping something newer: on the day 2.0.0 goes live,",
-    "1.1.0 is still the entire installed base."
+    "1.1.0 is still the entire installed base.",
+    "",
+    "`feeds` lists the data feeds the scraper publishes. A feed is a served",
+    "payload variant, named by a positive integer: feed 1 is `/api/zones` +",
+    "`/api/version`, feed N>1 is `/api/zones.N` + `/api/version.N`. Each client",
+    "names the feed it was compiled against, and the publish guard enforces a",
+    "feed only against the clients that actually fetch it — which is what makes",
+    "a breaking wire change publishable at all. See contracts/README.md",
+    "'Feeds'. The Feed column in VERSIONS.md is this file's human twin."
+  ],
+  "feeds": [
+    {
+      "version": 1,
+      "status": "active"
+    }
   ],
   "clients": [
     {
       "version": "1.1.0",
       "status": "live",
+      "feed": 1,
       "platforms": ["android", "ios"],
       "contract": "wire-v1.json"
     },
     {
       "version": "1.0.4",
       "status": "published",
+      "feed": 1,
       "platforms": ["android", "ios"],
       "contract": "wire-v1.json"
     }

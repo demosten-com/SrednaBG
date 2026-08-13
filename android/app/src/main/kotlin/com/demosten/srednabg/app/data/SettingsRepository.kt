@@ -32,6 +32,12 @@ class SettingsRepository @Inject constructor(
         private val KEY_ZONE_HASH = stringPreferencesKey("cached_zone_hash")
         private val KEY_ZONE_VERSION = stringPreferencesKey("cached_zone_version")
         private val KEY_MAP_HASH = stringPreferencesKey("cached_map_hash")
+        // Set from /api/version's `unsupported` flag: this build's zone-data
+        // feed has been retired and no longer receives fresh data. Persisted
+        // rather than held in memory so the Settings notice survives a restart
+        // with no network — the user needs to see it precisely when their data
+        // has stopped moving.
+        private val KEY_ZONE_FEED_UNSUPPORTED = booleanPreferencesKey("zone_feed_unsupported")
         private val KEY_MAP_HEADING_UP = booleanPreferencesKey("map_heading_up")
         private val KEY_MAP_THEME_MODE = stringPreferencesKey("map_theme_mode")
         private val KEY_MAP_ZOOM_OVERRIDE = floatPreferencesKey("map_zoom_override")
@@ -106,6 +112,10 @@ class SettingsRepository @Inject constructor(
 
     val cachedMapHash: Flow<String> = dataStore.data.map { prefs ->
         prefs[KEY_MAP_HASH] ?: ""
+    }
+
+    val zoneFeedUnsupported: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[KEY_ZONE_FEED_UNSUPPORTED] ?: false
     }
 
     val mapHeadingUp: Flow<Boolean> = dataStore.data.map { prefs ->
@@ -183,6 +193,17 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setCachedMapHash(value: String) {
         dataStore.edit { it[KEY_MAP_HASH] = value }
+    }
+
+    /**
+     * Record whether the server still maintains this build's data feed.
+     *
+     * Written on every successful `/api/version` fetch, including when it
+     * reports `false` — a feed that gets re-supported must clear the notice on
+     * its own, not wait for a reinstall.
+     */
+    suspend fun setZoneFeedUnsupported(value: Boolean) {
+        dataStore.edit { it[KEY_ZONE_FEED_UNSUPPORTED] = value }
     }
 
     suspend fun setMapHeadingUp(value: Boolean) {

@@ -134,8 +134,8 @@
   ],
   "surface_fingerprint": {
     "android/core/src/main/kotlin/com/demosten/srednabg/core/Models.kt": "948b5b18fbd1188d",
-    "android/app/src/main/kotlin/com/demosten/srednabg/app/data/remote/ZoneApi.kt": "0247206475753c74",
+    "android/app/src/main/kotlin/com/demosten/srednabg/app/data/remote/ZoneApi.kt": "0b94b9c3db14391d",
     "ios/Packages/SrednaBGCore/Sources/SrednaBGCore/Models.swift": "ffbfa6a307cd5ce9",
-    "ios/Packages/SrednaBGData/Sources/SrednaBGData/ApiTypes.swift": "1d028adf58435376"
+    "ios/Packages/SrednaBGData/Sources/SrednaBGData/ApiTypes.swift": "ae9c66a4aeea57e9"
   }
 }

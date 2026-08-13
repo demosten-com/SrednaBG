@@ -52,6 +52,11 @@ class ZoneRepository @Inject constructor(
     suspend fun syncFromServer(): SyncResult {
         return try {
             val version = zoneApi.fetchVersion()
+            // Record the feed's support state before the recency gate: an
+            // unsupported feed is *by definition* one whose data has stopped
+            // changing, so the branch that learns about it is the one that
+            // decides nothing needs downloading.
+            settingsRepository.setZoneFeedUnsupported(version.isFeedUnsupported)
             val cachedHash = settingsRepository.cachedZoneHash.first()
             val cachedVersion = settingsRepository.cachedZoneVersion.first()
             when (ZoneDataRecency.decide(version.hash, version.version, cachedHash, cachedVersion)) {

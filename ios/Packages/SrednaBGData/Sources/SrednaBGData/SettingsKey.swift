@@ -21,6 +21,12 @@ public enum SettingsKey {
     /// alongside `cachedZoneHash`. Mirrors Android `KEY_ZONE_VERSION`.
     public static let cachedZoneVersion = "cached_zone_version"
     public static let cachedMapHash = "cached_map_hash"
+    /// Set from `/api/version`'s `unsupported` flag: this build's zone-data
+    /// feed has been retired and no longer receives fresh data. Persisted
+    /// rather than held in memory so the Settings notice survives a restart
+    /// with no network — the user needs to see it precisely when their data has
+    /// stopped moving. Mirrors Android `KEY_ZONE_FEED_UNSUPPORTED`.
+    public static let zoneFeedUnsupported = "zone_feed_unsupported"
     public static let mapHeadingUp = "map_heading_up"
     public static let mapThemeMode = "map_theme_mode"
     public static let mapZoomOverride = "map_zoom_override"
@@ -62,6 +68,7 @@ public enum SettingsDefaults {
     public static let cachedZoneHash = ""
     public static let cachedZoneVersion = ""
     public static let cachedMapHash = ""
+    public static let zoneFeedUnsupported = false
     public static let mapHeadingUp = false
     public static let mapThemeMode: MapThemeMode = .auto
     public static let mapZoomOverride: Double? = nil

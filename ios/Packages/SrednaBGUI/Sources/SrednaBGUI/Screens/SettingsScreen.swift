@@ -190,6 +190,15 @@ public struct SettingsScreen: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .accessibilityIdentifier("settings-zone-data-hash")
+            // Shown only once the server says this build's data feed is
+            // retired. Deliberately below the hash: the three lines above say
+            // what data is installed, this one says why it stopped changing.
+            if settings.zoneFeedUnsupported {
+                Text(L10n.settingZoneDataUnsupported)
+                    .font(.footnote)
+                    .foregroundStyle(Color.red)
+                    .accessibilityIdentifier("settings-zone-data-unsupported")
+            }
         }
     }
 

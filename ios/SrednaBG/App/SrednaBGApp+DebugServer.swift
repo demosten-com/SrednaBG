@@ -170,6 +170,11 @@ private func applyDebugSetting(_ settings: SettingsStore, key: String, value: St
         settings.cachedZoneVersion = value
     case "cached_map_hash":
         settings.cachedMapHash = value
+    // QA only: the real value arrives from /api/version's `unsupported` flag,
+    // which no live feed sets — the notice would otherwise be untestable until
+    // the day we actually retire a feed.
+    case "zone_feed_unsupported":
+        settings.zoneFeedUnsupported = asBool
     case "debug_auto_stop_seconds":
         if value.isEmpty {
             settings.debugAutoStopSeconds = nil

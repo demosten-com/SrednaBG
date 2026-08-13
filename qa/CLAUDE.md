@@ -36,7 +36,7 @@ python qa/srednabg_qa.py --suite representative  # ~30 min — 6 hand-picked zon
 python qa/srednabg_qa.py --suite scenarios       # ~20 min — edge cases (stop, dropout, off-ramp, U-turn, swap, auto-stop, dense-centerline, stop-silences-TTS, noisy-fix-rejected, parallel-motorway, mid-zone-join, …)
 python qa/srednabg_qa.py --suite history         # ~7 min — History: records a traversal, retention=none records nothing, retention key round-trips (cross-platform)
 python qa/srednabg_qa.py --suite sync            # ~5 min — zones happy + all-usable (served-data tripwire) + toggle-off + freshness + remote-older (recency gate) + offline; map disabled-gate
-python qa/srednabg_qa.py --suite ui              # ~1 min — phone UI walk + font-scale cards + History "Show on map" gating
+python qa/srednabg_qa.py --suite ui              # ~1 min — phone UI walk + font-scale cards + History "Show on map" gating + retired-feed notice
 python qa/srednabg_qa.py --suite full-zones      # ~75 min @4× — all 74 zones, minimal asserts
 python qa/srednabg_qa.py --suite nightly         # ~2 hr — representative + full-zones + scenarios + ui
 ```
@@ -164,6 +164,15 @@ done — linting".
     coverage. Resolve combos via `settings.combo_by_id()`.
   - `mid_zone_join.py` — start feeding fixes 5.8 km into `trakiya-01-east`, never crossing its entry camera, and assert the full `ZoneState.Unmeasured` contract end-to-end: the state is reached, no measured traversal ever opens, nothing is spoken, and `DUMP_HISTORY` reports no new row.
   - `sync/zones_all_usable.py` — a tripwire on the **served** data rather than the client. Forces a real re-fetch (requiring `Updated`) and fails on either line `ZoneSanitizer` emits, identically on both platforms: `zones repaired (n=…) ids=[…]` (a zone missing its truck/bus limit) or `zones dropped (n=…) ids=[…]` (placeholder `(0, 0)` endpoints, an empty centerline, no car limit). **The `repaired` half is the point of the scenario**: current builds handle that payload perfectly, and the 1.x clients the stores serve do not — iOS 1.x fails the whole `/api/zones` decode on it, so it is a silent fleet outage that looks like healthy data to QA. Three separate ways this scenario tried to pass vacuously, all now closed, all worth knowing before editing it: (1) the log lines arrive *before* the closing `DebugSync` event, so it must pass `collect=` to `sync.wait_for_sync` or the wait consumes them; (2) the recency gate returns `UpToDate` whenever the app bundles a fresher scrape than the cron has published (the normal state after `refresh-zones.sh`), so it backdates `cached_zone_version` and requires `Updated`; (3) it originally checked only `dropped`, which meant it stayed green on `i8-01-north` — the exact zone that broke every published install.
+  - `ui/zone_feed_unsupported.py` — the Settings notice shown when this build's
+    **data feed** is retired (`/api/version`'s `unsupported` flag → the persisted
+    `zone_feed_unsupported` → the `settings-zone-data-unsupported` row). Driven
+    through the debug key rather than the network, because no live feed sets the
+    flag — feed 1 is current and will be for a long time, so the notice is
+    otherwise untestable and would fail silently on the one day it matters. It
+    asserts both directions: `false` must *remove* the row, since a one-way
+    latch would leave every user permanently told to update. Android-only, like
+    the rest of the ui suite; the iOS row carries the same identifier.
   - `jog_start_measured.py` — the positive-path companion to the above on `i3-02-north`, an ISSUE-001 zone whose centerline opens with a ~121 m backwards jog. A genuine approach there projects past 100 m of arc on its first matching fix, so it must still be **measured**: the run asserts `InZone` opens and `Unmeasured` never appears. Pairs with the core unit test `ZoneUnmeasuredTest."a zone whose centerline starts with a backwards jog is still measurable"`, which covers the same path at unit level.
 
 ## Manual zone feeding + full-zone direction validation (Android, debug build)

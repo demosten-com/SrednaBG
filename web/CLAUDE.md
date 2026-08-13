@@ -26,6 +26,7 @@ Namecheap **addon domain**, served from `$HOME/srednabg_com/` on the cPanel host
 | `$HOME/srednabg_com/api/zones.json` | (produced by cron) | Live zone data. Not committed. |
 | `$HOME/srednabg_com/api/version.json` | (produced by cron) | Hash-gated app sync. Not committed. `map_hash` stays `null` until this host serves a map bundle — see `scrapers/CLAUDE.md`. |
 | `$HOME/srednabg_com/api/zones-<ts>.json` | (produced by cron) | Snapshot per change, 26 retained. |
+| `$HOME/srednabg_com/api/{zones,version}.N.json` | (produced by cron) | Data feed N>1, served at `/api/zones.N` / `/api/version.N`. The bare paths are feed 1 and must never move — every published install fetches them. None exist today; see `scrapers/CLAUDE.md` "Data feeds". |
 
 The `/api/*` tree is **not in git** — it's produced by the scraper cron on the same host. See `scrapers/CLAUDE.md` "Hosted deployment (Namecheap)".
 
@@ -47,7 +48,7 @@ Source of truth for the SrednaBG F-Droid listing. The build recipe is **merged i
 - Security headers via `mod_headers` (HSTS 180d, `X-Content-Type-Options`, `X-Frame-Options DENY`, Permissions-Policy disabling geo/cam/mic). The site is **live**, so no `X-Robots-Tag noindex` — search engines may index it.
 - gzip via `mod_deflate` for HTML/CSS/JS/JSON/SVG
 - Cache headers via `mod_expires` + per-file `Cache-Control` (`version.json` 5min, `zones.json` 1h, timestamped snapshots 1yr immutable; CSS/JS 1h; HTML 5min)
-- Extensionless rewrites: `/api/zones` + `/api/version` → `.json`, `/privacy` → `privacy.html`, `/faq` → `faq.html`
+- Extensionless rewrites: `/api/zones` + `/api/version` → `.json` (plus the feed-suffixed `/api/zones.N` → `zones.N.json` twins), `/privacy` → `privacy.html`, `/faq` → `faq.html`. The per-file `Cache-Control` and content-type `FilesMatch` patterns carry an optional `(\.[0-9]+)?` feed segment for the same reason — a new feed must inherit the same cache tiers, not fall through to the type-level default.
 
 The site is live: the `X-Robots-Tag noindex` header has been dropped so search engines can index it. HSTS preload remains intentionally **not** enabled — it requires `max-age` ≥ 1yr + `includeSubDomains` + `preload` and submission to hstspreload.org, and is effectively a one-way door (removal is slow); not worth it for a static marketing site.
 

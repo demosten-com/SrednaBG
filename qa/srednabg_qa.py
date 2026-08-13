@@ -247,11 +247,17 @@ def _ui_suite() -> list[Scenario]:
     enhancement, not wired here."""
     if device_mod.current().platform == "ios":
         return []
-    from qa.scenarios.ui import font_scale_cards, history_show_on_map, smoke_walk_scenario
+    from qa.scenarios.ui import (
+        font_scale_cards,
+        history_show_on_map,
+        smoke_walk_scenario,
+        zone_feed_unsupported,
+    )
     return [
         smoke_walk_scenario.build(),
         font_scale_cards.build(),
         history_show_on_map.build(),
+        zone_feed_unsupported.build(),
     ]
 
 

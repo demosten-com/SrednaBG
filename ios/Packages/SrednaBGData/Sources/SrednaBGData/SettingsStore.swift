@@ -53,6 +53,10 @@ public final class SettingsStore {
         didSet { defaults.set(cachedMapHash, forKey: SettingsKey.cachedMapHash) }
     }
 
+    public var zoneFeedUnsupported: Bool {
+        didSet { defaults.set(zoneFeedUnsupported, forKey: SettingsKey.zoneFeedUnsupported) }
+    }
+
     public var mapHeadingUp: Bool {
         didSet { defaults.set(mapHeadingUp, forKey: SettingsKey.mapHeadingUp) }
     }
@@ -128,6 +132,8 @@ public final class SettingsStore {
             ?? SettingsDefaults.cachedZoneVersion
         self.cachedMapHash = defaults.string(forKey: SettingsKey.cachedMapHash)
             ?? SettingsDefaults.cachedMapHash
+        self.zoneFeedUnsupported = (defaults.object(forKey: SettingsKey.zoneFeedUnsupported) as? Bool)
+            ?? SettingsDefaults.zoneFeedUnsupported
         self.mapHeadingUp = (defaults.object(forKey: SettingsKey.mapHeadingUp) as? Bool)
             ?? SettingsDefaults.mapHeadingUp
         self.mapThemeMode = (defaults.string(forKey: SettingsKey.mapThemeMode))
