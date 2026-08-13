@@ -11,5 +11,4 @@
 # pinned source of truth: backend/scripts/fetch-fdroid-map-bundle.sh (the
 # F-Droid prebuild) reads the digest from here at build time.
 #
-# Format: <sha256>  map-bundle.zip
-0513907ed5108c34a5a13646f5c4dc8968c44f372587bef888543c80b757bcd1  map-bundle.zip
+c85ed044fcc4ce1ed592757fe6f62be5d0b92cd04c88330b83e642b84023a205  map-bundle.zip
