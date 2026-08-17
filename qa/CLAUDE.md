@@ -20,6 +20,7 @@ End-to-end QA harness (Python, stdlib + PyYAML). Drives the running Android emul
 - `qa/settings.py` — flips settings via the active device (broadcast on Android, HTTP POST to the debug listener on iOS).
 - `qa/sync.py` — triggers sync via the active device and inspects on-disk map bundle integrity.
 - `qa/ui.py`, `qa/report.py` — UI walk + report generation.
+- `qa/uiauto.py` — shared uiautomator accessibility-tree helpers for the (Android-only) `ui` suite: `dump_ui` (retries while the UI animates), `find_by_resource_id` / `find_by_text`, `bounds_of` / `bounds_center` / `tap_node`, `display_size`, `scroll_viewport_bottom`. The dump contains **only nodes visible to the user**, so a scenario asserting a row is *absent* must first prove that row's region is on-screen — see the `zone_feed_unsupported` note below.
 - Scenarios under `qa/scenarios/{bulk,representative,edge,sync,history,ui}/`. The `history` package drives a zone then reads the History DB via the active device's `dump_history()` — a `DUMP_HISTORY` broadcast on Android, a `/history?action=dump` HTTP call on iOS — both emitting the identical `DUMP_HISTORY …` line on tag `DebugSettings` (parsed into a `HistoryDump` event). It's **cross-platform** (no `--platform` gate), registered in `HISTORY_SCENARIOS`. Separately, for *manual* browsing / store screenshots (not a suite step), both platforms expose a curated seed that wipes + refills the DB with varied sample traversals: Android's `SEED_HISTORY` broadcast (`--es count N`, see `android/CLAUDE.md`) and iOS's `/history?action=seed[&count=N]` (see `ios/CLAUDE.md`) — twin `HistorySeeder`s producing the same scenario set.
 - Fixtures in `qa/fixtures/` (GPX). Harness unit tests in `qa/tests/` (parsers / geo / drive / speech-number + TTS phrase parity), run headlessly via `python -m unittest discover qa/tests`.
 - `qa/logcat.py` — compatibility shim, re-exports `LogObserver as LogcatObserver` and the regexes. New code should import from `qa.log_observer` + `qa.parsers`.
@@ -173,6 +174,18 @@ done — linting".
     asserts both directions: `false` must *remove* the row, since a one-way
     latch would leave every user permanently told to update. Android-only, like
     the rest of the ui suite; the iOS row carries the same identifier.
+    **The anchor needs headroom, not just presence** (the flake that failed
+    nightly run 31987631052): `uiautomator dump` reports only nodes visible to
+    the user, the notice renders *below* the `settings-zone-data-hash` anchor,
+    and the Settings list continues well past both — so stopping the swipe the
+    moment the anchor appeared could park it on the viewport's last line, with
+    the notice clipped. The `present=False` leg then passed vacuously and the
+    `present=True` leg failed. Verified on device: anchor bottom = viewport
+    bottom (2064 on a Pixel 8a) → anchor present, notice absent. The scroll now
+    requires `ANCHOR_HEADROOM_PX` of **scroll viewport** below the anchor
+    (`uiauto.scroll_viewport_bottom` — the Scaffold clips content above the
+    bottom nav bar, so display height is the wrong reference) and raises rather
+    than asserting on an off-screen region.
   - `jog_start_measured.py` — the positive-path companion to the above on `i3-02-north`, an ISSUE-001 zone whose centerline opens with a ~121 m backwards jog. A genuine approach there projects past 100 m of arc on its first matching fix, so it must still be **measured**: the run asserts `InZone` opens and `Unmeasured` never appears. Pairs with the core unit test `ZoneUnmeasuredTest."a zone whose centerline starts with a backwards jog is still measurable"`, which covers the same path at unit level.
 
 ## Manual zone feeding + full-zone direction validation (Android, debug build)

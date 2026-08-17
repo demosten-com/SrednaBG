@@ -26,14 +26,11 @@ Teardown stops tracking so later scenarios/suites are unaffected.
 
 from __future__ import annotations
 
-import re
-import shutil
-import subprocess
 import time
-import xml.etree.ElementTree as ET
 
 from ... import adb
 from ... import device as device_mod
+from ... import uiauto
 from ...assertions import AssertionFailure, expect_crash_free
 from ...runner import RunContext, Scenario, step_lambda
 from ...ui import UiRecorder
@@ -44,56 +41,12 @@ ROW_RESOURCE_ID = "history-row"
 POLL_TIMEOUT_S = 20.0
 
 
-def _dump_ui(timeout_s: float = 10.0) -> ET.Element:
-    """uiautomator dump, retried until it yields parseable XML.
-    `uiautomator dump` intermittently produces nothing while the UI is
-    animating (seen on API 36); a single failed attempt must not abort
-    the scenario."""
-    deadline = time.monotonic() + timeout_s
-    while True:
-        adb.shell("uiautomator dump /sdcard/window_dump.xml")
-        raw = subprocess.run(
-            [shutil.which("adb"), "exec-out", "cat", "/sdcard/window_dump.xml"],
-            capture_output=True, text=True, check=False, timeout=10,
-        ).stdout
-        try:
-            return ET.fromstring(raw)
-        except ET.ParseError:
-            if time.monotonic() >= deadline:
-                raise AssertionFailure(
-                    f"uiautomator dump produced no parseable XML for {timeout_s:.0f}s")
-            time.sleep(1.0)
-
-
-def _find_by_resource_id(root: ET.Element, resource_id: str) -> ET.Element | None:
-    for node in root.iter("node"):
-        if node.attrib.get("resource-id") == resource_id:
-            return node
-    return None
-
-
-def _bounds_center(node: ET.Element) -> tuple[int, int]:
-    m = re.match(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
-    if not m:
-        raise AssertionFailure(f"node has unparseable bounds: {node.attrib.get('bounds')!r}")
-    left, top, right, bottom = (int(g) for g in m.groups())
-    return (left + right) // 2, (top + bottom) // 2
-
-
-def _tap_node(root: ET.Element, resource_id: str, what: str) -> None:
-    node = _find_by_resource_id(root, resource_id)
-    if node is None:
-        raise AssertionFailure(f"{what} (resource-id {resource_id!r}) not found in the UI")
-    x, y = _bounds_center(node)
-    adb.shell(f"input tap {x} {y}")
-
-
 def _await_button(*, enabled: str) -> None:
     """Poll the accessibility tree until the button reports the wanted state."""
     deadline = time.monotonic() + POLL_TIMEOUT_S
     last_seen: str | None = None
     while time.monotonic() < deadline:
-        node = _find_by_resource_id(_dump_ui(), BUTTON_RESOURCE_ID)
+        node = uiauto.find_by_resource_id(uiauto.dump_ui(), BUTTON_RESOURCE_ID)
         if node is not None:
             last_seen = node.attrib.get("enabled")
             if last_seen == enabled:
@@ -118,7 +71,7 @@ def build() -> Scenario:
         time.sleep(2.0)
         adb.broadcast(ACTION_SEED_HISTORY, adb.DEBUG_CONTROL_RECEIVER)
         time.sleep(1.5)
-        _tap_node(_dump_ui(), "tab-history", "History tab")
+        uiauto.tap_node(uiauto.dump_ui(), "tab-history", "History tab")
         time.sleep(1.5)
         # Rows carry the `history-row` test tag (matching by display text broke
         # when the translatable caption was reworded); the first tagged node is
@@ -127,12 +80,12 @@ def build() -> Scenario:
         deadline = time.monotonic() + 10.0
         row = None
         while row is None and time.monotonic() < deadline:
-            row = _find_by_resource_id(_dump_ui(), ROW_RESOURCE_ID)
+            row = uiauto.find_by_resource_id(uiauto.dump_ui(), ROW_RESOURCE_ID)
             if row is None:
                 time.sleep(1.0)
         if row is None:
             raise AssertionFailure("no history rows visible after SEED_HISTORY")
-        x, y = _bounds_center(row)
+        x, y = uiauto.bounds_center(row)
         adb.shell(f"input tap {x} {y}")
         time.sleep(1.5)
 

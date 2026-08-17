@@ -34,14 +34,11 @@ later scenarios/suites are unaffected.
 
 from __future__ import annotations
 
-import re
-import shutil
-import subprocess
 import time
-import xml.etree.ElementTree as ET
 
 from ... import adb
 from ... import device as device_mod
+from ... import uiauto
 from ...assertions import AssertionFailure, expect_crash_free
 from ...runner import RunContext, Scenario, step_lambda
 from ...ui import UiRecorder
@@ -55,45 +52,9 @@ FONT_SCALE_LARGE = "2.0"
 POLL_TIMEOUT_S = 20.0
 
 
-def _dump_ui(timeout_s: float = 10.0) -> ET.Element:
-    """uiautomator dump, retried until it yields parseable XML.
-    `uiautomator dump` intermittently produces nothing while the UI is
-    animating (seen on API 36 right after the post-revoke relaunch); a
-    single failed attempt must not abort the scenario."""
-    deadline = time.monotonic() + timeout_s
-    while True:
-        adb.shell("uiautomator dump /sdcard/window_dump.xml")
-        raw = subprocess.run(
-            [shutil.which("adb"), "exec-out", "cat", "/sdcard/window_dump.xml"],
-            capture_output=True, text=True, check=False, timeout=10,
-        ).stdout
-        try:
-            return ET.fromstring(raw)
-        except ET.ParseError:
-            if time.monotonic() >= deadline:
-                raise AssertionFailure(
-                    f"uiautomator dump produced no parseable XML for {timeout_s:.0f}s")
-            time.sleep(1.0)
-
-
-def _find_bounds(root: ET.Element, text: str) -> tuple[int, int, int, int] | None:
-    for node in root.iter("node"):
-        if node.attrib.get("text") != text:
-            continue
-        m = re.match(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
-        if m:
-            return (int(m[1]), int(m[2]), int(m[3]), int(m[4]))
-    return None
-
-
-def _display_size() -> tuple[int, int]:
-    out = adb.shell("wm size")
-    # Prefer the override size (active resolution) when present.
-    sizes = re.findall(r"size:\s*(\d+)x(\d+)", out)
-    if not sizes:
-        raise AssertionFailure(f"could not parse display size from `wm size`: {out!r}")
-    w, h = sizes[-1]
-    return int(w), int(h)
+def _find_bounds(root, text: str) -> tuple[int, int, int, int] | None:
+    node = uiauto.find_by_text(root, text)
+    return uiauto.bounds_of(node) if node is not None else None
 
 
 def build() -> Scenario:
@@ -110,11 +71,11 @@ def build() -> Scenario:
         time.sleep(3.0)
 
     def assert_buttons_visible(ctx: RunContext) -> None:
-        width, height = _display_size()
+        width, height = uiauto.display_size()
         deadline = time.monotonic() + POLL_TIMEOUT_S
         allow = settings_btn = None
         while time.monotonic() < deadline:
-            root = _dump_ui()
+            root = uiauto.dump_ui()
             allow = _find_bounds(root, ALLOW_BUTTON_TEXT)
             settings_btn = _find_bounds(root, SETTINGS_BUTTON_TEXT)
             if allow and settings_btn:
