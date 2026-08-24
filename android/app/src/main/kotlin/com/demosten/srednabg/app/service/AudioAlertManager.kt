@@ -17,6 +17,7 @@ import android.util.Log
 import com.demosten.srednabg.app.data.SettingsRepository
 import com.demosten.srednabg.app.ui.util.SpeechNumbers
 import com.demosten.srednabg.core.VehicleType
+import com.demosten.srednabg.core.Zone
 import com.demosten.srednabg.core.ZoneState
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -53,6 +54,11 @@ class AudioAlertManager @Inject constructor(
     private var isInitialized = false
     private var lastAnnouncementTime = 0L
     private var lastEntryTime = 0L
+    // The zone whose entry we already spoke provisionally, and when. Consumed
+    // by the Outside -> InZone branch to avoid announcing the same entry twice;
+    // see [onProvisionalEntry].
+    private var provisionalZoneId: String? = null
+    private var provisionalTime = 0L
     private var languageJob: Job? = null
     // Outstanding TTS utterances. A chained pair (exit-with-average then
     // next-zone entry at co-located cameras) shares one audio-focus session;
@@ -135,8 +141,54 @@ class AudioAlertManager @Inject constructor(
         // it can't resurrect the counter after this reset. Idempotent: abandoning
         // focus we never requested is a no-op.
         mainHandler.removeCallbacksAndMessages(null)
+        provisionalZoneId = null
+        provisionalTime = 0L
         pendingUtterances = 0
         audioManager.abandonAudioFocusRequest(audioFocusRequest)
+    }
+
+    /**
+     * Announce an entry the moment the detector opens a candidate for [zone],
+     * rather than when the traversal is confirmed
+     * [ZoneDetector.ENTRY_CONFIRM_DISTANCE_M] later.
+     *
+     * The measurement is untouched — a confirmed traversal is back-dated to
+     * this same candidate's first fix — so this only moves the *voice* to where
+     * the driver expects it. Before this, the entry was spoken ~300 m past the
+     * camera and the driver, who cannot know the average was back-dated, read
+     * that as the app being slow.
+     *
+     * Speaks the **same** message as the confirmed path ([getEntryMessage]), so
+     * there is no second phrasing to localize and nothing signals "provisional"
+     * to the driver — from the road, we *are* on the zone.
+     *
+     * The caller applies the `START_WITNESS_ARC_M` guard (see
+     * `LocationTrackingService.announceProvisionalEntry`); this method only owns
+     * the repeat window. If the candidate is later abandoned the entry simply
+     * goes unrecorded — no retraction is spoken, because a correction the
+     * driver did not ask for is more confusing than the silence.
+     */
+    fun onProvisionalEntry(zone: Zone, currentSpeedKmh: Double?) {
+        scope.launch {
+            val now = System.currentTimeMillis()
+            if (isAlreadyAnnouncedProvisionally(zone.id, now)) {
+                Log.d(TAG, "provisional entry repeat suppressed zone=${zone.id}")
+                return@launch
+            }
+            if (!settingsRepository.voiceEnabled.first()) return@launch
+            if ((currentSpeedKmh ?: 0.0) < MIN_ANNOUNCE_SPEED_KMH) return@launch
+
+            // QA harness tripwire: line shape must match `qa/parsers.py`
+            // PROVISIONAL_SPOKEN_RE (the iOS twin logs the same body). Emitted
+            // only once the announcement is actually going out, so the harness
+            // can read it as "the driver heard this".
+            Log.d(TAG, "onProvisionalEntry zone=${zone.id} speed=$currentSpeedKmh")
+            provisionalZoneId = zone.id
+            provisionalTime = now
+            lastEntryTime = now
+            lastAnnouncementTime = now
+            speak(getEntryMessage(zone.road, getSpeedLimit(zone)))
+        }
     }
 
     fun onZoneStateChanged(
@@ -179,7 +231,17 @@ class AudioAlertManager @Inject constructor(
                     val now = System.currentTimeMillis()
                     lastEntryTime = now
                     lastAnnouncementTime = now
-                    speak(getEntryMessage(newState.zone.road, limit))
+                    // Already spoken when the candidate opened, a few hundred
+                    // metres back — see [onProvisionalEntry]. Skip only the
+                    // entry line: the over-limit warning below needs a real
+                    // average, which did not exist yet at candidate time, so it
+                    // must still fire from this confirmed transition.
+                    if (isAlreadyAnnouncedProvisionally(newState.zone.id, now)) {
+                        Log.d(TAG, "entry already announced provisionally zone=${newState.zone.id}")
+                    } else {
+                        speak(getEntryMessage(newState.zone.road, limit))
+                    }
+                    provisionalZoneId = null
                     // A traversal can now open *already* over the limit: entry is
                     // confirmed over ENTRY_CONFIRM_DISTANCE_M and then back-dated to
                     // the first confirming fix, so the very first InZone state can
@@ -253,6 +315,7 @@ class AudioAlertManager @Inject constructor(
                     val now = System.currentTimeMillis()
                     lastEntryTime = now
                     lastAnnouncementTime = now
+                    provisionalZoneId = null
                     speak(getEntryMessage(newState.zone.road, limit), TextToSpeech.QUEUE_ADD)
                     announceEntryOverLimit(newState)
                 }
@@ -279,9 +342,19 @@ class AudioAlertManager @Inject constructor(
         speak(getOverLimitMessage(avgSpeed), TextToSpeech.QUEUE_ADD)
     }
 
-    private suspend fun getSpeedLimit(state: ZoneState.InZone): Int {
+    /**
+     * Was this entry already spoken by [onProvisionalEntry]? See
+     * [isProvisionalStillFresh].
+     *
+     */
+    private fun isAlreadyAnnouncedProvisionally(zoneId: String, now: Long): Boolean =
+        isProvisionalStillFresh(zoneId, provisionalZoneId, provisionalTime, now)
+
+    private suspend fun getSpeedLimit(state: ZoneState.InZone): Int = getSpeedLimit(state.zone)
+
+    private suspend fun getSpeedLimit(zone: Zone): Int {
         val vehicleType = VehicleType.fromSetting(settingsRepository.vehicleType.first())
-        return vehicleType.limit(state.zone.speedLimits)
+        return vehicleType.limit(zone.speedLimits)
     }
 
     private suspend fun getEntryMessage(road: String, limit: Int): String {
@@ -399,3 +472,37 @@ class AudioAlertManager @Inject constructor(
  */
 internal fun isUnmeasuredTransition(previousState: ZoneState, newState: ZoneState): Boolean =
     previousState is ZoneState.Unmeasured || newState is ZoneState.Unmeasured
+
+/**
+ * How long a spoken provisional entry suppresses another one for the same zone.
+ *
+ * A candidate that goes quiet for `ZoneDetector.ENTRY_CONFIRM_TIMEOUT_MS` (30 s)
+ * and then re-opens is a brand-new candidate as far as the detector is
+ * concerned, but the driver does not need to hear the same zone announced twice
+ * inside a minute.
+ */
+internal const val PROVISIONAL_REPEAT_WINDOW_MS = 60_000L
+
+/**
+ * Has [zoneId] already been announced provisionally, recently enough that the
+ * driver still remembers hearing it?
+ *
+ * Both halves of the provisional flow ask this: [AudioAlertManager.onProvisionalEntry]
+ * to suppress a repeat, and the confirmed `Outside -> InZone` branch to skip the
+ * entry line it would otherwise duplicate.
+ *
+ * The recency clause is not decoration. A candidate that is announced and then
+ * abandoned leaves the id set with nothing to clear it, so without the window a
+ * genuine entry into that same zone half an hour later would be silently
+ * swallowed — the driver would drive a real zone with no announcement at all.
+ * Bounding both halves by the same window keeps them in agreement: inside it the
+ * driver has heard this zone (whether or not a repeat was suppressed), outside
+ * it they have not.
+ */
+internal fun isProvisionalStillFresh(
+    zoneId: String,
+    provisionalZoneId: String?,
+    provisionalTime: Long,
+    now: Long,
+    windowMs: Long = PROVISIONAL_REPEAT_WINDOW_MS,
+): Boolean = zoneId == provisionalZoneId && now - provisionalTime < windowMs

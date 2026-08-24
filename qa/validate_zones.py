@@ -43,11 +43,15 @@ if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
 from qa import adb, feed_zone, parsers  # noqa: E402
-from qa.events import ZoneStateChange  # noqa: E402
+from qa.events import ProvisionalEntry, ZoneStateChange  # noqa: E402
 
 PKG = adb.PACKAGE
 RC = adb.DEBUG_CONTROL_RECEIVER
 TTS_TAG = "SrednaBG.TTS"
+# The provisional-entry announcement reports its outcome on the location
+# channel; only the "announced" line rides on TTS_TAG. Both are needed to judge
+# the announcement side of a drive.
+LOC_TAG = "SrednaBG.Loc"
 
 ACT_START = "com.demosten.srednabg.debug.START_TRACKING"
 ACT_STOP = "com.demosten.srednabg.debug.STOP_TRACKING"
@@ -224,6 +228,46 @@ def parse_states(dump):
     return seq
 
 
+def parse_provisional(dump):
+    """Every provisional-entry announcement/outcome line in the dump.
+
+    The entry announcement is spoken from the detector's *candidate*,
+    ENTRY_CONFIRM_DISTANCE_M before a traversal opens, so "did this zone
+    announce correctly" is a separate question from "did this zone detect
+    correctly" and needs its own evidence. See qa/events.py ProvisionalEntry.
+    """
+    out = []
+    for line in dump.splitlines():
+        ev = parsers.parse_threadtime_line(line)
+        if isinstance(ev, ProvisionalEntry):
+            out.append(ev)
+    return out
+
+
+def evaluate_announcement(zone_id, seq, provisional):
+    """Judge the announcement half of a drive. Returns (reasons, abandoned).
+
+    Only two things are failures. A genuine traversal that was never announced
+    is silence where the driver expects a voice, and more than one announcement
+    for the same zone means the confirmation window's repeated candidate reports
+    leaked through as repeated speech.
+
+    An *abandoned* candidate is deliberately not a failure — it is the accepted
+    cost of announcing early (see edge.provisional_entry_abandoned) — but it is
+    counted and reported, because how often it happens across all zones is the
+    number that says whether that trade is holding up.
+    """
+    entered = any(s == "InZone" and z == zone_id for s, z in seq)
+    announced = [e for e in provisional if e.outcome == "announced" and e.zone == zone_id]
+    abandoned = [e for e in provisional if e.outcome == "abandoned"]
+    reasons = []
+    if entered and not announced:
+        reasons.append("entered but never announced")
+    if len(announced) > 1:
+        reasons.append(f"announced x{len(announced)} (repeat announcement)")
+    return reasons, abandoned
+
+
 def collapse(seq):
     """Collapse consecutive identical (state, zone) entries."""
     out = []
@@ -358,17 +402,21 @@ def main():
         setup_device(args.keep_online)
 
     results = []
+    abandonments = []
     for n, (idx, zone) in enumerate(selected, 1):
         zid = zone.get("id", f"#{idx}")
         print(f"[{n}/{len(selected)}] zone {idx} {zid} … ", end="", flush=True)
         feed_zone_route(zone, args.step, args.speed, max_fixes, args.sim_dt_ms)
-        dump = adb.logcat_dump("-s", f"{TTS_TAG}:D")
+        dump = adb.logcat_dump("-s", f"{TTS_TAG}:D", f"{LOC_TAG}:D")
         seq = parse_states(dump)
         ok, reasons, summary = evaluate(zid, seq)
+        ann_reasons, abandoned = evaluate_announcement(zid, seq, parse_provisional(dump))
+        reasons = reasons + ann_reasons
+        abandonments.extend((zid, e.zone) for e in abandoned)
         # In quick mode the drive stops mid-zone, so a clean exit isn't expected.
         if not expect_exit:
             reasons = [r for r in reasons if "clean exit" not in r]
-            ok = not reasons
+        ok = not reasons
         if n == 1 and not args.no_setup and not args.keep_online:
             loaded_data_matches_bundle(zones)
         results.append((idx, zid, ok, reasons, summary))
@@ -384,6 +432,12 @@ def main():
         if not ok:
             print(f"  FAIL [{idx}] {zid}: {'; '.join(reasons)}")
             print(f"        path: {summary}")
+    # Not a failure — the accepted cost of announcing on the candidate rather
+    # than on the confirmed traversal. Printed so the rate is visible across a
+    # full run instead of being invisible until a user reports it.
+    if abandonments:
+        print(f"  note: {len(abandonments)} abandoned provisional announcement(s): "
+              f"{', '.join(f'{d}->{a}' for d, a in abandonments)}")
     return 0 if nfail == 0 else 1
 
 

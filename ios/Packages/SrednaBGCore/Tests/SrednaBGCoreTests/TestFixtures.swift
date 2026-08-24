@@ -290,7 +290,29 @@ func collectAlongCenterline(
     lateralOffsetM: Double = 0,
     vehicleType: VehicleType = .car
 ) -> [ZoneState] {
-    var states: [ZoneState] = []
+    centerlineTrace(
+        zone, fromArcM: fromArcM, metres: metres, speedKmh: speedKmh,
+        stepM: stepM, startTime: startTime, lateralOffsetM: lateralOffsetM
+    ).map { detector.update($0, vehicleType: vehicleType) }
+}
+
+/// The GPS trace `collectAlongCenterline` drives, without a detector.
+///
+/// Split out so a test that needs to inspect the detector *between* fixes — the
+/// entry-candidate side channel, `ZoneDetector.pendingEntryInfo`, which is not a
+/// `ZoneState` and so cannot be read from the returned list — drives exactly the
+/// same geometry as every other test here rather than hand-rolling a lookalike.
+/// Mirrors Kotlin `centerlineTrace`.
+func centerlineTrace(
+    _ zone: Zone,
+    fromArcM: Double,
+    metres: Double,
+    speedKmh: Double = 130.0,
+    stepM: Double = 36.0,
+    startTime: Int64 = epochBase,
+    lateralOffsetM: Double = 0
+) -> [GpsPoint] {
+    var points: [GpsPoint] = []
     var covered = 0.0
     var index: Int64 = 0
     let stepMs = max(Int64(stepM / (speedKmh / 3.6) * 1000.0), 1)
@@ -303,17 +325,14 @@ func collectAlongCenterline(
         let perp = (heading + 90).truncatingRemainder(dividingBy: 360) * .pi / 180
         let lat = at[0] + (lateralOffsetM * cos(perp)) / 111_320.0
         let lng = at[1] + (lateralOffsetM * sin(perp)) / (111_320.0 * cos(at[0] * .pi / 180))
-        states.append(detector.update(
-            GpsPoint(
-                lat: lat, lng: lng, speed: speedKmh,
-                timestamp: startTime + index * stepMs, bearing: heading
-            ),
-            vehicleType: vehicleType
+        points.append(GpsPoint(
+            lat: lat, lng: lng, speed: speedKmh,
+            timestamp: startTime + index * stepMs, bearing: heading
         ))
         covered += stepM
         index += 1
     }
-    return states
+    return points
 }
 
 /// Generate a GPS trace along a zone's centerline at constant speed.

@@ -150,7 +150,7 @@ done — linting".
   - `stop_silences_tts.py` — Stop must silence in-flight TTS.
   - `dense_centerline.py` — short-segment zones don't false-exit/re-enter.
   - `tts_cold_start_leadin.py` — Android-only: a cold audio-focus session must prepend silent lead-in so the AA/Bluetooth route-open delay can't clip announcement starts.
-  - `parallel_motorway.py` — driving the A3 past Кочериново must not open a phantom traversal of the I-1 zone beside it, replayed from the real OSM geometry in `qa/fixtures/a3_kocherinovo_corridor.yaml`. Carries an anti-vacuous guard that re-derives the *old* engine's entry gates and fails loudly if the geometry ever stops tripping them — the fixture was verified to FAIL against a temporarily-reverted engine and PASS against the fix, so it genuinely discriminates. It forbids `Unmeasured` as well as `InZone`, since the third zone state made the failure *softer* (quiet, no History row) but no less wrong on a road the car was never on.
+  - `parallel_motorway.py` — driving the A3 past Кочериново must not open a phantom traversal of the I-1 zone beside it, replayed from the real OSM geometry in `qa/fixtures/a3_kocherinovo_corridor.yaml`. Carries an anti-vacuous guard that re-derives the *old* engine's entry gates and fails loudly if the geometry ever stops tripping them — the fixture was verified to FAIL against a temporarily-reverted engine and PASS against the fix, so it genuinely discriminates. It forbids `Unmeasured` as well as `InZone`, since the third zone state made the failure *softer* (quiet, no History row) but no less wrong on a road the car was never on. It also forbids any **spoken** phantom entry: once the announcement moved to the entry candidate, the confirmation window stopped gagging the phantom *voice*, and what does is the `START_WITNESS_ARC_M` guard on the candidate's arc (the A3 first matches 282 m in, past the 200 m threshold — the run logs `provisional entry suppressed zone=i1-02-north arcM=282 > 200`, so the clause is demonstrably not vacuous). Drop that guard and the user's original symptom returns with every other assertion here still green.
   - `bus_class_limit.py` — drives `struma-02-south` (car 140, bus 100) as
     `bus` at 120 km/h and asserts the announced limit, the over-limit warning,
     and (Android) the in-zone badge all resolve **100**, not the car limit.
@@ -163,6 +163,8 @@ done — linting".
     lives in `EXTRA_COMBOS` rather than `ALL_COMBOS` — adding a fifth combo to
     the matrix would multiply the representative suite's runtime for no extra
     coverage. Resolve combos via `settings.combo_by_id()`.
+  - `provisional_entry.py` — the entry announcement now fires from the detector's entry **candidate** (`ZoneDetector.pendingEntryInfo`), not from the confirmed traversal, so the driver hears it at the camera instead of ~300 m past it (real drive, both platforms, 2026-08-24). Asserts the announcement precedes the `InZone` transition, happens exactly once however many fixes the candidate spans, is **not** repeated by the confirmed `Outside -> InZone` branch, and is reported `confirmed`. The drive stops ~1.5 km in: everything it asserts is decided at the entry, and driving the rest of a 19 km zone would add ten wall-clock minutes to re-test what `history.records_traversal` already covers.
+  - `provisional_entry_abandoned.py` — the accepted cost of the above: drive far enough in to open (and announce) a candidate, then leave the road before `ENTRY_CONFIRM_DISTANCE_M`. Asserts the abandonment is reported on the QA channel, that nothing further is spoken (**no retraction**, no invented exit line), and that neither a traversal nor a History row was created — the early announcement is voice-only.
   - `mid_zone_join.py` — start feeding fixes 5.8 km into `trakiya-01-east`, never crossing its entry camera, and assert the full `ZoneState.Unmeasured` contract end-to-end: the state is reached, no measured traversal ever opens, nothing is spoken, and `DUMP_HISTORY` reports no new row.
   - `sync/zones_all_usable.py` — a tripwire on the **served** data rather than the client. Forces a real re-fetch (requiring `Updated`) and fails on either line `ZoneSanitizer` emits, identically on both platforms: `zones repaired (n=…) ids=[…]` (a zone missing its truck/bus limit) or `zones dropped (n=…) ids=[…]` (placeholder `(0, 0)` endpoints, an empty centerline, no car limit). **The `repaired` half is the point of the scenario**: current builds handle that payload perfectly, and the 1.x clients the stores serve do not — iOS 1.x fails the whole `/api/zones` decode on it, so it is a silent fleet outage that looks like healthy data to QA. Three separate ways this scenario tried to pass vacuously, all now closed, all worth knowing before editing it: (1) the log lines arrive *before* the closing `DebugSync` event, so it must pass `collect=` to `sync.wait_for_sync` or the wait consumes them; (2) the recency gate returns `UpToDate` whenever the app bundles a fresher scrape than the cron has published (the normal state after `refresh-zones.sh`), so it backdates `cached_zone_version` and requires `Updated`; (3) it originally checked only `dropped`, which meant it stayed green on `i8-01-north` — the exact zone that broke every published install.
   - `ui/zone_feed_unsupported.py` — the Settings notice shown when this build's
@@ -204,6 +206,16 @@ Three standalone adb tools (not part of `srednabg_qa.py`; they talk straight to
   traversal (≥75 % of in-zone fixes) is the **correct** zone id, (b) the intended
   zone isn't re-entered after exiting (flap), and (c) it exits cleanly. Exit 0 =
   all passed; `--quick` ≈ 2 km/zone; `--only 0,1,europa…` for a subset.
+
+  It also reads the `SrednaBG.Loc` channel to judge the **announcement** half of
+  each drive (`evaluate_announcement`): a zone that produced a real traversal but
+  was never announced fails, and so does one announced more than once (the
+  confirmation window re-reports the same candidate on every fix, and that must
+  not leak into speech). An **abandoned** candidate — announced, then dropped
+  before `ENTRY_CONFIRM_DISTANCE_M` — is deliberately *not* a failure: it is the
+  accepted cost of announcing early. It is counted and printed in the run
+  summary, because the rate across all 74 zones is the number that says whether
+  the trade is holding up.
 
   It judges by the *dominant* traversal (not "any zone ever seen") on purpose:
   the feeder's 120 m lead-in can legitimately start inside the **adjacent**

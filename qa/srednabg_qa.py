@@ -75,6 +75,8 @@ EDGE_SCENARIOS = [
     "parallel_motorway",
     "mid_zone_join",
     "jog_start_measured",
+    "provisional_entry",
+    "provisional_entry_abandoned",
 ]
 # Edge scenarios that exercise an Android-only code path and would never pass on
 # iOS, so they're skipped under `--platform ios` rather than failed (same

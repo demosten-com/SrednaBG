@@ -117,6 +117,25 @@ public struct ZoneDetector: Sendable {
     /// would silently disable the direction guard in `continuesHandoverDirection`
     /// and let the opposite-carriageway sibling claim the bypass. Mirrors
     /// Android's `Handover`.
+    /// A snapshot of the detector's live entry candidate — a zone that matched
+    /// but has not yet earned a traversal. Announcement-only; see
+    /// `pendingEntryInfo`. Kotlin twin: `PendingEntryInfo`.
+    ///
+    /// `entryArcM` is where the candidate's **first** fix projected onto the
+    /// centerline, which is the same value `startWitnessArcM` judges when the
+    /// candidate later graduates — so a caller that applies that threshold here
+    /// learns, before confirmation, whether this candidate would become a
+    /// measured traversal or a silent `ZoneState.unmeasured`.
+    public struct PendingEntryInfo: Equatable, Sendable {
+        public let zone: Zone
+        public let entryArcM: Double
+
+        public init(zone: Zone, entryArcM: Double) {
+            self.zone = zone
+            self.entryArcM = entryArcM
+        }
+    }
+
     private struct Handover {
         let fromZoneEnd: ZoneEndpoint
         let headingDeg: Double?
@@ -187,6 +206,31 @@ public struct ZoneDetector: Sendable {
     // finishing, or it has just graduated into a traversal. Nothing else may
     // clear it.
     private var pendingEntry: PendingEntry?
+
+    /// The live entry candidate, exposed read-only for the **announcement**
+    /// layer and nothing else. Kotlin twin: `ZoneDetector.pendingEntryInfo`.
+    ///
+    /// This is a side channel, deliberately *not* a `ZoneState` case. The state
+    /// machine is unchanged by it: no consumer of `state` (history recorder,
+    /// status chip, map, Live Activity, GPS cadence, auto-stop) sees a
+    /// candidate, and a candidate that never confirms leaves no trace anywhere.
+    ///
+    /// It exists because `entryConfirmDistanceM` costs 300 m of announcement
+    /// latency by design (see its comment) — correct for measurement, but the
+    /// driver hears "you have entered" 300 m after the camera and has no way to
+    /// know the average was back-dated. Announcing on the candidate instead puts
+    /// the voice roughly where the driver expects it: the first matching fix is
+    /// up to `RoadMatcher.maxOnRoadDistanceM` *before* the entry camera, because
+    /// a pre-camera fix projects onto the start vertex.
+    ///
+    /// Callers must apply their own `startWitnessArcM` guard on
+    /// `PendingEntryInfo.entryArcM` — see `ZoneTrackingService` for why: it
+    /// keeps the A3/Кочериново phantom silent and guarantees anything
+    /// pre-announced can only confirm as a *measured* traversal, never as
+    /// `ZoneState.unmeasured`.
+    public var pendingEntryInfo: PendingEntryInfo? {
+        pendingEntry.map { PendingEntryInfo(zone: $0.zone, entryArcM: $0.entryArcM) }
+    }
 
     // Arc length of the previous in-zone fix, used to bridge distance across a
     // GPS dropout (see `handleInZone`).

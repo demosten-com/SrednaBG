@@ -13,6 +13,22 @@ package com.demosten.srednabg.core
  * instance. (The Swift port documents the same contract as a mutating value type
  * embedded inside a `@MainActor` class.)
  */
+/**
+ * A snapshot of [ZoneDetector]'s live entry candidate — a zone that matched but
+ * has not yet earned a traversal. Announcement-only; see
+ * [ZoneDetector.pendingEntryInfo].
+ *
+ * [entryArcM] is where the candidate's **first** fix projected onto the
+ * centerline, which is the same value [ZoneDetector.START_WITNESS_ARC_M] judges
+ * when the candidate later graduates — so a caller that applies that threshold
+ * here learns, before confirmation, whether this candidate would become a
+ * measured traversal or a silent [ZoneState.Unmeasured].
+ */
+data class PendingEntryInfo(
+    val zone: Zone,
+    val entryArcM: Double,
+)
+
 class ZoneDetector(zones: List<Zone>) {
 
     // Orient every zone's centerline to run start → end once, up front, so all the
@@ -195,6 +211,32 @@ class ZoneDetector(zones: List<Zone>) {
     // evidence — no zone matched, the matched zone is one we are finishing, or it
     // has just graduated into a traversal. Nothing else may clear it.
     private var pendingEntry: PendingEntry? = null
+
+    /**
+     * The live entry candidate, exposed read-only for the **announcement** layer
+     * and nothing else.
+     *
+     * This is a side channel, deliberately *not* a [ZoneState] case. The state
+     * machine is unchanged by it: no consumer of [state] (history recorder,
+     * status chip, overlay, map, Live Activity, GPS cadence, auto-stop) sees a
+     * candidate, and a candidate that never confirms leaves no trace anywhere.
+     *
+     * It exists because [ENTRY_CONFIRM_DISTANCE_M] costs 300 m of announcement
+     * latency by design (see its comment) — correct for measurement, but the
+     * driver hears "you have entered" 300 m after the camera and has no way to
+     * know the average was back-dated. Announcing on the candidate instead puts
+     * the voice roughly where the driver expects it: the first matching fix is
+     * up to `RoadMatcher.maxOnRoadDistanceM` *before* the entry camera, because
+     * a pre-camera fix projects onto the start vertex.
+     *
+     * Callers must apply their own [START_WITNESS_ARC_M] guard on
+     * [PendingEntryInfo.entryArcM] — see `AudioAlertManager.onProvisionalEntry`
+     * / `AnnouncementPolicy` for why: it keeps the A3/Кочериново phantom silent
+     * and guarantees anything pre-announced can only confirm as a *measured*
+     * traversal, never as [ZoneState.Unmeasured].
+     */
+    val pendingEntryInfo: PendingEntryInfo?
+        get() = pendingEntry?.let { PendingEntryInfo(it.zone, it.entryArcM) }
 
     // Arc length of the previous in-zone fix, used to bridge distance across a
     // GPS dropout (see handleInZone).

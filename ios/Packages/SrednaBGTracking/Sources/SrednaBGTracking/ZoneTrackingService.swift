@@ -96,6 +96,11 @@ public final class ZoneTrackingService {
 
     @ObservationIgnored
     private var currentIntervalMs: Int = AdaptiveLocationCadence.farIntervalMs
+    // The zone we last spoke a provisional entry for, pending an outcome. Read by
+    // `trackProvisionalOutcome` only — the announcement's own repeat window lives
+    // in `AudioAlertManager`.
+    private var provisionallyAnnouncedZoneId: String?
+    private var provisionallyAnnouncedAt: Date?
 
     /// Monotonic wall-clock stamp of the last "activity" — tracking start or
     /// a zone state-case transition. Compared against `settings.autoStopHours`
@@ -229,6 +234,7 @@ public final class ZoneTrackingService {
 
         let vehicleType = settings.vehicleType
         let previous = detector.state
+        let previousCandidateId = detector.pendingEntryInfo?.zone.id
         let next = detector.update(point, vehicleType: vehicleType)
         if next != zoneState {
             zoneState = next
@@ -254,6 +260,13 @@ public final class ZoneTrackingService {
             vehicleType: vehicleType, limitKmh: limitKmh ?? 0
         )
 
+        announceProvisionalEntry(
+            previousCandidateId: previousCandidateId,
+            candidate: detector.pendingEntryInfo,
+            newState: next,
+            speedKmh: point.speed
+        )
+
         // Fire-and-forget the TTS pipeline so we don't block the GPS consumer
         // on synthesis (could be hundreds of ms while the audio session
         // negotiates ducking).
@@ -273,6 +286,103 @@ public final class ZoneTrackingService {
             currentIntervalMs = desiredMs
             await provider.setIntervalMs(desiredMs)
         }
+    }
+
+    /// Speak the entry as soon as we are *on* the zone, rather than waiting the
+    /// `ZoneDetector.entryConfirmDistanceM` the traversal needs to be confirmed.
+    /// Kotlin twin: `LocationTrackingService.announceProvisionalEntry`.
+    ///
+    /// The measurement is unaffected either way (a confirmed traversal is
+    /// back-dated to this same candidate's first fix); this only moves the voice
+    /// to where the driver expects it — the candidate opens up to
+    /// `RoadMatcher.maxOnRoadDistanceM` *before* the entry camera, because a
+    /// pre-camera fix's projection clamps to the polyline start.
+    ///
+    /// Three conditions, each load-bearing:
+    ///
+    /// 1. The candidate is **new** (none before, or a different zone). Extending
+    ///    an existing candidate must stay silent — every fix of the confirmation
+    ///    window re-reports it.
+    /// 2. `newState` is still `.outside`, i.e. this fix did not itself open the
+    ///    traversal. A co-located handover bypasses confirmation and confirms on
+    ///    its first fix, so this leaves that chained `.exiting -> .inZone`
+    ///    announcement exactly as it was.
+    /// 3. The candidate's first fix projected within
+    ///    `ZoneDetector.startWitnessArcM` of the start. This keeps the
+    ///    A3/Кочериново phantom silent (its first match projects to arc 282 m in
+    ///    the `parallel_motorway` replay)
+    ///    and makes the promise honest: anything announced here can only graduate
+    ///    into a *measured* traversal, never a silent `.unmeasured`, because that
+    ///    threshold is exactly what `witnessedStart` tests.
+    private func announceProvisionalEntry(
+        previousCandidateId: String?,
+        candidate: ZoneDetector.PendingEntryInfo?,
+        newState: ZoneState,
+        speedKmh: Double
+    ) {
+        trackProvisionalOutcome(candidate: candidate, newState: newState)
+        guard let candidate else { return }
+        guard candidate.zone.id != previousCandidateId else { return }
+        guard case .outside = newState else { return }
+        guard candidate.entryArcM <= ZoneDetector.startWitnessArcM else {
+            QALog.location.debug(
+                "provisional entry suppressed zone=\(candidate.zone.id, privacy: .public) arcM=\(Int(candidate.entryArcM), privacy: .public) > \(Int(ZoneDetector.startWitnessArcM), privacy: .public)"
+            )
+            return
+        }
+        provisionallyAnnouncedZoneId = candidate.zone.id
+        provisionallyAnnouncedAt = Date()
+        let zone = candidate.zone
+        Task.detached { [alerts] in
+            await alerts.handleProvisionalEntry(zone: zone, currentSpeedKmh: speedKmh)
+        }
+    }
+
+    /// Close the loop on a provisional announcement: it either graduated into a
+    /// traversal, or the candidate was dropped and the driver heard an entry that
+    /// will never appear in History. Kotlin twin:
+    /// `LocationTrackingService.trackProvisionalOutcome`.
+    ///
+    /// Only the QA channel cares — nothing is spoken either way. The line exists
+    /// so `qa/validate-zones.sh` can *count* abandonments across all zones, which
+    /// is the number that says whether announcing on the candidate was the right
+    /// trade. It counts *attempts*: the announcement itself can still be
+    /// suppressed downstream (voice off, below `minAnnounceSpeedKmh`).
+    private func trackProvisionalOutcome(
+        candidate: ZoneDetector.PendingEntryInfo?,
+        newState: ZoneState
+    ) {
+        guard let announced = provisionallyAnnouncedZoneId else { return }
+        let zoneNow: String?
+        switch newState {
+        case .inZone(let s): zoneNow = s.zone.id
+        case .unmeasured(let s): zoneNow = s.zone.id
+        case .exiting(let s): zoneNow = s.zone.id
+        case .outside: zoneNow = nil
+        }
+        if zoneNow == announced {
+            QALog.location.debug("provisional entry confirmed zone=\(announced, privacy: .public)")
+            provisionallyAnnouncedZoneId = nil
+            return
+        }
+        // Still pending. A missing or restarted candidate is NOT yet an
+        // abandonment: a single fix that falls outside the band or fails the
+        // heading test drops the candidate, and the very next fix opens a fresh
+        // one for the same zone — seen on a real approach to trakiya-01-east,
+        // which restarted once and then confirmed 11 s later. Reporting that as
+        // abandoned would inflate the count this line exists to measure.
+        //
+        // So wait out `ZoneDetector.entryConfirmTimeoutMs`, which is the
+        // detector's own "this candidate is no longer continuous evidence"
+        // deadline — the same clock, rather than a second one invented here.
+        guard candidate?.zone.id != announced else { return }
+        let elapsedMs = Int64(Date().timeIntervalSince(provisionallyAnnouncedAt ?? .distantPast) * 1000)
+        let takenOver = candidate != nil || zoneNow != nil
+        guard takenOver || elapsedMs >= ZoneDetector.entryConfirmTimeoutMs else { return }
+        QALog.location.debug(
+            "provisional entry abandoned zone=\(announced, privacy: .public) afterMs=\(elapsedMs, privacy: .public)"
+        )
+        provisionallyAnnouncedZoneId = nil
     }
 
     /// Returns true when auto-stop fired (caller should bail out of the

@@ -99,6 +99,28 @@ class TtsSuppressed(Event):
 
 
 @dataclass(frozen=True)
+class ProvisionalEntry(Event):
+    """An entry announced from the detector's *candidate*, before confirmation.
+
+    The engine will not open a traversal until the car covers
+    ENTRY_CONFIRM_DISTANCE_M (300 m) along the centerline, but the announcement
+    no longer waits for that — it fires when the candidate opens, which is up to
+    a band-width *before* the entry camera. `outcome` is what became of it:
+
+      * `announced`  — the candidate opened and the entry was spoken.
+      * `suppressed` — the candidate's first fix projected past
+        START_WITNESS_ARC_M, so it could only ever have confirmed as Unmeasured.
+        This is the A3/Кочериново phantom's fate.
+      * `confirmed`  — an announced candidate graduated into a traversal.
+      * `abandoned`  — an announced candidate was dropped. The driver heard an
+        entry that produced no History row. Rare by design; counted so we know
+        how rare.
+    """
+    zone: str
+    outcome: str
+
+
+@dataclass(frozen=True)
 class SyncResult(Event):
     """DebugSyncReceiver result. `action` is SYNC_MAP or SYNC_ZONES.
 

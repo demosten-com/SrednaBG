@@ -43,7 +43,7 @@ import yaml
 from ... import device as device_mod
 from ... import geo
 from ...assertions import AssertionFailure
-from ...events import ZoneStateChange
+from ...events import ProvisionalEntry, TtsSpeak, ZoneStateChange
 from ...runner import RunContext, Scenario, step_lambda
 from ._helpers import load_zone, scenario_setup, scenario_teardown
 
@@ -145,6 +145,8 @@ def build() -> Scenario:
 
     def asserts(ctx: RunContext) -> None:
         changes: list[ZoneStateChange] = []
+        provisional: list[ProvisionalEntry] = []
+        spoken: list[TtsSpeak] = []
         settle = 4.0
         deadline = time.monotonic() + settle
         while time.monotonic() < deadline:
@@ -155,6 +157,10 @@ def build() -> Scenario:
             if isinstance(ev, ZoneStateChange):
                 changes.append(ev)
                 deadline = time.monotonic() + settle
+            elif isinstance(ev, ProvisionalEntry):
+                provisional.append(ev)
+            elif isinstance(ev, TtsSpeak):
+                spoken.append(ev)
 
         # Neither InZone nor Unmeasured. Both of those require a *confirmed*
         # candidate, and the A3 corridor only ever accumulates ~109 m of
@@ -171,6 +177,28 @@ def build() -> Scenario:
                 f"{entries[0].new} of {[e.zone for e in entries]} — a road the "
                 f"car was never on. "
                 f"Transitions: {[(e.prev, e.new, e.zone) for e in changes]}",
+                ctx.obs,
+            )
+
+        # …and it must stay *silent*. Not opening a traversal is no longer
+        # enough on its own: the entry announcement is spoken from the
+        # detector's candidate, ENTRY_CONFIRM_DISTANCE_M before a traversal
+        # would confirm, so the confirmation window that kills the phantom
+        # traversal no longer gags the phantom *voice*. What does is the
+        # START_WITNESS_ARC_M guard on the candidate's arc: the A3 first matches
+        # 282 m into the zone (the run logs `provisional entry suppressed
+        # zone=i1-02-north arcM=282 > 200`), far past the 200 m threshold, so it
+        # can only ever have confirmed as Unmeasured and is never announced. Drop that
+        # guard and the user's original symptom — a spoken "entering
+        # average-speed zone" for a road they are not on, with the wrong limit —
+        # comes straight back, with everything above still passing.
+        announced = [e for e in provisional if e.outcome == "announced"]
+        if announced or spoken:
+            raise AssertionFailure(
+                f"driving the A3 motorway announced a phantom entry: "
+                f"provisional={[(e.zone, e.outcome) for e in provisional]} "
+                f"spoken={[e.text for e in spoken]}. The START_WITNESS_ARC_M "
+                f"guard on the entry candidate is what must keep this silent.",
                 ctx.obs,
             )
 

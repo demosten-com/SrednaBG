@@ -30,6 +30,7 @@ import com.demosten.srednabg.app.overlay.shouldShowOverlay
 import com.demosten.srednabg.app.ui.MainActivity
 import com.demosten.srednabg.core.GpsFilter
 import com.demosten.srednabg.core.GpsPoint
+import com.demosten.srednabg.core.PendingEntryInfo
 import com.demosten.srednabg.core.RoadMatcher
 import com.demosten.srednabg.core.VehicleType
 import com.demosten.srednabg.core.Zone
@@ -140,6 +141,12 @@ class LocationTrackingService : LifecycleService() {
     // the battery indefinitely.
     @Volatile
     private var lastActivityMs: Long = 0L
+
+    // The zone we last spoke a provisional entry for, and when, pending an
+    // outcome. Read by trackProvisionalOutcome only — the announcement's own
+    // repeat window lives in AudioAlertManager.
+    private var provisionallyAnnouncedZoneId: String? = null
+    private var provisionallyAnnouncedAtMs: Long = 0L
 
     // Driver-selected vehicle type, mirrored from SettingsRepository.vehicleType
     // (the same Flow AudioAlertManager reads) and threaded into the detector so
@@ -257,11 +264,13 @@ class LocationTrackingService : LifecycleService() {
             return@LocationUpdateListener
         }
         val previousState = detector.state
+        val previousCandidateId = detector.pendingEntryInfo?.zone?.id
         val newState = detector.update(point, currentVehicleType)
         _zoneState.value = newState
         if (previousState::class != newState::class) {
             lastActivityMs = android.os.SystemClock.elapsedRealtime()
         }
+        announceProvisionalEntry(previousCandidateId, detector.pendingEntryInfo, newState, point.speed)
         audioAlertManager.onZoneStateChanged(previousState, newState, point.speed)
         val limitKmh = when (newState) {
             is ZoneState.InZone -> currentVehicleType.limit(newState.zone.speedLimits)
@@ -274,6 +283,99 @@ class LocationTrackingService : LifecycleService() {
         }
         historyRecorder.onZoneStateChanged(point, previousState, newState, currentVehicleType, limitKmh)
         adjustGpsInterval(newState, point)
+    }
+
+    /**
+     * Speak the entry as soon as we are *on* the zone, rather than waiting the
+     * [ZoneDetector.ENTRY_CONFIRM_DISTANCE_M] the traversal needs to be
+     * confirmed. The measurement is unaffected either way (a confirmed
+     * traversal is back-dated to this same candidate's first fix); this only
+     * moves the voice to where the driver expects it — the candidate opens up
+     * to `RoadMatcher.maxOnRoadDistanceM` *before* the entry camera, because a
+     * pre-camera fix's projection clamps to the polyline start.
+     *
+     * Three conditions, each load-bearing:
+     *
+     * 1. The candidate is **new** (none before, or a different zone). Extending
+     *    an existing candidate must stay silent.
+     * 2. [newState] is still `Outside`, i.e. this fix did not itself open the
+     *    traversal. A co-located handover bypasses confirmation and confirms on
+     *    its first fix, so this leaves that chained `Exiting -> InZone`
+     *    announcement — QUEUE_ADD after the exit line — exactly as it was.
+     * 3. The candidate's first fix projected within
+     *    [ZoneDetector.START_WITNESS_ARC_M] of the start. This is the guard that
+     *    keeps the A3/Кочериново phantom silent (its first match projects to arc
+     *    282 m in the `parallel_motorway` replay) and makes the promise honest: anything announced here can only
+     *    graduate into a *measured* traversal, never a silent
+     *    [ZoneState.Unmeasured], because that threshold is exactly what
+     *    `witnessedStart` tests.
+     */
+    private fun announceProvisionalEntry(
+        previousCandidateId: String?,
+        candidate: PendingEntryInfo?,
+        newState: ZoneState,
+        speedKmh: Double,
+    ) {
+        trackProvisionalOutcome(candidate, newState)
+        if (candidate == null) return
+        if (!isNewProvisionalCandidate(previousCandidateId, candidate, newState)) return
+        if (candidate.entryArcM > ZoneDetector.START_WITNESS_ARC_M) {
+            Log.d(
+                TAG,
+                "provisional entry suppressed zone=${candidate.zone.id} " +
+                    "arcM=${candidate.entryArcM.toInt()} > ${ZoneDetector.START_WITNESS_ARC_M.toInt()}",
+            )
+            return
+        }
+        provisionallyAnnouncedZoneId = candidate.zone.id
+        provisionallyAnnouncedAtMs = System.currentTimeMillis()
+        audioAlertManager.onProvisionalEntry(candidate.zone, speedKmh)
+    }
+
+    /**
+     * Close the loop on a provisional announcement: it either graduated into a
+     * traversal, or the candidate was dropped and the driver heard an entry
+     * that will never appear in History.
+     *
+     * Only the QA channel cares — nothing is spoken either way (a retraction the
+     * driver did not ask for is more confusing than silence). The line exists so
+     * `qa/validate-zones.sh` can *count* abandonments across all zones, which is
+     * the number that says whether announcing on the candidate was the right
+     * trade. Note it counts *attempts*: the announcement itself can still be
+     * suppressed downstream (voice off, below MIN_ANNOUNCE_SPEED_KMH), so a
+     * scenario that cares about what was actually spoken correlates these with
+     * the `speak:` lines.
+     */
+    private fun trackProvisionalOutcome(candidate: PendingEntryInfo?, newState: ZoneState) {
+        val announced = provisionallyAnnouncedZoneId ?: return
+        val zoneNow = when (newState) {
+            is ZoneState.InZone -> newState.zone.id
+            is ZoneState.Unmeasured -> newState.zone.id
+            is ZoneState.Exiting -> newState.zone.id
+            is ZoneState.Outside -> null
+        }
+        if (zoneNow == announced) {
+            Log.d(TAG, "provisional entry confirmed zone=$announced")
+            provisionallyAnnouncedZoneId = null
+            return
+        }
+        // Still pending. A missing or restarted candidate is NOT yet an
+        // abandonment: a single fix that falls outside the band or fails the
+        // heading test drops the candidate, and the very next fix opens a fresh
+        // one for the same zone — seen on a real approach to trakiya-01-east,
+        // which restarted once and then confirmed 11 s later. Reporting that as
+        // abandoned would inflate the count this line exists to measure.
+        //
+        // So wait out ZoneDetector.ENTRY_CONFIRM_TIMEOUT_MS, which is the
+        // detector's own "this candidate is no longer continuous evidence"
+        // deadline — the same clock, rather than a second one invented here.
+        // Anything that has not entered by then never will.
+        if (candidate?.zone?.id == announced) return
+        val elapsed = System.currentTimeMillis() - provisionallyAnnouncedAtMs
+        val takenOver = candidate != null || zoneNow != null
+        if (!takenOver && elapsed < ZoneDetector.ENTRY_CONFIRM_TIMEOUT_MS) return
+        Log.d(TAG, "provisional entry abandoned zone=$announced afterMs=$elapsed")
+        provisionallyAnnouncedZoneId = null
     }
 
     override fun onCreate() {
@@ -495,3 +597,28 @@ class LocationTrackingService : LifecycleService() {
  * `ZoneTrackingService.updateZones`.
  */
 internal fun Flow<List<Zone>>.distinctZoneCatalog(): Flow<List<Zone>> = distinctUntilChanged()
+
+/**
+ * Is this fix the one that should speak a provisional entry for [candidate]?
+ *
+ * The arc guard is deliberately *not* here — it needs no state and is asserted
+ * directly at the call site — but these two clauses do need the previous fix's
+ * candidate and the state this fix produced, which is exactly the kind of thing
+ * that rots silently inside a service. Lifted out so the rule is named and
+ * testable without a location provider, in the same spirit as
+ * `shouldShowOverlay` and `isUnmeasuredTransition`.
+ *
+ * - A candidate that is merely being *extended* must stay silent: it was already
+ *   announced on the fix that opened it.
+ * - A fix that itself opened the traversal must stay silent here, because the
+ *   normal `Outside -> InZone` / `Exiting -> InZone` announcement covers it. The
+ *   second case is the co-located handover, which bypasses entry confirmation
+ *   entirely and so confirms on the candidate's very first fix — announcing here
+ *   as well would speak the next zone's entry twice, and would do it with
+ *   QUEUE_FLUSH, cutting off the previous zone's exit-with-average.
+ */
+internal fun isNewProvisionalCandidate(
+    previousCandidateId: String?,
+    candidate: PendingEntryInfo,
+    newState: ZoneState,
+): Boolean = candidate.zone.id != previousCandidateId && newState is ZoneState.Outside

@@ -37,6 +37,7 @@ from .events import (
     IntervalChanged,
     LocationSourceSelected,
     LocationUpdate,
+    ProvisionalEntry,
     SettingChanged,
     SyncResult,
     TtsDropped,
@@ -93,6 +94,13 @@ ZONES_REPAIRED_RE = re.compile(
     r"zones repaired \(n=(?P<n>\d+)\) ids=\[(?P<ids>[^\]]*)\] origin=(?P<origin>.*)$"
 )
 INTERVAL_RE = re.compile(r"requestLocationWithInterval intervalMs=(?P<i>\d+)")
+# Provisional entry announcements — see ProvisionalEntry. "announced" has no log
+# line of its own on the SrednaBG.Loc channel; it is the SrednaBG.TTS
+# `onProvisionalEntry` line below, so both tags feed the same event.
+PROVISIONAL_OUTCOME_RE = re.compile(
+    r"provisional entry (?P<outcome>suppressed|confirmed|abandoned) zone=(?P<zone>\S+)"
+)
+PROVISIONAL_SPOKEN_RE = re.compile(r"onProvisionalEntry zone=(?P<zone>\S+) speed=")
 SYNC_RE = re.compile(
     r"(?P<action>[\w.]+\.debug\.SYNC_\w+) -> (?:SyncResult\.)?(?P<outcome>\w+)(?:\((?P<detail>.*)\))?"
 )
@@ -179,6 +187,14 @@ def parse_message(tag: str, msg: str, raw: str) -> Optional[Event]:
         mi = INTERVAL_RE.search(msg)
         if mi:
             return IntervalChanged(monotonic_ms=ts, raw=raw, interval_ms=int(mi.group("i")))
+        mpo = PROVISIONAL_OUTCOME_RE.search(msg)
+        if mpo:
+            return ProvisionalEntry(
+                monotonic_ms=ts,
+                raw=raw,
+                zone=mpo.group("zone"),
+                outcome=mpo.group("outcome"),
+            )
         mas = AUTO_STOP_RE.search(msg)
         if mas:
             return AutoStopped(
@@ -225,6 +241,11 @@ def parse_message(tag: str, msg: str, raw: str) -> Optional[Event]:
         msp = SPEAK_RE.match(msg)
         if msp:
             return TtsSpeak(monotonic_ms=ts, raw=raw, text=msp.group("text"))
+        mps = PROVISIONAL_SPOKEN_RE.search(msg)
+        if mps:
+            return ProvisionalEntry(
+                monotonic_ms=ts, raw=raw, zone=mps.group("zone"), outcome="announced"
+            )
         msu = SUPPRESS_RE.search(msg)
         if msu:
             return TtsSuppressed(monotonic_ms=ts, raw=raw, entry_age_ms=int(msu.group("age")))

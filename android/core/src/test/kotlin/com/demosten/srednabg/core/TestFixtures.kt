@@ -249,9 +249,15 @@ fun pointOnApproach(zone: Zone, arc: Double, heading: Double): List<Double> {
     )
 }
 
-/** [driveAlongCenterline], returning every state rather than just the last. */
-fun collectAlongCenterline(
-    detector: ZoneDetector,
+/**
+ * The GPS trace [collectAlongCenterline] drives, without a detector.
+ *
+ * Split out so a test that needs to inspect the detector *between* fixes — the
+ * entry-candidate side channel, `ZoneDetector.pendingEntryInfo`, which is not a
+ * [ZoneState] and so cannot be read from the returned list — drives exactly the
+ * same geometry as every other test here rather than hand-rolling a lookalike.
+ */
+fun centerlineTrace(
     zone: Zone,
     fromArcM: Double,
     metres: Double,
@@ -259,9 +265,8 @@ fun collectAlongCenterline(
     stepM: Double = 36.0,
     startTime: Long = EPOCH_BASE,
     lateralOffsetM: Double = 0.0,
-    vehicleType: VehicleType = VehicleType.CAR,
-): List<ZoneState> {
-    val states = mutableListOf<ZoneState>()
+): List<GpsPoint> {
+    val points = mutableListOf<GpsPoint>()
     var covered = 0.0
     var index = 0
     val stepMs = (stepM / (speedKmh / 3.6) * 1000.0).toLong().coerceAtLeast(1L)
@@ -276,18 +281,30 @@ fun collectAlongCenterline(
         val lat = at[0] + (lateralOffsetM * kotlin.math.cos(perp)) / 111_320.0
         val lng = at[1] + (lateralOffsetM * kotlin.math.sin(perp)) /
             (111_320.0 * kotlin.math.cos(Math.toRadians(at[0])))
-        states += detector.update(
-            GpsPoint(
-                lat = lat, lng = lng, speed = speedKmh,
-                timestamp = startTime + index * stepMs, bearing = heading,
-            ),
-            vehicleType,
+        points += GpsPoint(
+            lat = lat, lng = lng, speed = speedKmh,
+            timestamp = startTime + index * stepMs, bearing = heading,
         )
         covered += stepM
         index++
     }
-    return states
+    return points
 }
+
+/** [driveAlongCenterline], returning every state rather than just the last. */
+fun collectAlongCenterline(
+    detector: ZoneDetector,
+    zone: Zone,
+    fromArcM: Double,
+    metres: Double,
+    speedKmh: Double = 130.0,
+    stepM: Double = 36.0,
+    startTime: Long = EPOCH_BASE,
+    lateralOffsetM: Double = 0.0,
+    vehicleType: VehicleType = VehicleType.CAR,
+): List<ZoneState> =
+    centerlineTrace(zone, fromArcM, metres, speedKmh, stepM, startTime, lateralOffsetM)
+        .map { detector.update(it, vehicleType) }
 
 /**
  * Generate a GPS trace along a zone's centerline at constant speed.

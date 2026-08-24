@@ -48,6 +48,10 @@ public actor AudioAlertManager {
 
     private var lastEntryAt: Date?
     private var lastAnnouncementAt: Date?
+    // The zone whose entry was already spoken from the detector's candidate, and
+    // when — see `handleProvisionalEntry`.
+    private var provisionalZoneId: String?
+    private var provisionalAt: Date?
 
     /// Set by `reset()` (tracking stopped), cleared by `resume()` (tracking
     /// started). While set, `handle` short-circuits before emitting the
@@ -85,9 +89,15 @@ public actor AudioAlertManager {
             vehicleType: s.vehicleType,
             lastEntryAt: lastEntryAt,
             lastAnnouncementAt: lastAnnouncementAt,
-            now: now()
+            now: now(),
+            provisionalZoneId: provisionalZoneId,
+            provisionalAt: provisionalAt
         )
         let decision = AnnouncementPolicy.decide(inputs)
+        // Any entry announcement retires the provisional bookkeeping: either it
+        // was just consumed to suppress a duplicate, or this is a different zone
+        // and the old id is stale.
+        if case .inZone = current { retireProvisionalIfEntering(previous: previous) }
         switch decision.clockUpdate {
         case .none: break
         case .markEntryAndAnnouncement:
@@ -98,15 +108,78 @@ public actor AudioAlertManager {
         case .clearAnnouncement:
             lastAnnouncementAt = nil
         }
-        guard let event = decision.event else { return }
-        let resolvedLang = s.appLanguage.resolvedVoiceLanguage(deviceLanguage: deviceLanguage())
         // `followUp` (entered already over the limit) rides behind the main
         // utterance; the engine enqueues rather than clobbers, so order holds.
-        for spoken in [event, decision.followUp].compactMap({ $0 }) {
-            let phrase = TtsPhrases.phrase(for: spoken, language: resolvedLang)
+        // The main event can be nil while the follow-up is not: an entry already
+        // announced provisionally still needs its over-limit warning.
+        let spoken = [decision.event, decision.followUp].compactMap { $0 }
+        guard !spoken.isEmpty else { return }
+        let resolvedLang = s.appLanguage.resolvedVoiceLanguage(deviceLanguage: deviceLanguage())
+        for event in spoken {
+            let phrase = TtsPhrases.phrase(for: event, language: resolvedLang)
             // QA harness tripwire: line shape must match `qa/parsers.py` SPEAK_RE.
             QALog.tts.info("speak: \"\(phrase, privacy: .public)\"")
             await engine.speak(phrase, language: resolvedLang)
+        }
+    }
+
+    /// Announce an entry the moment the detector opens a *candidate* for `zone`,
+    /// rather than when the traversal is confirmed
+    /// `ZoneDetector.entryConfirmDistanceM` later. Kotlin twin:
+    /// `AudioAlertManager.onProvisionalEntry`.
+    ///
+    /// The measurement is untouched — a confirmed traversal is back-dated to this
+    /// same candidate's first fix — so this only moves the *voice* to where the
+    /// driver expects it. Before this, the entry was spoken ~300 m past the
+    /// camera and the driver, who cannot know the average was back-dated, read
+    /// that as the app being slow.
+    ///
+    /// If the candidate is later abandoned the entry simply goes unrecorded — no
+    /// retraction is spoken, because a correction the driver did not ask for is
+    /// more confusing than the silence.
+    public func handleProvisionalEntry(zone: Zone, currentSpeedKmh: Double?) async {
+        if suppressed { return }
+        let s = await snapshot()
+        // Re-check: `reset()` can interleave on this actor while we were
+        // suspended awaiting the settings snapshot.
+        if suppressed { return }
+        let at = now()
+        guard let event = AnnouncementPolicy.decideProvisionalEntry(
+            zone: zone,
+            currentSpeedKmh: currentSpeedKmh,
+            voiceEnabled: s.voiceEnabled,
+            vehicleType: s.vehicleType,
+            provisionalZoneId: provisionalZoneId,
+            provisionalAt: provisionalAt,
+            now: at
+        ) else { return }
+        provisionalZoneId = zone.id
+        provisionalAt = at
+        lastEntryAt = at
+        lastAnnouncementAt = at
+        // QA harness tripwire: line shape must match `qa/parsers.py`
+        // PROVISIONAL_SPOKEN_RE (Android twin logs the same body).
+        let speedLabel = String(format: "%.1f", currentSpeedKmh ?? 0)
+        QALog.tts.debug(
+            "onProvisionalEntry zone=\(zone.id, privacy: .public) speed=\(speedLabel, privacy: .public)"
+        )
+        let resolvedLang = s.appLanguage.resolvedVoiceLanguage(deviceLanguage: deviceLanguage())
+        let phrase = TtsPhrases.phrase(for: event, language: resolvedLang)
+        // QA harness tripwire: line shape must match `qa/parsers.py` SPEAK_RE.
+        QALog.tts.info("speak: \"\(phrase, privacy: .public)\"")
+        await engine.speak(phrase, language: resolvedLang)
+    }
+
+    /// Drop the provisional bookkeeping once a traversal opens, so a stale id can
+    /// never suppress a later, genuine entry into the same zone. Only the two
+    /// transitions that announce an entry retire it.
+    private func retireProvisionalIfEntering(previous: ZoneState) {
+        switch previous {
+        case .outside, .exiting:
+            provisionalZoneId = nil
+            provisionalAt = nil
+        case .inZone, .unmeasured:
+            break
         }
     }
 
@@ -114,6 +187,8 @@ public actor AudioAlertManager {
         suppressed = true
         lastEntryAt = nil
         lastAnnouncementAt = nil
+        provisionalZoneId = nil
+        provisionalAt = nil
         await engine.stop()
     }
 

@@ -25,6 +25,12 @@ public struct AnnouncementInputs: Sendable, Equatable {
     public var lastEntryAt: Date?
     public var lastAnnouncementAt: Date?
     public var now: Date
+    /// The zone whose entry was already spoken from the detector's *candidate*,
+    /// before the traversal confirmed — see `AudioAlertManager.handleProvisionalEntry`.
+    /// When the confirmed `.outside -> .inZone` transition for that same zone
+    /// then arrives, the entry line is skipped rather than repeated.
+    public var provisionalZoneId: String?
+    public var provisionalAt: Date?
 
     public init(
         previousState: ZoneState,
@@ -36,7 +42,9 @@ public struct AnnouncementInputs: Sendable, Equatable {
         vehicleType: VehicleType,
         lastEntryAt: Date?,
         lastAnnouncementAt: Date?,
-        now: Date
+        now: Date,
+        provisionalZoneId: String? = nil,
+        provisionalAt: Date? = nil
     ) {
         self.previousState = previousState
         self.newState = newState
@@ -48,6 +56,8 @@ public struct AnnouncementInputs: Sendable, Equatable {
         self.lastEntryAt = lastEntryAt
         self.lastAnnouncementAt = lastAnnouncementAt
         self.now = now
+        self.provisionalZoneId = provisionalZoneId
+        self.provisionalAt = provisionalAt
     }
 }
 
@@ -124,8 +134,18 @@ public enum AnnouncementPolicy {
         // `qa/scenarios/edge/vehicle_type_limit_badge.py`.
         case (.outside, .inZone(let inZone)):
             let limit = input.vehicleType.limit(inZone.zone.speedLimits)
+            // Already spoken when the candidate opened, a few hundred metres
+            // back. Skip only the entry line: the over-limit follow-up needs a
+            // real average, which did not exist at candidate time, so it must
+            // still fire from this confirmed transition.
+            let alreadySpoken = isProvisionalStillFresh(
+                zoneId: inZone.zone.id,
+                provisionalZoneId: input.provisionalZoneId,
+                provisionalAt: input.provisionalAt,
+                now: input.now
+            )
             return .init(
-                event: .entry(road: inZone.zone.road, limit: limit),
+                event: alreadySpoken ? nil : .entry(road: inZone.zone.road, limit: limit),
                 followUp: entryOverLimitEvent(inZone),
                 clockUpdate: .markEntryAndAnnouncement
             )
@@ -191,6 +211,66 @@ public enum AnnouncementPolicy {
         default:
             return .silent
         }
+    }
+
+    /// How long a spoken provisional entry suppresses another one for the same
+    /// zone. Kotlin twin: `PROVISIONAL_REPEAT_WINDOW_MS`.
+    ///
+    /// A candidate that goes quiet for `ZoneDetector.entryConfirmTimeoutMs`
+    /// (30 s) and then re-opens is a brand-new candidate as far as the detector
+    /// is concerned, but the driver does not need to hear the same zone
+    /// announced twice inside a minute.
+    public static let provisionalRepeatWindowSec = 60.0
+
+    /// Should this fix speak an entry for a zone the detector has only opened a
+    /// *candidate* for, `ZoneDetector.entryConfirmDistanceM` before the
+    /// traversal will confirm?
+    ///
+    /// The caller has already applied the `startWitnessArcM` guard on the
+    /// candidate's arc (see `ZoneTrackingService`); this owns the voice-enabled,
+    /// speed and repeat rules, so they cannot drift from the confirmed path's.
+    /// Kotlin twin: `AudioAlertManager.onProvisionalEntry`.
+    public static func decideProvisionalEntry(
+        zone: Zone,
+        currentSpeedKmh: Double?,
+        voiceEnabled: Bool,
+        vehicleType: VehicleType,
+        provisionalZoneId: String?,
+        provisionalAt: Date?,
+        now: Date
+    ) -> AnnouncementEvent? {
+        guard voiceEnabled else { return nil }
+        guard (currentSpeedKmh ?? 0) >= minAnnounceSpeedKmh else { return nil }
+        guard !isProvisionalStillFresh(
+            zoneId: zone.id, provisionalZoneId: provisionalZoneId,
+            provisionalAt: provisionalAt, now: now
+        ) else { return nil }
+        // Deliberately the *same* event as the confirmed path: no second
+        // phrasing to localize, and nothing signals "provisional" to the driver
+        // — from the road, we are on the zone.
+        return .entry(road: zone.road, limit: vehicleType.limit(zone.speedLimits))
+    }
+
+    /// Has `zoneId` already been announced provisionally, recently enough that
+    /// the driver still remembers hearing it? Kotlin twin:
+    /// `isProvisionalStillFresh`.
+    ///
+    /// The recency clause is not decoration. A candidate that is announced and
+    /// then abandoned leaves the id set with nothing to clear it, so without the
+    /// window a genuine entry into that same zone half an hour later would be
+    /// silently swallowed — the driver would drive a real zone with no
+    /// announcement at all. Bounding both callers by the same window keeps them
+    /// in agreement: inside it the driver has heard this zone (whether or not a
+    /// repeat was suppressed), outside it they have not.
+    public static func isProvisionalStillFresh(
+        zoneId: String,
+        provisionalZoneId: String?,
+        provisionalAt: Date?,
+        now: Date,
+        windowSec: Double = provisionalRepeatWindowSec
+    ) -> Bool {
+        guard zoneId == provisionalZoneId, let at = provisionalAt else { return false }
+        return now.timeIntervalSince(at) < windowSec
     }
 
     /// The over-limit warning to queue behind an entry announcement, when the
