@@ -158,9 +158,13 @@ public actor AudioAlertManager {
         lastEntryAt = at
         lastAnnouncementAt = at
         // QA harness tripwire: line shape must match `qa/parsers.py`
-        // PROVISIONAL_SPOKEN_RE (Android twin logs the same body).
+        // PROVISIONAL_SPOKEN_RE (Android twin logs the same body). `.info`, not
+        // `.debug`, like every other QA line here: the unified log does not
+        // persist debug messages, so `log show` cannot recover them after a run
+        // — only the live stream sees them, which makes a failed run impossible
+        // to diagnose after the fact.
         let speedLabel = String(format: "%.1f", currentSpeedKmh ?? 0)
-        QALog.tts.debug(
+        QALog.tts.info(
             "onProvisionalEntry zone=\(zone.id, privacy: .public) speed=\(speedLabel, privacy: .public)"
         )
         let resolvedLang = s.appLanguage.resolvedVoiceLanguage(deviceLanguage: deviceLanguage())

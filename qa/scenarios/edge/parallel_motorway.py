@@ -186,9 +186,10 @@ def build() -> Scenario:
         # would confirm, so the confirmation window that kills the phantom
         # traversal no longer gags the phantom *voice*. What does is the
         # START_WITNESS_ARC_M guard on the candidate's arc: the A3 first matches
-        # 282 m into the zone (the run logs `provisional entry suppressed
-        # zone=i1-02-north arcM=282 > 200`), far past the 200 m threshold, so it
-        # can only ever have confirmed as Unmeasured and is never announced. Drop that
+        # 282 m into the zone on Android and 289 m on iOS (each run logs
+        # `provisional entry suppressed zone=i1-02-north arcM=… > 200`), far past
+        # the 200 m threshold, so it can only ever have confirmed as Unmeasured
+        # and is never announced. Drop that
         # guard and the user's original symptom — a spoken "entering
         # average-speed zone" for a road they are not on, with the wrong limit —
         # comes straight back, with everything above still passing.

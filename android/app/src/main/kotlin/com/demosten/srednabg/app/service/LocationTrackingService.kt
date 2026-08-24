@@ -305,7 +305,7 @@ class LocationTrackingService : LifecycleService() {
      * 3. The candidate's first fix projected within
      *    [ZoneDetector.START_WITNESS_ARC_M] of the start. This is the guard that
      *    keeps the A3/Кочериново phantom silent (its first match projects to arc
-     *    282 m in the `parallel_motorway` replay) and makes the promise honest: anything announced here can only
+     *    282 m in the `parallel_motorway` replay; 289 m on iOS) and makes the promise honest: anything announced here can only
      *    graduate into a *measured* traversal, never a silent
      *    [ZoneState.Unmeasured], because that threshold is exactly what
      *    `witnessedStart` tests.

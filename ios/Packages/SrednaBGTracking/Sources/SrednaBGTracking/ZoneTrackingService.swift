@@ -309,8 +309,8 @@ public final class ZoneTrackingService {
     ///    announcement exactly as it was.
     /// 3. The candidate's first fix projected within
     ///    `ZoneDetector.startWitnessArcM` of the start. This keeps the
-    ///    A3/Кочериново phantom silent (its first match projects to arc 282 m in
-    ///    the `parallel_motorway` replay)
+    ///    A3/Кочериново phantom silent (its first match projects to arc 289 m in
+    ///    the `parallel_motorway` replay; 282 m on Android)
     ///    and makes the promise honest: anything announced here can only graduate
     ///    into a *measured* traversal, never a silent `.unmeasured`, because that
     ///    threshold is exactly what `witnessedStart` tests.
@@ -325,7 +325,7 @@ public final class ZoneTrackingService {
         guard candidate.zone.id != previousCandidateId else { return }
         guard case .outside = newState else { return }
         guard candidate.entryArcM <= ZoneDetector.startWitnessArcM else {
-            QALog.location.debug(
+            QALog.location.info(
                 "provisional entry suppressed zone=\(candidate.zone.id, privacy: .public) arcM=\(Int(candidate.entryArcM), privacy: .public) > \(Int(ZoneDetector.startWitnessArcM), privacy: .public)"
             )
             return
@@ -361,7 +361,7 @@ public final class ZoneTrackingService {
         case .outside: zoneNow = nil
         }
         if zoneNow == announced {
-            QALog.location.debug("provisional entry confirmed zone=\(announced, privacy: .public)")
+            QALog.location.info("provisional entry confirmed zone=\(announced, privacy: .public)")
             provisionallyAnnouncedZoneId = nil
             return
         }
@@ -379,7 +379,7 @@ public final class ZoneTrackingService {
         let elapsedMs = Int64(Date().timeIntervalSince(provisionallyAnnouncedAt ?? .distantPast) * 1000)
         let takenOver = candidate != nil || zoneNow != nil
         guard takenOver || elapsedMs >= ZoneDetector.entryConfirmTimeoutMs else { return }
-        QALog.location.debug(
+        QALog.location.info(
             "provisional entry abandoned zone=\(announced, privacy: .public) afterMs=\(elapsedMs, privacy: .public)"
         )
         provisionallyAnnouncedZoneId = nil
