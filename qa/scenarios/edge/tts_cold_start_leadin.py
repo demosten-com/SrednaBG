@@ -43,23 +43,31 @@ def build() -> Scenario:
         pump(entry_plan)
 
     def assert_lead_in_before_speech(ctx: RunContext) -> None:
-        expect(
-            ctx.obs, ZoneStateChange,
-            where=lambda e: e.new == "InZone",
-            within_s=entry_plan.duration_ms / 1000 + 30,
-            description="enter zone",
-        )
         # The entry announcement must arrive queued behind the silent warmup:
         # lead-in first, words second. A cold-start speak without the lead-in
         # line fails the first expectation.
+        #
+        # It is matched *before* the InZone transition, not after: the entry is
+        # announced from the detector's entry candidate, i.e. several hundred
+        # metres ahead of the confirmed Outside->InZone (see
+        # edge.provisional_entry). `expect` discards everything it drains, so
+        # waiting for the state change first would throw both TTS lines away.
         expect_in_order(
             ctx.obs,
             [
                 (TtsLeadIn, None),
                 (TtsSpeak, None),
             ],
-            within_s=30,
+            within_s=entry_plan.duration_ms / 1000 + 30,
             description="cold-start entry announcement is preceded by lead-in silence",
+        )
+        # The announced candidate must still confirm — the lead-in guard is
+        # about audio routing, and must not be provable by a phantom entry.
+        expect(
+            ctx.obs, ZoneStateChange,
+            where=lambda e: e.new == "InZone",
+            within_s=60,
+            description="enter zone",
         )
 
     return Scenario(

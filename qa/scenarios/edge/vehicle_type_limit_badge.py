@@ -9,8 +9,10 @@ Start as 'truck' (settings combo S2) and drive struma-02-south — car limit
 140, truck limit 90 — at 100 km/h: over the truck limit, comfortably under
 the car limit. Asserts the whole vehicle-aware chain:
 
-1. Zone entry is detected (state machine).
-2. The entry announcement speaks the TRUCK limit (90, not 140).
+1. The entry announcement speaks the TRUCK limit (90, not 140). It is
+   asserted first because it fires from the detector's entry *candidate*,
+   ahead of the confirmed transition (see `edge.provisional_entry`).
+2. Zone entry is detected (state machine).
 3. The over-limit warning fires — the engine judged 100 km/h against 90.
 4. (Android only) the HomeScreen in-zone card renders the truck limit:
    a `uiautomator dump` taken mid-zone must contain the vehicle-resolved
@@ -128,6 +130,22 @@ def build() -> Scenario:
         # Feed to mid-zone, freeze the feed for the UI check, then finish
         # the drive. The 1-2 s feed pause is far below the 10 s dropout gate.
         _feed(fixes[:mid])
+        # Order matters: the entry is announced from the detector's entry
+        # *candidate*, i.e. BEFORE the confirmed Outside->InZone transition (see
+        # edge.provisional_entry). `expect` discards everything it drains, so
+        # waiting for InZone first would throw the entry announcement away and
+        # the limit assertion below could never match it.
+        expect(
+            ctx.obs,
+            TtsSpeak,
+            # Speeds are spelled into words before TTS (see qa/speech_numbers.py),
+            # so match the spelled truck limit (ninety / деветдесет) — still
+            # distinct from the car limit (140) — not the bare digits.
+            where=lambda e: (words(TRUCK_LIMIT, False) in e.text or words(TRUCK_LIMIT, True) in e.text)
+            and ("limit" in e.text.lower() or "Ограничение" in e.text),
+            within_s=15,
+            description=f"entry announcement speaks the truck limit {TRUCK_LIMIT}",
+        )
         expect(
             ctx.obs,
             ZoneStateChange,
@@ -140,17 +158,6 @@ def build() -> Scenario:
         _feed(fixes[mid:])
 
     def asserts(ctx: RunContext) -> None:
-        expect(
-            ctx.obs,
-            TtsSpeak,
-            # Speeds are spelled into words before TTS (see qa/speech_numbers.py),
-            # so match the spelled truck limit (ninety / деветдесет) — still
-            # distinct from the car limit (140) — not the bare digits.
-            where=lambda e: (words(TRUCK_LIMIT, False) in e.text or words(TRUCK_LIMIT, True) in e.text)
-            and ("limit" in e.text.lower() or "Ограничение" in e.text),
-            within_s=10,
-            description=f"entry announcement speaks the truck limit {TRUCK_LIMIT}",
-        )
         expect(
             ctx.obs,
             TtsSpeak,

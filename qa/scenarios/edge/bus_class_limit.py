@@ -20,8 +20,10 @@ from "car" at the UI.
 Drives struma-02-south — car 140, bus 100 — as 'bus' (combo S5, voice on) at
 120 km/h: over the class limit, comfortably under the car limit. Asserts:
 
-1. Zone entry is detected.
-2. The entry announcement speaks the CLASS limit (100, not 140).
+1. The entry announcement speaks the CLASS limit (100, not 140) — asserted
+   first, since it fires from the detector's entry *candidate*, ahead of the
+   confirmed transition (see `edge.provisional_entry`).
+2. Zone entry is detected.
 3. The over-limit warning fires — the engine judged 120 km/h against 100.
 4. (Android only) the in-zone card renders 100 and not the car limit.
 """
@@ -125,6 +127,22 @@ def build() -> Scenario:
 
     def drive_and_check_badge(ctx: RunContext) -> None:
         _feed(fixes[:mid])
+        # Order matters: the entry is announced from the detector's entry
+        # *candidate*, i.e. BEFORE the confirmed Outside->InZone transition (see
+        # edge.provisional_entry). `expect` discards everything it drains, so
+        # waiting for InZone first would throw the entry announcement away and
+        # the limit assertion below could never match it.
+        expect(
+            ctx.obs,
+            TtsSpeak,
+            # Speeds are spelled into words before TTS (see qa/speech_numbers.py).
+            where=lambda e: (
+                words(CLASS_LIMIT, False) in e.text or words(CLASS_LIMIT, True) in e.text
+            )
+            and ("limit" in e.text.lower() or "Ограничение" in e.text),
+            within_s=15,
+            description=f"entry announcement speaks the class limit {CLASS_LIMIT}",
+        )
         expect(
             ctx.obs,
             ZoneStateChange,
@@ -137,17 +155,6 @@ def build() -> Scenario:
         _feed(fixes[mid:])
 
     def asserts(ctx: RunContext) -> None:
-        expect(
-            ctx.obs,
-            TtsSpeak,
-            # Speeds are spelled into words before TTS (see qa/speech_numbers.py).
-            where=lambda e: (
-                words(CLASS_LIMIT, False) in e.text or words(CLASS_LIMIT, True) in e.text
-            )
-            and ("limit" in e.text.lower() or "Ограничение" in e.text),
-            within_s=10,
-            description=f"entry announcement speaks the class limit {CLASS_LIMIT}",
-        )
         expect(
             ctx.obs,
             TtsSpeak,
