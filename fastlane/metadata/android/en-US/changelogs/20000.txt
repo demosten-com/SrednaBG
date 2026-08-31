@@ -1,0 +1,9 @@
+v2.0.0
+
+• New: Trip history — every completed average-speed zone is saved on your phone. Browse the list, open a trip to see your average, top and lowest speed, and a speed-over-time graph with the zone limit. Choose how long records are kept in Settings (off / 1 / 3 / 6 months, default 3).
+• New: "Show on map" — from any history record, jump to the map with that zone colored green or red by the result and the arrow placed at the zone start.
+• New "Not measured" status: if the app starts mid-zone and never saw you enter, it says so plainly instead of showing you an average that cannot be trusted.
+• Fixed: no more false zone entry when driving on a nearby road that runs alongside a zone.
+• Fixed: the first word of a voice alert is no longer swallowed when the audio route wakes up (Bluetooth / car speakers).
+• Clearer vehicle types — the picker now names the whole licence class: Car/Motorcycle, Bus/Minibus/With trailer, Truck. Driving a car with a caravan? Pick the middle one.
+• Updated offline map and zone list (now 76 zones), plus the zone count is shown in Settings next to the data date.
