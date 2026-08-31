@@ -38,7 +38,7 @@ python qa/srednabg_qa.py --suite scenarios       # ~20 min — edge cases (stop,
 python qa/srednabg_qa.py --suite history         # ~7 min — History: records a traversal, retention=none records nothing, retention key round-trips (cross-platform)
 python qa/srednabg_qa.py --suite sync            # ~5 min — zones happy + all-usable (served-data tripwire) + toggle-off + freshness + remote-older (recency gate) + offline; map disabled-gate
 python qa/srednabg_qa.py --suite ui              # ~1 min — phone UI walk + font-scale cards + History "Show on map" gating + retired-feed notice
-python qa/srednabg_qa.py --suite full-zones      # ~75 min @4× — all 74 zones, minimal asserts
+python qa/srednabg_qa.py --suite full-zones      # ~75 min @4× — all 76 zones, minimal asserts
 python qa/srednabg_qa.py --suite nightly         # ~2 hr — representative + full-zones + scenarios + ui
 ```
 
@@ -214,7 +214,7 @@ Three standalone adb tools (not part of `srednabg_qa.py`; they talk straight to
   not leak into speech). An **abandoned** candidate — announced, then dropped
   before `ENTRY_CONFIRM_DISTANCE_M` — is deliberately *not* a failure: it is the
   accepted cost of announcing early. It is counted and printed in the run
-  summary, because the rate across all 74 zones is the number that says whether
+  summary, because the rate across all 76 zones is the number that says whether
   the trade is holding up.
 
   It judges by the *dominant* traversal (not "any zone ever seen") on purpose:

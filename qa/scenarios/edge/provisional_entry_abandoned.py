@@ -17,7 +17,7 @@ shape rather than pretending it cannot occur:
 
   (a) the entry is announced from the candidate;
   (b) the abandonment is *reported* on the QA channel — the counter that tells
-      us how often this bites across `qa/validate-zones.sh`'s 74 zones;
+      us how often this bites across `qa/validate-zones.sh`'s 76 zones;
   (c) nothing further is spoken. In particular there is no retraction: a
       correction the driver did not ask for is more confusing than silence, and
       no exit line may be invented for a traversal that never opened;

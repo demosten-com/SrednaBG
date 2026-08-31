@@ -987,6 +987,16 @@ def snap_junction_seams(
     metres, the endpoint backed by TollTracker coordinates wins (the highest-
     precision source); on a tie, A's end wins. Runs before centerline
     alignment, which then pulls the centerlines onto the snapped endpoints.
+
+    A seam is recognised two ways. By distance, when the endpoints land within
+    ``snap_m`` of each other. Or by **km marker**: BG TOLL numbers both sides of
+    a shared camera with the identical marker, which identifies the one physical
+    point regardless of how far the two source coordinates drifted apart — the
+    case that arises when only one of the two zones merged with TollTracker, so
+    the seam is BG TOLL coordinates on one side and TollTracker's on the other
+    (Сандански on АМ Струма, ~50 m, 2026-08). That is still bounded by
+    ``JUNCTION_GAP_MAX_M`` so a mis-transcribed marker can never fuse two zones
+    across a genuine inter-zone stretch.
     """
     groups: dict[tuple[str, str], list[Zone]] = {}
     for zone in zones:
@@ -1001,7 +1011,14 @@ def snap_junction_seams(
                 if a is b:
                     continue
                 gap = _haversine(a.end.lat, a.end.lng, b.start.lat, b.start.lng)
-                if not 0 < gap <= snap_m:
+                if gap <= 0:
+                    continue
+                same_marker = bool(
+                    a.end.km_marker
+                    and a.end.km_marker == b.start.km_marker
+                    and gap < JUNCTION_GAP_MAX_M
+                )
+                if gap > snap_m and not same_marker:
                     continue
                 a_tt = "tolltracker" in a.source
                 b_tt = "tolltracker" in b.source

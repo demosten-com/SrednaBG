@@ -447,6 +447,40 @@ class TestSnapJunctionSeams:
         snap_junction_seams([a, b])
         assert (b.start.lat, b.start.lng) == before
 
+    def test_same_km_marker_snaps_beyond_the_distance_band(self):
+        # The Сандански seam on АМ Струма (2026-08): the northern zone merged
+        # without TollTracker, so its BG TOLL coordinate sits ~50 m from the
+        # TollTracker-backed neighbour's — but BG TOLL numbers both sides of the
+        # camera 143+945, which identifies the single physical point.
+        a = self._zone(
+            "struma-04-north",
+            (41.514, 23.271),
+            (41.5730611, 23.2398176),
+            source="bgtoll+tolltracker+kml",
+        )
+        a.end.km_marker = "143+945"
+        b = self._zone(
+            "struma-03-north",
+            (41.573458, 23.239572),
+            (41.684, 23.181),
+            source="bgtoll+kml",
+        )
+        b.start.km_marker = "143+945"
+        a_end = (a.end.lat, a.end.lng)
+        snap_junction_seams([a, b])
+        # A is the TollTracker-backed side, so B's start moves onto A's end.
+        assert (b.start.lat, b.start.lng) == a_end
+
+    def test_same_km_marker_does_not_fuse_across_a_real_stretch(self):
+        # A mis-transcribed marker must not merge zones a kilometre apart.
+        a = self._zone("trakiya-01-east", (42.550, 23.703), (42.427, 23.855))
+        a.end.km_marker = "43+448"
+        b = self._zone("trakiya-02-east", (42.440, 23.870), (42.400, 23.990))
+        b.start.km_marker = "43+448"
+        before = (b.start.lat, b.start.lng)
+        snap_junction_seams([a, b])
+        assert (b.start.lat, b.start.lng) == before
+
     def test_wide_gap_left_for_validate_warning(self):
         a = self._zone("trakiya-01-east", (42.550, 23.703), (42.427, 23.855))
         b = self._zone("trakiya-02-east", (42.428, 23.856), (42.400, 23.990))
