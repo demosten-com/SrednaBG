@@ -40,6 +40,18 @@ ICON_SRC="$REPO_ROOT/design/android/512px-custom.png"
 FEATURE_SRC="$REPO_ROOT/design/android/feature_graphic_white_95.png"
 FRAMED_DIR="$REPO_ROOT/web/screenshots/android/framed"
 
+# Per-locale release-note cap, enforced below. F-Droid CI flags anything longer
+# as "Fastlane/Triple-T whatsNew in <locale> should be shorter than 500
+# characters"; Play's "What's new" field has the identical limit.
+CHANGELOG_MAX_CHARS=500
+
+# versionCodes whose notes were already published over the cap and are left
+# as-is: rewriting a shipped release's notes changes what F-Droid displays for
+# a version users already have, to silence a Minor warning about the past.
+# 10004/10100/20000 shipped at 587/690/1105 (en-US) chars. Do NOT extend this
+# list to excuse a new release — shorten the new file instead.
+CHANGELOG_GRANDFATHERED="10004 10100 20000"
+
 for f in "$ICON_SRC" "$FEATURE_SRC"; do
     if [[ ! -f "$f" ]]; then
         echo "error: missing source asset: $f" >&2
@@ -53,6 +65,27 @@ done
 EN_SHOTS=(04-light-en.png 05-dark-en.png 07-light-en.png 01-light-en.png 02-light-en.png 11-light-en.png 12-dark-en.png 08-dark-en.png)
 BG_SHOTS=(04-light-bg.png 05-dark-bg.png 07-light-bg.png 01-light-bg.png 02-light-bg.png 11-light-bg.png 12-dark-bg.png 08-dark-bg.png)
 
+# F-Droid's fdroiddata CI lints Fastlane/Triple-T whatsNew at 500 chars (the
+# same cap Play enforces on "What's new"), warning once per locale on every
+# longer file. Play truncates silently and F-Droid only warns, so this is the
+# one place that catches an over-long release note before either store does.
+# Runs BEFORE any destination dir is wiped, so a failure leaves the tree intact.
+check_changelogs() {
+    local locale="$1" f code n
+    for f in "$SRC/$locale/changelogs"/*.txt; do
+        code=$(basename "$f" .txt)
+        case " $CHANGELOG_GRANDFATHERED " in
+            *" $code "*) continue ;;
+        esac
+        n=$(wc -m < "$f" | tr -d ' ')
+        if [ "$n" -gt "$CHANGELOG_MAX_CHARS" ]; then
+            echo "error: $locale changelog $(basename "$f") is $n chars (max $CHANGELOG_MAX_CHARS)." >&2
+            echo "       Shorten it in $SRC/$locale/changelogs/ and re-run." >&2
+            exit 1
+        fi
+    done
+}
+
 gen_locale() {
     local locale="$1"
     shift
@@ -60,6 +93,8 @@ gen_locale() {
     local dir="$DEST_ROOT/$locale"
     local img="$dir/images"
     local shots_dir="$img/phoneScreenshots"
+
+    check_changelogs "$locale"
 
     echo "==> Generating locale: $locale"
     # Start clean so removed screenshots don't linger.

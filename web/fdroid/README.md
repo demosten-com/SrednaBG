@@ -8,11 +8,20 @@ per-tag updates. None of this is read directly by F-Droid — to push an update,
 
 ## Layout
 
-- `metadata.yml` — draft of `metadata/com.demosten.srednabg.yml` for fdroiddata.
+- `metadata.yml` — **mirror** of `metadata/com.demosten.srednabg.yml` in fdroiddata.
+  Routine version bumps are written there by F-Droid's checkupdates bot
+  (`AutoUpdateMode: Version`), not by us, so treat upstream master as the source
+  of truth and re-sync this file from it before making any recipe change:
+  `curl -fsSL https://gitlab.com/fdroid/fdroiddata/-/raw/master/metadata/com.demosten.srednabg.yml -o web/fdroid/metadata.yml`
 - `{en-US,bg}/title.txt` — app title per locale.
 - `{en-US,bg}/short_description.txt` — F-Droid short description (≤80 chars).
 - `{en-US,bg}/full_description.txt` — F-Droid full description (≤4000 chars).
-- `{en-US,bg}/changelogs/<versionCode>.txt` — per-release notes.
+- `{en-US,bg}/changelogs/<versionCode>.txt` — per-release notes, **max 500
+  characters each**. fdroiddata's CI warns above that
+  (`Fastlane/Triple-T whatsNew in <locale> should be shorter than 500
+  characters`) and Play's "What's new" field caps at the same 500, so a
+  compliant note can be pasted into both. `gen-fastlane-metadata.sh` enforces
+  this and fails rather than generating an over-long note.
 - `map-bundle-checksums.txt` — a single `<sha256>  map-bundle.zip` line (the
   current bundle's digest); the one pinned source of truth, read at build time
   by `backend/scripts/fetch-fdroid-map-bundle.sh`. The Android release workflow
