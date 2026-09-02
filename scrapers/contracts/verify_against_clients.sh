@@ -109,11 +109,18 @@ SWIFT
     NAME="$(basename "$FIXTURE" .json)"
     [ "$NAME" = "expectations" ] && continue
 
+    # `swift_decode` is either one outcome for every client, or an object keyed
+    # by client version over a `default` — a release may deliberately change how
+    # it handles a fixture without that meaning the rule went away.
     EXPECTED="$(python3 -c "
-import json, pathlib, sys
+import json, pathlib
 e = json.loads(pathlib.Path('$HERE/fixtures/expectations.json').read_text())
 entry = e.get('$NAME')
-print(entry['swift_decode'] if entry else 'UNDECLARED')
+if not entry:
+    print('UNDECLARED')
+else:
+    d = entry['swift_decode']
+    print(d if isinstance(d, str) else d.get('${TAG#v}', d['default']))
 ")"
 
     if swift "$DRIVER" "$FIXTURE" >/dev/null 2>&1; then ACTUAL="succeeds"; else ACTUAL="fails"; fi

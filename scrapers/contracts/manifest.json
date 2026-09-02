@@ -12,8 +12,9 @@
     "because a client-side fix can never reach an install that already exists. When",
     "v2.x ships, a version may be retired to WARN by adding a `severity` key here —",
     "see `client_contract.SEVERITY_FOR_STATUS`. Retirement should be a deliberate",
-    "act, not a side effect of shipping something newer: on the day 2.0.0 goes live,",
-    "1.1.0 is still the entire installed base.",
+    "act, not a side effect of shipping something newer: 2.0.0 going live did not",
+    "retire 1.1.0, which is still the installed base on every device that has",
+    "not updated.",
     "",
     "`feeds` lists the data feeds the scraper publishes. A feed is a served",
     "payload variant, named by a positive integer: feed 1 is `/api/zones` +",
@@ -31,8 +32,15 @@
   ],
   "clients": [
     {
-      "version": "1.1.0",
+      "version": "2.0.0",
       "status": "live",
+      "feed": 1,
+      "platforms": ["android", "ios"],
+      "contract": "wire-v1.json"
+    },
+    {
+      "version": "1.1.0",
+      "status": "published",
       "feed": 1,
       "platforms": ["android", "ios"],
       "contract": "wire-v1.json"

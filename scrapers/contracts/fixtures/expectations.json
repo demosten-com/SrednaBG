@@ -9,15 +9,25 @@
     "catalog with it. 'tolerated' means it decodes cleanly and the rule exists",
     "for a reason the Swift decoder cannot see — the Android map, or the engine.",
     "Both are legitimate reasons to refuse to publish; only the first is a reason",
-    "the *decoder* would notice."
+    "the *decoder* would notice.",
+    "",
+    "`swift_decode` is normally one outcome for every released client. Where a",
+    "release deliberately changed how it handles a fixture, it becomes an object",
+    "keyed by client version over a `default` — a client hardening itself must",
+    "not read as the rule going away, because the rule protects the clients that",
+    "did NOT harden. Enforcement is unchanged either way: a violation stays a",
+    "publish failure while any client listed in manifest.json still breaks on it."
   ],
   "compliant": {
     "swift_decode": "succeeds",
     "why": "The baseline. If this ever fails, the contract is too loose and the gate would publish data that bricks the fleet."
   },
   "violation-missing-limits": {
-    "swift_decode": "fails",
-    "why": "SpeedLimits.truck/bus are non-optional Int with a synthesized Codable, so an absent key throws keyNotFound and fails the ENTIRE ZonesResponse decode. This is the 2026-08 Път I-8 outage — every published iOS install lost zone sync for five days."
+    "swift_decode": {
+      "default": "fails",
+      "2.0.0": "tolerated"
+    },
+    "why": "On 1.0.4/1.1.0 SpeedLimits.truck/bus are non-optional Int with a synthesized Codable, so an absent key throws keyNotFound and fails the ENTIRE ZonesResponse decode. This is the 2026-08 Път I-8 outage — every published iOS install lost zone sync for five days. 2.0.0 ships a hand-written init(from:) that falls back to the car limit (Kotlin twin: ZoneSanitizer.withFallbackLimits), so it decodes. The rule stays enforced at ERROR: 1.0.4 and 1.1.0 are still the installed base and still break."
   },
   "violation-missing-key": {
     "swift_decode": "fails",

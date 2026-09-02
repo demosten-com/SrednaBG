@@ -56,6 +56,14 @@ The site is live: the `X-Robots-Tag noindex` header has been dropped so search e
 
 None. The site is static. Edit `web/html/`, copy to `$HOME/srednabg_com/` on Namecheap (FTP/SSH or rsync). No bundler, no minifier.
 
+Deploy (checksum-compare, no `--delete` so the cron-produced `api/` tree survives):
+
+```bash
+rsync -avzc --no-perms --exclude '.DS_Store' -e "ssh -p 21098" web/html/ demoxtgw@demosten.com:srednabg_com/
+```
+
+`--no-perms` matters: plain `-a` copies the **local** `web/html/` mode onto the remote docroot, and a `700` local dir silently drops the group-execute bit the web server needs — the whole site then answers 403/404. The docroot must stay `750 demoxtgw:nobody` (same as the other addon domains); if the site goes dark after a deploy, `chmod 750 $HOME/srednabg_com` is the fix.
+
 ## Screenshot tree (`web/screenshots/`)
 
 **Tracked in git.** Landing zone for the screenshot tooling under `qa/` — regenerable via the skills, but committed so the store listing is reproducible: `web/fdroid/scripts/stage-fdroiddata.sh` stages the framed PNGs straight from here.

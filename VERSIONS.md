@@ -16,11 +16,13 @@ shipped to anyone.
 
 | Version | Status | Tag | Commit | versionCode | Feed | Released | Play | App Store | F-Droid | GitHub |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 1.1.0 | `live` | `v1.1.0` | `fbdaa36` | 10100 | 1 | 2026-06-29 | ✅ | ✅ | ✅ | ✅ |
+| 2.0.0 | `live` | `v2.0.0` | `cad353b` | 20000 | 1 | 2026-09-02 | ✅ | ✅ | ✅ | ✅ |
+| 1.1.0 | `published` | `v1.1.0` | `fbdaa36` | 10100 | 1 | 2026-06-29 | superseded | superseded | superseded | superseded |
 | 1.0.4 | `published` | `v1.0.4` | `dba1ef7` | 10004 | 1 | 2026-06-02 | superseded | superseded | superseded | superseded |
 
-**Latest published: 1.1.0** — live on every channel (Play, App Store, F-Droid,
-GitHub Releases).
+**Latest published: 2.0.0** — live on every channel (Play, App Store, F-Droid,
+GitHub Releases). 1.1.0 is superseded but still the installed base on every
+device that has not updated, so it stays enforced exactly as strictly.
 
 Status vocabulary, shared with `contracts/manifest.json`:
 
@@ -29,8 +31,8 @@ Status vocabulary, shared with `contracts/manifest.json`:
   protected. Enforced exactly as strictly as `live`: a release date cannot
   decide that someone's phone stopped mattering.
 - A version is only exempted by explicitly marking it retired in
-  `contracts/manifest.json`. On the day 2.0.0 goes live, 1.1.0 is still the
-  entire installed base.
+  `contracts/manifest.json`. 2.0.0 going live did not retire anything: on that
+  day 1.1.0 was still the entire installed base.
 
 **Feed** is the data feed that release fetches: feed 1 is `/api/zones` +
 `/api/version`, feed N>1 is `/api/zones.N` + `/api/version.N`. Every version

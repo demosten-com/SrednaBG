@@ -35,7 +35,7 @@ class TestManifest:
         """v1.0.1-v1.0.3 are tags that never reached a store, so they impose no
         obligation. Listing them would block publishes to protect nobody."""
         versions = {c["version"] for c in load_manifest()}
-        assert versions == {"1.0.4", "1.1.0"}
+        assert versions == {"1.0.4", "1.1.0", "2.0.0"}
 
     def test_every_client_resolves_a_contract(self):
         for client in load_manifest():
@@ -83,7 +83,10 @@ class TestEveryRuleIsProved:
 
     def test_every_violation_names_the_clients_it_breaks(self):
         errors = contract_violations(_fixture("violation-missing-limits"))
-        assert all("1.0.4" in e and "1.1.0" in e for e in errors), errors
+        # Derived from the manifest, not hardcoded: a newly published client
+        # must show up in the message without anyone remembering to edit here.
+        expected = {c["version"] for c in load_manifest() if c["feed"] == 1}
+        assert all(all(v in e for v in expected) for e in errors), errors
 
     def test_every_constraint_in_the_contract_has_a_fixture(self):
         """Tripwire: a rule added without a fixture proving it fails here."""
