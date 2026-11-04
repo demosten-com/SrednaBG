@@ -76,11 +76,19 @@ def _zones_line(platform: str) -> str:
 
 
 def _platform_section(platform: str) -> str:
-    junit = _latest_junit(platform)
-    if junit is None:
-        return (f"<b>{platform}</b>: no report — the job failed before this "
-                "platform's suite ran (build / device boot / setup)")
-    total, failed = _failed_cases(junit)
+    try:
+        junit = _latest_junit(platform)
+        if junit is None:
+            return (f"<b>{platform}</b>: no report — the job failed before this "
+                    "platform's suite ran (build / device boot / setup)")
+        total, failed = _failed_cases(junit)
+    except (ET.ParseError, OSError) as e:
+        # A broken report must not prevent the other platform's summary or
+        # the run link from reaching Telegram.
+        print(f"notify: could not read {platform} QA report ({type(e).__name__})",
+              file=sys.stderr)
+        return (f"<b>{platform}</b>: report unavailable or invalid — "
+                "see the run logs and artifacts")
     if not failed:
         return f"<b>{platform}</b>: {total}/{total} passed"
     lines = [f"<b>{platform}</b>: {len(failed)} of {total} failed"]

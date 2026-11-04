@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from xml.sax.saxutils import escape
+from xml.sax.saxutils import quoteattr
 
 from .runner import ScenarioResult
 
@@ -34,13 +34,13 @@ def _render_junit(suite_name: str, results: list[ScenarioResult], *, interrupted
     total_time = sum(r.duration_s for r in results)
     parts = [
         '<?xml version="1.0" encoding="UTF-8"?>',
-        f'<testsuite name="{escape(suite_name)}" tests="{len(results)}" '
+        f'<testsuite name={quoteattr(suite_name)} tests="{len(results)}" '
         f'failures="{failures}" errors="{errors}" time="{total_time:.2f}"'
         + (' interrupted="true">' if interrupted else '>'),
     ]
     for r in results:
         parts.append(
-            f'  <testcase name="{escape(r.name)}" time="{r.duration_s:.2f}"'
+            f'  <testcase name={quoteattr(r.name)} time="{r.duration_s:.2f}"'
             + (' />' if r.passed else '>')
         )
         if not r.passed:
@@ -50,7 +50,7 @@ def _render_junit(suite_name: str, results: list[ScenarioResult], *, interrupted
                 + "\n".join(r.recent_logs[-50:])
             )
             parts.append(
-                f'    <{tag} message="{escape(_one_line(r.failure_message))}">'
+                f'    <{tag} message={quoteattr(_one_line(r.failure_message))}>'
                 f'{body}</{tag}>'
             )
             parts.append('  </testcase>')

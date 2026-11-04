@@ -63,5 +63,22 @@ class CdataSafety(unittest.TestCase):
         self.assertIn("]]>", body)
 
 
+class AttributeSafety(unittest.TestCase):
+    def test_quoted_traceback_and_names_round_trip(self):
+        suite_name = 'nightly "both" & <devices>'
+        name = 'zone "A" and \'B\' & <entry>'
+        message = 'unexpected RuntimeError: zone missing\n  File "/tmp/qa.py", line 144'
+        for errored in (False, True):
+            with self.subTest(errored=errored):
+                result = _result(name, passed=False, failure=message, errored=errored)
+                dom = parseString(_render_junit(suite_name, [result]))
+                self.assertEqual(dom.documentElement.getAttribute("name"), suite_name)
+                case = dom.getElementsByTagName("testcase")[0]
+                self.assertEqual(case.getAttribute("name"), name)
+                verdict = dom.getElementsByTagName("error" if errored else "failure")[0]
+                self.assertEqual(verdict.getAttribute("message"), " ".join(message.split()))
+                self.assertIn(message, "".join(n.data for n in verdict.childNodes))
+
+
 if __name__ == "__main__":
     unittest.main()
