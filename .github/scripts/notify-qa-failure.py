@@ -82,6 +82,7 @@ def _platform_section(platform: str) -> str:
             return (f"<b>{platform}</b>: no report — the job failed before this "
                     "platform's suite ran (build / device boot / setup)")
         total, failed = _failed_cases(junit)
+        skipped = len(list(ET.parse(junit).getroot().iter("skipped")))
     except (ET.ParseError, OSError) as e:
         # A broken report must not prevent the other platform's summary or
         # the run link from reaching Telegram.
@@ -90,8 +91,10 @@ def _platform_section(platform: str) -> str:
         return (f"<b>{platform}</b>: report unavailable or invalid — "
                 "see the run logs and artifacts")
     if not failed:
-        return f"<b>{platform}</b>: {total}/{total} passed"
-    lines = [f"<b>{platform}</b>: {len(failed)} of {total} failed"]
+        return (f"<b>{platform}</b>: {total - skipped}/{total} passed"
+                + (f", {skipped} skipped (see coverage report)" if skipped else ""))
+    lines = [f"<b>{platform}</b>: {len(failed)} of {total} failed"
+             + (f", {skipped} skipped" if skipped else "")]
     for name, reason in failed[:MAX_SCENARIOS]:
         lines.append(f"• <code>{html.escape(name)}</code> — {html.escape(reason)}")
     if len(failed) > MAX_SCENARIOS:

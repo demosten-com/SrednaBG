@@ -49,12 +49,12 @@ def build() -> Scenario:
                 and e.zone == zone_id
                 and e.over_limit is False
                 and e.avg_kmh is not None
-                and abs(e.avg_kmh - _helpers.WITHIN_LIMIT_KMH) <= AVG_TOLERANCE_KMH
+                and abs(e.avg_kmh - _helpers.within_limit_kmh(zone_id)) <= AVG_TOLERANCE_KMH
             ),
             within_s=10,
             description=(
                 f"history records {zone_id} within-limit, "
-                f"avg ~{_helpers.WITHIN_LIMIT_KMH:.0f} km/h"
+                f"avg ~{_helpers.within_limit_kmh(zone_id):.0f} km/h"
             ),
         )
 
@@ -63,6 +63,7 @@ def build() -> Scenario:
         expect_crash_free(ctx.obs)
 
     return Scenario(
+        zone_ids=(zone_id,),
         name="history.records_traversal",
         steps=[
             step_lambda("setup", setup),

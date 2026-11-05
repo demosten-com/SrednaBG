@@ -66,6 +66,15 @@ class NotificationReports(unittest.TestCase):
         self.assertIn("<b>ios</b>: 1/1 passed", message)
         self.assertIn(self.run_url, message)
 
+    def test_skipped_scenarios_are_not_reported_as_passed(self):
+        self.write_report("android", _render_junit("nightly", [
+            ScenarioResult(name="ok", passed=True, duration_s=1),
+            ScenarioResult(name="absent", passed=False, duration_s=0, skip_reason="no geometry"),
+        ]))
+        message = notify.build_message()
+        self.assertIn("<b>android</b>: 1/2 passed, 1 skipped", message)
+        self.assertNotIn("2/2 passed", message)
+
     def test_unreadable_report_still_includes_run_link(self):
         self.write_report("android", "<testsuite/>")
         with patch.object(notify, "_failed_cases", side_effect=PermissionError):

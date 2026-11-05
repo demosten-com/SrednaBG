@@ -23,7 +23,8 @@ device sync it, downloads the same payload here and switches this module to the
 snapshot. Everything that reads zone data in the suites goes through `path()` /
 `zones_by_id()`, so it follows the switch.
 
-Scenarios that need one *particular* stretch of road name it by an **anchor**
+Most scenarios select current geometry by properties in `zone_selection.py`.
+Historical reproducers that need one *particular* stretch name it by an **anchor**
 (`fixtures/zone_anchors.yaml`) — a point on the road plus a direction — and
 `resolve()` turns that into whatever id the active catalog gives it today.
 """
@@ -157,12 +158,50 @@ def fetch_version() -> dict[str, Any]:
     return _get_json(endpoint("version"))
 
 
+def validate_catalog(payload: dict) -> None:
+    """Reject broken live data before selectors can turn it into missing coverage."""
+    if not isinstance(payload, dict) or not payload.get("zones") or not isinstance(payload.get("hash"), str) or not payload["hash"]:
+        raise ValueError("catalog must contain zones and a content hash")
+    seen = set()
+
+    def point(p):
+        return (len(p) == 2 and all(isinstance(v, (int, float)) and math.isfinite(v) for v in p)
+                and -90 <= p[0] <= 90 and -180 <= p[1] <= 180 and p != [0, 0])
+
+    for z in payload["zones"]:
+        try:
+            zid = z["id"]
+            if not isinstance(zid, str) or not zid or zid in seen:
+                raise ValueError(f"empty or duplicate zone id: {zid!r}")
+            seen.add(zid)
+            if z["direction"] not in {"north", "south", "east", "west"}:
+                raise ValueError(f"{zid}: invalid direction")
+            if not isinstance(z["road"], str) or not z["road"]:
+                raise ValueError(f"{zid}: invalid road")
+            cl = z["centerline"]
+            if len(cl) < 2 or not all(point(p) for p in cl) or len({tuple(p) for p in cl}) < 2:
+                raise ValueError(f"{zid}: invalid centerline")
+            if not all(point([z[e]["lat"], z[e]["lng"]]) for e in ("start", "end")):
+                raise ValueError(f"{zid}: invalid endpoints")
+            values = [z["distance_m"], *(z["speed_limits"][v] for v in ("car", "truck", "bus"))]
+            if not all(isinstance(v, (int, float)) and math.isfinite(v) and v > 0 for v in values):
+                raise ValueError(f"{zid}: invalid distance or speed limit")
+        except (KeyError, TypeError) as e:
+            raise ValueError(f"malformed live zone: {z.get('id', '?') if isinstance(z, dict) else z}") from e
+
+
+def read_snapshot(path: Path) -> Snapshot:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    validate_catalog(payload)
+    return Snapshot(path=path, version=str(payload.get("version", "")),
+                    hash=payload["hash"], zone_count=len(payload["zones"]))
+
+
 def download_snapshot(dest: Path) -> Snapshot:
     """Download exactly what the clients download and save it to `dest`."""
     payload = _get_json(endpoint("zones"))
-    zones = payload.get("zones") if isinstance(payload, dict) else None
-    if not zones or not payload.get("hash"):
-        raise ValueError(f"{endpoint('zones')} served no zones or no hash")
+    validate_catalog(payload)
+    zones = payload["zones"]
     dest.parent.mkdir(parents=True, exist_ok=True)
     tmp = dest.with_name(f".{dest.name}.{os.getpid()}.tmp")
     tmp.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
@@ -254,3 +293,12 @@ def resolve(anchor: str, zones: Optional[dict[str, dict]] = None) -> str:
             f"{min_len} m its scenarios are tuned for — the section was split upstream. "
             f"Re-point the anchor in {ANCHORS_YAML.name}.")
     return zone["id"]
+
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="Download and validate the live QA catalog")
+    parser.add_argument("--download", required=True, type=Path)
+    args = parser.parse_args()
+    snap = download_snapshot(args.download)
+    print(f"Saved {snap.zone_count} live zones: {snap.version}, {snap.hash}")

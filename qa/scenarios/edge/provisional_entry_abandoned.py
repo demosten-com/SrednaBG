@@ -37,11 +37,11 @@ from ...device import current as current_device
 from ...drive import pump
 from ...events import HistoryDump, ProvisionalEntry, TtsSpeak, ZoneStateChange
 from ...runner import RunContext, Scenario, step_lambda
+from ...zone_selection import centerline
 from ._helpers import ISOLATED_ENTRY_ZONE, base_plan, load_zone, resolve_zone, scenario_setup, scenario_teardown
 
 ZONE = ISOLATED_ENTRY_ZONE
 APPROACH_KM = 2.0
-SPEED_KMH = 120.0
 # Stop feeding this far past the entry camera: comfortably past the point where
 # the candidate opens (the on-road band reaches ~100-150 m *before* the camera,
 # because a pre-camera fix's projection clamps to the polyline start), and
@@ -66,11 +66,12 @@ def _is_entry(text: str) -> bool:
 
 def build() -> Scenario:
     zone_id = resolve_zone(ZONE)
-    full = base_plan(zone_id, speed_kmh=SPEED_KMH, approach_km=APPROACH_KM, exit_km=1)
+    speed_kmh = max(10, load_zone(zone_id)["speed_limits"]["car"] - 20)
+    full = base_plan(zone_id, speed_kmh=speed_kmh, approach_km=APPROACH_KM, exit_km=1)
     # Cut the drive INTO_ZONE_M past the camera. The generated plan runs at a
     # constant speed from the start of the approach, so distance maps linearly
     # onto its timeline.
-    cut_ms = int(((APPROACH_KM * 1000 + INTO_ZONE_M) / (SPEED_KMH / 3.6)) * 1000)
+    cut_ms = int(((APPROACH_KM * 1000 + INTO_ZONE_M) / (speed_kmh / 3.6)) * 1000)
     plan = full.slice(0, cut_ms)
     baseline: list[int] = []
 
@@ -94,7 +95,7 @@ def build() -> Scenario:
         # Leave the corridor entirely. A few fixes so the detector sees a
         # sustained departure rather than one droppable blip.
         zone = load_zone(zone_id)
-        cl = zone["centerline"]
+        cl = centerline(zone)
         heading = geo.bearing_deg(cl[0][0], cl[0][1], cl[-1][0], cl[-1][1])
         away = (heading + 90) % 360
         d = current_device()
@@ -102,7 +103,7 @@ def build() -> Scenario:
             lat, lng = geo.destination_point(
                 cl[0][0], cl[0][1], away, DEPART_M + i * 30.0
             )
-            d.feed_point(lat, lng, SPEED_KMH / 3.6, away)
+            d.feed_point(lat, lng, speed_kmh / 3.6, away)
             time.sleep(1.0)
 
     def asserts(ctx: RunContext) -> None:
@@ -177,6 +178,7 @@ def build() -> Scenario:
             )
 
     return Scenario(
+        zone_ids=(zone_id,),
         name="edge.provisional_entry_abandoned",
         steps=[
             step_lambda("setup", setup),

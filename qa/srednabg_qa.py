@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import json
 import signal
 import sys
 import traceback
@@ -44,7 +45,7 @@ from qa._preflight import require  # noqa: E402
 require("yaml")
 
 from qa import device as device_mod  # noqa: E402
-from qa import zone_source  # noqa: E402
+from qa import zone_source, zone_selection  # noqa: E402
 from qa.assertions import AssertionFailure  # noqa: E402
 from qa.report import write_reports  # noqa: E402
 from qa.runner import Scenario, SuiteRunner, step_lambda  # noqa: E402
@@ -65,7 +66,6 @@ BULK_DIR = _HERE / "scenarios" / "bulk"
 # location.source_selected scenario prepended to smoke + representative.
 EXPECTED_LOCATION_SOURCE: str | None = None
 _FLAVOR_TO_SOURCE = {"aosp": "system", "gms": "fused", "auto": None}
-REPRESENTATIVE_DIR = _HERE / "scenarios" / "representative"
 EDGE_DIR = _HERE / "scenarios" / "edge"
 SYNC_DIR = _HERE / "scenarios" / "sync"
 
@@ -133,15 +133,19 @@ SYNC_SCENARIOS = [
 
 
 def _build_or_fail(name: str, build: Callable[[], Scenario]) -> Scenario:
-    """Build a scenario, turning a build-time error into a *failing scenario*.
+    """Keep builder errors in the report instead of losing the suite.
 
-    Building is where a scenario meets the zone catalog — an anchor that no
-    longer resolves, an id the catalog dropped, a centerline too short to route.
-    On a live-zones run that is upstream data arriving overnight, and it has to
-    cost one named red line in the report, not the whole run (a raise here would
-    unwind the suite mid-flight and lose every result gathered so far)."""
+    Only an explicit NotApplicable prerequisite becomes a skip. Missing fields,
+    route-generation bugs and unexpected exceptions remain failing scenarios.
+    """
+    zone_selection.selections.clear()
     try:
-        return build()
+        scenario = build()
+        if not scenario.zone_ids:
+            scenario.zone_ids = tuple(dict.fromkeys(s["zone_id"] for s in zone_selection.selections))
+        return scenario
+    except zone_selection.NotApplicable as e:
+        return Scenario(name=name, steps=[], skip_reason=str(e))
     except Exception as e:
         message = f"could not build scenario: {type(e).__name__}: {e}\n{traceback.format_exc()}"
 
@@ -151,15 +155,24 @@ def _build_or_fail(name: str, build: Callable[[], Scenario]) -> Scenario:
         return Scenario(name=name, steps=[step_lambda("build", _fail)], timeout_s=30)
 
 
-def _build_specs(specs: list[BulkScenarioSpec]) -> list[Scenario]:
-    return [_build_or_fail(s.name, lambda s=s: build_scenario(s)) for s in specs]
+def _build_specs(specs: list[BulkScenarioSpec], *, category: str = "") -> list[Scenario]:
+    scenarios = []
+    for spec in specs:
+        scenario = _build_or_fail(spec.name, lambda s=spec: build_scenario(s))
+        scenario.zone_ids = (spec.zone_id,)
+        scenario.category = category
+        scenarios.append(scenario)
+    return scenarios
 
 
 def _load_module_scenarios(package: str, names: list[str]) -> list[Scenario]:
     def _build(name: str) -> Scenario:
         return importlib.import_module(f"qa.scenarios.{package}.{name}").build()
 
-    return [_build_or_fail(f"{package}.{name}", lambda n=name: _build(n)) for name in names]
+    scenarios = [_build_or_fail(f"{package}.{name}", lambda n=name: _build(n)) for name in names]
+    for scenario in scenarios:
+        scenario.category = package
+    return scenarios
 
 
 def _location_source_scenario() -> Scenario:
@@ -184,12 +197,11 @@ def _smoke_suite() -> list[Scenario]:
     """1 zone, 1 settings combo, single zone sync, parser self-test (last —
     it judges the event-type coverage of the whole suite run).
 
-    Picks АМ Тракия, Вакарел – Ихтиман because we have real-fixture coverage
-    in core unit tests for that zone — same data path proven good.
+    Selects a motorway long enough for a useful traversal from the active catalog.
     """
     from qa.scenarios.edge._helpers import DEFAULT_ZONE
 
-    zone_id = zone_source.resolve(DEFAULT_ZONE)
+    zone_id = zone_selection.select(DEFAULT_ZONE)["id"]
     spec = BulkScenarioSpec(
         name=f"smoke.{zone_id}",
         zone_id=zone_id,
@@ -216,44 +228,30 @@ def _representative_suite() -> list[Scenario]:
 
 
 def load_representative() -> list[Scenario]:
-    """Load the representative-tier matrix: 6 hand-picked zones × 4 settings
-    combos = 24 scenarios.
-
-    Prefers the committed YAMLs in `scenarios/representative/` (regenerate with
-    `python -m qa.scenarios.representative._generate`). If they're absent (fresh
-    checkout before generation), falls back to synthesizing the same 24 from the
-    `representative_zones.yaml` fixture × `ALL_COMBOS` — so the suite is never
-    silently reduced to a smaller set."""
-    if not REPRESENTATIVE_DIR.exists() or not list(REPRESENTATIVE_DIR.glob("*.yaml")):
-        import yaml
-        from qa import settings as settings_mod
-
-        fixture_path = _HERE / "fixtures" / "representative_zones.yaml"
-        zones = yaml.safe_load(fixture_path.read_text(encoding="utf-8"))["zones"]
-        specs: list[BulkScenarioSpec] = []
-        for z in zones:
-            speed = float(z.get("speed_kmh", 130))
-            for combo in settings_mod.ALL_COMBOS:
-                specs.append(BulkScenarioSpec(
-                    name=f"rep.{z['id']}__{combo.id}",
-                    zone_id=z["id"],
-                    speed_kmh=speed,
-                    settings=combo.id,
-                ))
-        return _build_specs(specs)
-    return _build_specs(load_specs_from_dir(REPRESENTATIVE_DIR))
+    """Extra S1–S4 coverage selected from the active catalog."""
+    from qa.settings import ALL_COMBOS
+    specs = []
+    for zone in zone_selection.representative_zones():
+        for combo in ALL_COMBOS:
+            # Stay below this vehicle's current limit; dedicated edge tests
+            # own over-limit warning assertions.
+            speed = max(10, zone["speed_limits"][combo.vehicle_type] - 10)
+            specs.append(BulkScenarioSpec(
+                name=f"representative.{zone['id']} [{combo.id}]",
+                zone_id=zone["id"], speed_kmh=speed, settings=combo.id))
+    return _build_specs(specs, category="representative")
 
 
 def _full_zones_suite() -> list[Scenario]:
     if zone_source.is_live():
         # The committed YAMLs enumerate the *bundled* catalog; a live run drives
         # every zone actually being served, including ones added since.
-        return _build_specs(specs_for_catalog())
+        return _build_specs(specs_for_catalog(), category="full-zones")
     if not BULK_DIR.exists() or not list(BULK_DIR.glob("*.yaml")):
         print("No bulk YAMLs found. Generate first with:", file=sys.stderr)
         print("    python -m qa.scenarios.bulk._generate", file=sys.stderr)
         sys.exit(2)
-    return _build_specs(load_specs_from_dir(BULK_DIR))
+    return _build_specs(load_specs_from_dir(BULK_DIR), category="full-zones")
 
 
 def _edge_suite() -> list[Scenario]:
@@ -312,9 +310,10 @@ SUITE_BUILDERS = {
 }
 
 
-def _pin_live_zones() -> Iterator[Scenario]:
+def _pin_live_zones(snapshot_path: Path | None = None) -> Iterator[Scenario]:
     """Yield the pin step; whatever is built after it sees the live catalog."""
-    yield live_zones.build()
+    zone_source.use_bundled()  # a failed pin must never reuse an earlier snapshot
+    yield live_zones.build(snapshot_path)
     if not zone_source.is_live():
         raise _LiveZonesUnavailable
 
@@ -323,7 +322,7 @@ class _LiveZonesUnavailable(Exception):
     """The pin step failed, so there is no catalog to build the rest from."""
 
 
-def _nightly(live: bool = False) -> Iterator[Scenario]:
+def _nightly(live: bool = False, snapshot_path: Path | None = None) -> Iterator[Scenario]:
     """A generator on purpose: scenarios are *built* from the zone catalog, and
     on a live run the catalog only exists once the pin step has run — so every
     drive scenario must be built after it, i.e. lazily, mid-suite.
@@ -333,24 +332,37 @@ def _nightly(live: bool = False) -> Iterator[Scenario]:
     yield from _location_source_prefix()
     yield from _sync_suite()
     if live:
-        yield from _pin_live_zones()
-    yield from load_representative()
-    yield from _full_zones_suite()
-    yield from _edge_suite()
-    yield from _history_suite()
-    yield from _ui_suite()
+        yield from _pin_live_zones(snapshot_path)
+    # Construct all drives before spending hours running them. An explicit
+    # plan makes selection changes and unavailable coverage visible immediately.
+    planned = (load_representative() + _full_zones_suite() + _edge_suite()
+               + _history_suite() + _ui_suite())
+
+    def save_plan(ctx):
+        manifest = [{"name": s.name, "zones": s.zone_ids, "category": s.category,
+                     "skip_reason": s.skip_reason} for s in planned]
+        (ctx.report_dir / "plan.json").write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print(f"\n      Planned {len(planned)} scenarios; "
+              f"{sum(s.category == 'full-zones' for s in planned)} full-zone traversals")
+        for scenario in planned:
+            if scenario.skip_reason:
+                print(f"      Not applicable: {scenario.name}: {scenario.skip_reason}")
+
+    yield Scenario("zones.plan", [save_plan])
+    yield from planned
 
 
 SUITE_BUILDERS["nightly"] = _nightly
 
 
-def _live_plan(suite: str) -> Iterator[Scenario]:
+def _live_plan(suite: str, snapshot_path: Path | None = None) -> Iterator[Scenario]:
     """`--zones live`: the suite's scenarios, built after the pin step has run."""
     try:
         if suite == "nightly":
-            yield from _nightly(live=True)
+            yield from _nightly(live=True, snapshot_path=snapshot_path)
         else:
-            yield from _pin_live_zones()
+            yield from _pin_live_zones(snapshot_path)
             yield from SUITE_BUILDERS[suite]()
     except _LiveZonesUnavailable:
         print("      live zones could not be pinned — the rest of the suite is "
@@ -380,9 +392,14 @@ def main(argv: list[str] | None = None) -> int:
                         "'live' = make the device sync /api/zones, download the same "
                         "payload and build every scenario from it. 'auto' (default) "
                         "is live for the nightly suite, bundled for the rest.")
+    p.add_argument("--zones-snapshot", type=Path,
+                   help="Shared live snapshot; device sync must match its hash")
     args = p.parse_args(argv)
     live = args.zones == "live" or (args.zones == "auto" and args.suite == "nightly")
 
+    if args.zones_snapshot and not live:
+        p.error("--zones-snapshot requires --zones live or the nightly suite")
+    zone_source.use_bundled()
     reports_root = args.reports_dir or REPORTS_ROOT
 
     global EXPECTED_LOCATION_SOURCE
@@ -416,7 +433,7 @@ def main(argv: list[str] | None = None) -> int:
     scenarios: Iterator[Scenario]
     if live:
         # Lazy: nothing past the pin step can be built until it has run.
-        scenarios = _live_plan(args.suite)
+        scenarios = _live_plan(args.suite, args.zones_snapshot)
         print(f"Running suite '{args.suite}' against the live zone feed")
     else:
         built = list(SUITE_BUILDERS[args.suite]())
@@ -427,7 +444,7 @@ def main(argv: list[str] | None = None) -> int:
         # The pin step survives any filter — the scenarios it selects are
         # built from the catalog that step provides.
         scenarios = (s for s in scenarios
-                     if args.filter in s.name or s.name == live_zones.PIN_NAME)
+                     if args.filter in s.name or s.name in (live_zones.PIN_NAME, "zones.plan"))
 
     runner = None
     try:
@@ -436,8 +453,10 @@ def main(argv: list[str] | None = None) -> int:
                 for sc in scenarios:
                     print(f"  · {sc.name} ... ", end="", flush=True)
                     r = runner.run(sc)
-                    print(f"{'PASS' if r.passed else 'FAIL'} ({r.duration_s:.1f}s)")
-                    if not r.passed:
+                    print(f"{'SKIP' if r.skip_reason else 'PASS' if r.passed else 'FAIL'} ({r.duration_s:.1f}s)")
+                    if r.skip_reason:
+                        print(f"      {r.skip_reason}")
+                    if r.failed:
                         print(f"      {r.failure_message[:200]}")
                     elif sc.name == live_zones.PIN_NAME:
                         print(f"      Zones under test: {zone_source.describe()}")
@@ -446,14 +465,22 @@ def main(argv: list[str] | None = None) -> int:
                 # able to sync, whether the suite finished or was interrupted.
                 live_zones.release()
 
-            ran = [r for r in runner.results if r.name != live_zones.PIN_NAME]
+            if live and zone_source.is_live() and not args.filter and args.suite in ("nightly", "full-zones"):
+                covered = {z for r in runner.results if r.category == "full-zones" and not r.skip_reason
+                           for z in r.zone_ids}
+                missing = set(zone_source.zones_by_id()) - covered
+                if missing:
+                    def missing_coverage(ctx):
+                        raise AssertionFailure(f"live zones not tested: {', '.join(sorted(missing))}")
+                    runner.run(Scenario("zones.coverage", [missing_coverage]))
+            ran = [r for r in runner.results if r.name not in (live_zones.PIN_NAME, "zones.plan")]
             if args.filter and not ran:
                 print(f"no scenarios matched filter {args.filter!r}", file=sys.stderr)
                 return 2
             junit, md = write_reports(args.suite, runner.report_dir, runner.results)
             print(f"\nReport: {md}")
             print(f"JUnit:  {junit}")
-            n_fail = sum(1 for r in runner.results if not r.passed)
+            n_fail = sum(1 for r in runner.results if r.failed)
             return 0 if n_fail == 0 else 1
     except KeyboardInterrupt:
         print("\nInterrupted — app stopped, foreground service killed.", file=sys.stderr)

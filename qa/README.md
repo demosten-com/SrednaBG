@@ -1,7 +1,6 @@
 # SrednaBG QA harness
 
-End-to-end test layer that drives a running Android emulator (via `adb emu
-geo fix`) or a booted iOS Simulator (via `xcrun simctl` + the app's loopback
+End-to-end test layer that drives a running Android emulator (via its debug location feed) or a booted iOS Simulator (via `xcrun simctl` + the app's loopback
 debug listener), observes typed events parsed from the platform log stream,
 and asserts on the full app stack: zone state machine, audio alerts,
 settings, sync, UI.
@@ -17,8 +16,8 @@ caveats; this README sticks to the Android quick-start.
 
 ```bash
 # 1. boot phone emulator + ensure debug APK is installed
-(cd android && ./gradlew :app:assembleDebug)
-adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+(cd android && ./gradlew :app:assembleGmsDebug)
+adb install -r android/app/build/outputs/apk/gms/debug/app-gms-debug.apk
 
 # 2. pre-grant runtime permissions (the harness does this too on each run)
 adb shell pm grant com.demosten.srednabg android.permission.ACCESS_FINE_LOCATION
@@ -27,7 +26,7 @@ adb shell pm grant com.demosten.srednabg android.permission.POST_NOTIFICATIONS
 # 3. run a suite
 python qa/srednabg_qa.py --suite smoke
 
-# (one-time) generate per-zone YAMLs for the full bulk pass
+# Optional: generate fixtures for an explicit --zones bundled bulk pass
 python -m qa.scenarios.bulk._generate
 
 # headless harness unit tests (parsers / geo / drive / speech-number + TTS parity)
@@ -39,12 +38,35 @@ python -m unittest discover qa/tests
 | Suite | Time | Coverage |
 |-------|------|----------|
 | `smoke` | ~5 min | 1 zone, 1 settings combo, 1 sync, parser self-test |
-| `representative` | ~30 min | 6 hand-picked zones × 4 settings combos + sync set |
-| `full-zones` | ~75 min @ 4× | All 76 zones × constant-speed pass × 4 minimal asserts |
-| `scenarios` | ~20 min | 14 edge cases (stop, dropout, off-ramp, U-turn, swap, auto-stop, dense-centerline, stop-silences-TTS, etc.) |
-| `sync` | ~5 min | Zones happy + offline; map happy + integrity |
+| `representative` | ~30 min | Up to 6 catalog-selected zones × S1–S4 + sync set |
+| `full-zones` | ~75 min @ 4× | Every zone in the selected catalog; target entry, exit and no rebound |
+| `scenarios` | Depends on selected geometry | 21 Android / 18 iOS edge cases (stop, dropout, off-ramp, U-turn, swap, auto-stop, dense-centerline, etc.) |
+| `sync` | ~5 min | Zone sync, freshness, offline behavior and disabled map sync |
 | `ui` | <1 min | Phone UI walk via mobile-mcp / adb input |
-| `nightly` | ~2 hr | representative + full-zones + scenarios + ui |
+| `nightly` | Several hours | Live sync + representative + every live zone + edge cases + History + UI |
+
+Nightly always uses the live feed by default. CI captures one snapshot and pins
+both platforms to its hash; every published zone and direction is traversed.
+The representative matrix is **additional** settings coverage, not a subset that
+replaces the full-zone pass. Zone additions, removals and renumbering require no
+fixture regeneration.
+
+S1–S4 are settings combinations, not road groups:
+
+| Combination | Vehicle | Voice | Periodic updates | Announce only when over | Language |
+|-------------|---------|-------|------------------|-------------------------|----------|
+| S1 | Car | On | On | Yes | Bulgarian |
+| S2 | Truck | On | Off | No | English |
+| S3 | Bus class | Off | On | Yes | System |
+| S4 | Car | On | On | No | Bulgarian |
+
+Every live zone runs with S1. Up to six diverse zones also run all four combinations.
+
+Edge scenarios select geometry and limits through `qa/zone_selection.py`. If a
+special reproducer is absent, the scenario is explicitly skipped with a reason;
+malformed data and failed app assertions remain failures. Fixed native core
+regressions also run nightly, independent of live geometry. See the Actions
+summary and `coverage.json` for tested IDs, actual passes and unavailable cases.
 
 Reports land in `qa/reports/<suite>-<timestamp>/` (junit.xml + summary.md +
 screenshots/).
@@ -57,7 +79,7 @@ debug listener); everything else talks through `device.current()`.
 `qa/log_observer.py` + the per-platform observers in `qa/devices/` tail one
 filtered log stream and parse each line into typed events from `qa/events.py`
 using the shared regex set in `qa/parsers.py`. `qa/drive.py` parses GPX into
-a `DrivePlan` (list of `(lat, lng, t_offset_ms)`) and pumps `device.geo_fix()`
+a `DrivePlan` (list of `(lat, lng, t_offset_ms)`) and pumps `device.feed_point()`
 at the right cadence. `qa/assertions.py` provides `expect`, `expect_in_order`,
 `expect_never` over the event queue. `qa/runner.py` runs ordered scenario
 steps with per-scenario log-buffer isolation. `qa/settings.py` flips app
@@ -69,10 +91,11 @@ imports from `qa.log_observer` + `qa.parsers`.
 
 ## Adding a scenario
 
-YAML for variations of "drive zone X at speed Y":
+YAML can describe an explicit **bundled** bulk fixture. Live full-zone and
+representative suites generate their inputs from the served catalog instead:
 
 ```yaml
-# qa/scenarios/representative/my_scenario.yaml
+# qa/scenarios/bulk/my_scenario.yaml
 zone_id: trakiya-01-east
 speed_kmh: 110
 compression: 4.0
@@ -85,12 +108,12 @@ Python for anything more complex (mid-trip changes, GPS dropout, U-turn, etc):
 
 ```python
 # qa/scenarios/edge/my_thing.py
-from ._helpers import base_plan, scenario_setup, scenario_teardown
+from ._helpers import DEFAULT_ZONE, base_plan, resolve_zone, scenario_setup, scenario_teardown
 from ...runner import Scenario, step_lambda
 from ...drive import pump
 
 def build() -> Scenario:
-    plan = base_plan("trakiya-01-east", speed_kmh=110).compressed(2.0)
+    plan = base_plan(resolve_zone(DEFAULT_ZONE)).compressed(2.0)
     return Scenario(
         name="edge.my_thing",
         steps=[
@@ -174,7 +197,7 @@ Outputs (both trees are tracked in git):
 
 | Platform | What must be running before capture |
 |----------|-------------------------------------|
-| Android  | Booted emulator with the **debug** APK installed (`adb install -r android/app/build/outputs/apk/debug/app-debug.apk`). |
+| Android  | Booted emulator with the **debug** APK installed (`adb install -r android/app/build/outputs/apk/gms/debug/app-gms-debug.apk`). |
 | iOS      | macOS host, booted Simulator with the **Debug** build installed (`xcrun simctl install booted <path>.app`). Debug-only — the loopback HTTP debug listener + `QALog` are `#if DEBUG`. Simulator needs an active GUI session (Metal); no headless. |
 
 Framing additionally needs Pillow: `pip install -r qa/requirements.txt`.

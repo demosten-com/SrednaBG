@@ -20,11 +20,14 @@ from ...assertions import expect
 from ...drive import pump
 from ...events import ZoneStateChange
 from ...runner import RunContext, Scenario, step_lambda
-from ._helpers import DEFAULT_ZONE, base_plan, resolve_zone, scenario_setup, scenario_teardown
+from ._helpers import base_plan, load_zone, resolve_zone, scenario_setup, scenario_teardown
 
 
 def build() -> Scenario:
-    plan = base_plan(resolve_zone(DEFAULT_ZONE), speed_kmh=120).compressed(2.0)
+    zone_id = resolve_zone("vehicle_swap")
+    limits = load_zone(zone_id)["speed_limits"]
+    speed = (limits["car"] + limits["truck"]) / 2
+    plan = base_plan(zone_id, speed_kmh=speed).compressed(2.0)
 
     def setup(ctx: RunContext) -> None:
         scenario_setup(ctx, settings_id="S1")  # starts as car
@@ -52,6 +55,7 @@ def build() -> Scenario:
         )
 
     return Scenario(
+        zone_ids=(zone_id,),
         name="edge.vehicle_swap",
         steps=[
             step_lambda("setup", setup),

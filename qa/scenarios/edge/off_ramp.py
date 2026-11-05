@@ -13,6 +13,7 @@ to Exiting before the natural end of the zone.
 from __future__ import annotations
 
 from ...assertions import expect_in_order
+from ... import geo
 from ...drive import DrivePlan, TrackPoint, pump
 from ...events import ZoneStateChange
 from ...runner import RunContext, Scenario, step_lambda
@@ -23,7 +24,7 @@ def build() -> Scenario:
     # Splice on the UNCOMPRESSED plan and compress LAST — rebuilding
     # TrackPoints from a compressed plan drops `sim_offset_ms` and breaks
     # the sim timeline at the splice seam (see wrong_direction.py).
-    plan = base_plan(resolve_zone(DEFAULT_ZONE), speed_kmh=120)
+    plan = base_plan(resolve_zone(DEFAULT_ZONE))
     # Replace points after the temporal midpoint with off-ramp points
     # ~300m perpendicular to the centerline at the divert moment.
     half = plan.duration_ms // 2
@@ -31,11 +32,12 @@ def build() -> Scenario:
     if not survivors:
         raise RuntimeError("plan too short to splice off-ramp")
     last = survivors[-1]
-    # Cheap +0.003 lat ≈ +330m perpendicular on east-bound roads.
-    detour_pts = [
-        TrackPoint(last.lat + 0.001 * i, last.lng, last.t_offset_ms + i * 1000)
-        for i in range(1, 6)
-    ]
+    # Leave perpendicular to the selected road, whatever its direction.
+    heading = geo.bearing_deg(survivors[-2].lat, survivors[-2].lng, last.lat, last.lng)
+    detour_pts = []
+    for i in range(1, 6):
+        lat, lng = geo.destination_point(last.lat, last.lng, (heading + 90) % 360, 110 * i)
+        detour_pts.append(TrackPoint(lat, lng, last.t_offset_ms + i * 1000))
     spliced = DrivePlan(name=f"{plan.name}-offramp",
                         points=survivors + detour_pts).compressed(2.0)
 

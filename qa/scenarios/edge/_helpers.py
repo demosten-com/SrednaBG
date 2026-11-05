@@ -15,26 +15,21 @@ import time
 from typing import Any
 
 from ... import settings as settings_mod
-from ... import zone_source
+from ... import zone_source, zone_selection
 from ...assertions import AssertionFailure, expect_crash_free
 from ...drive import DrivePlan, parse_gpx
 from ...events import Event
 from ...runner import RunContext
 from ..bulk_loader import _ensure_gpx, BulkScenarioSpec
 
-# The harness's default zone — АМ Тракия, Вакарел – Ихтиман, eastbound. An
-# anchor, not an id: see qa/fixtures/zone_anchors.yaml for why.
-DEFAULT_ZONE = "trakiya-vakarel-ihtiman-east"
-# For scenarios that assert on the approach and the entry: a long zone whose
-# entry camera is shared with no other zone, so the lead-in is truly Outside.
-ISOLATED_ENTRY_ZONE = "trakiya-shtarkovo-tsalapitsa-east"
+# Scenario requirements, evaluated against the active catalog at build time.
+DEFAULT_ZONE = "long_drive"
+ISOLATED_ENTRY_ZONE = "isolated_entry"
 
 
-def resolve_zone(anchor: str) -> str:
-    """Today's id for the stretch of road `anchor` names, in the catalog under
-    test. Call it from `build()`, never at import time — the nightly switches
-    catalogs after the scenario modules may already have been imported."""
-    return zone_source.resolve(anchor)
+def resolve_zone(role: str) -> str:
+    """Select a suitable zone by geometry/limits, never by a historical id."""
+    return zone_selection.select(role)["id"]
 
 
 def load_zone(zone_id: str) -> dict[str, Any]:
@@ -44,10 +39,12 @@ def load_zone(zone_id: str) -> dict[str, Any]:
     return zone
 
 
-def base_plan(zone_id: str, *, speed_kmh: float = 130, approach_km: float = 2,
+def base_plan(zone_id: str, *, speed_kmh: float | None = None, approach_km: float = 2,
               exit_km: float = 1, hz: float = 1.0) -> DrivePlan:
     """Generate or reuse a baseline GPX for the given zone, return the
     parsed DrivePlan (uncompressed)."""
+    if speed_kmh is None:
+        speed_kmh = max(10, load_zone(zone_id)["speed_limits"]["car"] - 20)
     spec = BulkScenarioSpec(
         name=f"{zone_id}-edge", zone_id=zone_id, speed_kmh=speed_kmh,
         approach_km=approach_km, exit_km=exit_km, hz=hz,

@@ -35,7 +35,9 @@ has to be built after it has run — see `_live_plan` / `_nightly` in
 
 from __future__ import annotations
 
+import shutil
 import time
+from pathlib import Path
 
 from .. import device as device_mod
 from .. import settings, sync, zone_source
@@ -55,12 +57,13 @@ _ATTEMPTS = 3
 _frozen = False
 
 
-def build() -> Scenario:
+def build(snapshot_path: Path | None = None) -> Scenario:
     def pin(ctx: RunContext) -> None:
         global _frozen
         device_mod.current().start_main()
         time.sleep(2.0)
         dest = ctx.report_dir / "zones-live.json"
+        expected = zone_source.read_snapshot(snapshot_path) if snapshot_path else None
         snapshot = None
         for _ in range(_ATTEMPTS):
             try:
@@ -68,6 +71,11 @@ def build() -> Scenario:
             except (OSError, ValueError) as e:
                 raise AssertionFailure(
                     f"cannot read {zone_source.endpoint('version')}: {e}") from e
+
+            if expected and served.get("hash") != expected.hash:
+                raise AssertionFailure(
+                    "live feed changed after the shared snapshot was captured; "
+                    "refusing to test different catalogs on Android and iOS")
 
             settings.set_setting("cached_zone_hash", _SENTINEL_HASH)
             settings.set_setting("cached_zone_version", _ANCIENT_VERSION)
@@ -88,7 +96,8 @@ def build() -> Scenario:
             except (OSError, ValueError) as e:
                 raise AssertionFailure(
                     f"cannot download {zone_source.endpoint('zones')}: {e}") from e
-            if candidate.hash == served.get("hash"):
+            if (candidate.hash == served.get("hash")
+                    and (expected is None or candidate.hash == expected.hash)):
                 snapshot = candidate
                 break
             # The feed was republished between the version check and our
@@ -98,6 +107,9 @@ def build() -> Scenario:
                 f"the zone feed changed under {_ATTEMPTS} consecutive attempts to "
                 "pin it — device and harness can't be put on the same catalog")
 
+        if expected:
+            shutil.copyfile(expected.path, dest)
+            snapshot = zone_source.read_snapshot(dest)
         _frozen = True
         settings.set_setting("zone_sync_enabled", False, obs=ctx.obs)
         settings.set_setting("cached_zone_version", _FROZEN_VERSION, obs=ctx.obs)

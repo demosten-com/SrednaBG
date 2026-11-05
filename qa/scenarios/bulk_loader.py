@@ -35,6 +35,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from .. import device as device_mod, settings as settings_mod, zone_source
+from ..zone_selection import centerline as oriented_centerline
 from ..assertions import expect_crash_free, AssertionFailure
 from ..drive import parse_gpx
 from ..events import DisplaySpeed, ZoneStateChange
@@ -56,7 +57,8 @@ def _route_hash(zone: dict, spec: "BulkScenarioSpec") -> str:
             # Bump when the route-construction algorithm itself changes, so
             # cached fixtures from the old generator regenerate. gen 2:
             # approach/exit bearings anchored 300 m along the arc (jog-proof).
-            "gen": 2,
+            # gen 3: orient the centerline from the authored start endpoint.
+            "gen": 3,
             "centerline": zone.get("centerline"),
             "start": zone.get("start"),
             "end": zone.get("end"),
@@ -123,7 +125,7 @@ def _ensure_gpx(spec: BulkScenarioSpec) -> Path:
 
     The cached filename embeds `_route_hash` (zone geometry + route params),
     so the cache self-invalidates when zones.json or the spec changes —
-    stale same-prefix fixtures from earlier data are removed on regeneration."""
+    different route parameters can safely coexist in the shared cache."""
     gpx_dir = zone_source.gpx_dir()
     gpx_dir.mkdir(parents=True, exist_ok=True)
     zone = zone_source.zones_by_id().get(spec.zone_id)
@@ -133,13 +135,10 @@ def _ensure_gpx(spec: BulkScenarioSpec) -> Path:
     out = gpx_dir / f"{prefix}_{_route_hash(zone, spec)}.gpx"
     if out.exists():
         return out
-    # Stale fixtures from an older data version share the prefix but not the
-    # hash; drop them. Never unlink `out` itself — under concurrent runs (e.g.
-    # the nightly Android + iOS jobs generating the same fixtures at once) the
-    # other process may have just written it.
-    for stale in gpx_dir.glob(f"{prefix}*.gpx"):
-        if stale != out:
-            stale.unlink(missing_ok=True)
+    # Keep other content-addressed routes: the other platform may be between
+    # _ensure_gpx() and parse_gpx() on the same zone/speed with a different
+    # approach or exit length. Prefix-wide eviction would unlink its input.
+    # zone_source prunes stale live catalog directories as a whole instead.
     # Lazy-import to avoid stdlib path mangling at module load.
     import importlib.util
     script_path = REPO_ROOT / "scrapers" / "scripts" / "make_test_route.py"
@@ -149,7 +148,7 @@ def _ensure_gpx(spec: BulkScenarioSpec) -> Path:
     mod = importlib.util.module_from_spec(spec_mod)
     spec_mod.loader.exec_module(mod)
 
-    centerline = [(p[0], p[1]) for p in zone["centerline"]]
+    centerline = [(p[0], p[1]) for p in oriented_centerline(zone)]
     if len(centerline) < 2:
         raise RuntimeError(f"zone {spec.zone_id} has insufficient centerline")
 
@@ -232,7 +231,8 @@ def build_scenario(spec: BulkScenarioSpec) -> Scenario:
         # that a chained expect() would have consumed and discarded. When an
         # exit is expected, wait for the terminal Exiting transition rather than
         # a fixed cut-off, so a lagging log tail can't drop it.
-        terminal = ((lambda e: isinstance(e, ZoneStateChange) and e.new == "Exiting")
+        terminal = ((lambda e: isinstance(e, ZoneStateChange) and e.new == "Exiting"
+                                         and e.zone == spec.zone_id)
                     if spec.expect_exit else None)
         events = _drain_buffered(ctx.obs, until=terminal)
         changes = [e for e in events if isinstance(e, ZoneStateChange)]
@@ -242,7 +242,7 @@ def build_scenario(spec: BulkScenarioSpec) -> Scenario:
             return " ".join(toks) or "(no zone state changes)"
 
         entry_idx = next((i for i, e in enumerate(changes)
-                          if e.prev == "Outside" and e.new == "InZone"), None)
+                          if e.new == "InZone" and e.zone == spec.zone_id), None)
         if entry_idx is None:
             if spec.expect_enter:
                 raise AssertionFailure(
@@ -251,11 +251,10 @@ def build_scenario(spec: BulkScenarioSpec) -> Scenario:
             return
         entry = changes[entry_idx]
 
-        # Like the original bulk asserts, enter/exit don't pin the zone *id*
-        # (direction validation is validate-zones.sh's job — the approach can
-        # legitimately clip an adjacent zone first); the flap check below is
-        # per-id, so it stays meaningful either way.
-        exit_ev = next((e for e in changes[entry_idx + 1:] if e.new == "Exiting"), None)
+        # The approach may clip a neighbour, but coverage is earned only by
+        # entering and exiting the intended zone (including a direct handover).
+        exit_ev = next((e for e in changes[entry_idx + 1:]
+                        if e.new == "Exiting" and e.zone == spec.zone_id), None)
         if spec.expect_exit and exit_ev is None:
             raise AssertionFailure(
                 f"no zone exit observed for {spec.zone_id} — {transitions()}",
@@ -293,7 +292,7 @@ def build_scenario(spec: BulkScenarioSpec) -> Scenario:
         step_drive(plan, compression=1.0),  # already compressed
         step_lambda("assert_drive", assert_drive),
     ]
-    return Scenario(name=spec.name, steps=steps, teardown=teardown,
+    return Scenario(name=spec.name, steps=steps, teardown=teardown, zone_ids=(spec.zone_id,),
                     timeout_s=plan.duration_ms / 1000 + 60)
 
 
@@ -374,7 +373,7 @@ def specs_for_catalog() -> list[BulkScenarioSpec]:
     for zone_id, zone in sorted(zone_source.zones_by_id().items()):
         speed = bulk_speed_kmh(zone)
         out.append(BulkScenarioSpec(
-            name=f"{zone_id} @ {speed} km/h", zone_id=zone_id, speed_kmh=speed))
+            name=f"{zone_id} @ {speed} km/h", zone_id=zone_id, speed_kmh=speed, settings="S1"))
     return out
 
 

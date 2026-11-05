@@ -162,26 +162,46 @@ jobs:
         run: bash .github/scripts/boot-emulator.sh
 
       - name: Build + install gms debug APK
+        id: android-build
         if: env.PLATFORMS != 'ios'
         run: bash .github/scripts/android-build-install.sh
 
       # ── iOS prep (script builds, boots a Simulator, then installs) ──
       - name: Build + install iOS Debug app
+        id: ios-build
         if: env.PLATFORMS != 'android'
         run: bash .github/scripts/ios-build-install.sh
 
+      - name: Fixed Android core regressions
+        if: env.PLATFORMS != 'ios'
+        working-directory: android
+        run: ./gradlew :core:test --rerun-tasks
+
+      - name: Fixed iOS core regressions
+        if: ${{ !cancelled() && env.PLATFORMS != 'android' }}
+        working-directory: ios
+        run: swift test --filter SrednaBGCoreTests
+
+      - name: Capture shared live zone catalog
+        id: live-catalog
+        if: ${{ !cancelled() }}
+        run: python3 -m qa.zone_source --download qa/reports/zones-live.json
+
       # ── Run both platforms concurrently ──
       - name: Run nightly suites in parallel
+        if: ${{ !cancelled() && steps.live-catalog.outcome == 'success' && (env.PLATFORMS == 'ios' || steps.android-build.outcome == 'success') && (env.PLATFORMS == 'android' || steps.ios-build.outcome == 'success') }}
         run: |
           set -u
           A=""; I=""; ra=0; ri=0
           if [ "$PLATFORMS" != "ios" ]; then
-            python3 qa/srednabg_qa.py --platform android --suite "$SUITE" --flavor gms \
+            python3 qa/srednabg_qa.py --platform android --suite "$SUITE" --flavor gms --zones live \
+              --zones-snapshot qa/reports/zones-live.json \
               --reports-dir qa/reports/android > qa-android.log 2>&1 & A=$!
             echo "Android QA started (pid $A)"
           fi
           if [ "$PLATFORMS" != "android" ]; then
-            python3 qa/srednabg_qa.py --platform ios --suite "$SUITE" \
+            python3 qa/srednabg_qa.py --platform ios --suite "$SUITE" --zones live \
+              --zones-snapshot qa/reports/zones-live.json \
               --reports-dir qa/reports/ios > qa-ios.log 2>&1 & I=$!
             echo "iOS QA started (pid $I)"
           fi
@@ -201,6 +221,15 @@ jobs:
           adb emu kill || true
           xcrun simctl shutdown all || true
 
+      - name: Publish QA coverage summary
+        if: always()
+        run: |
+          for report in qa/reports/android/*/summary.md qa/reports/ios/*/summary.md; do
+            if [ -f "$report" ]; then
+              cat "$report" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
       - name: Upload QA reports + logs
         if: always()
         uses: actions/upload-artifact@v7
@@ -210,6 +239,7 @@ jobs:
             qa/reports/**
             qa-android.log
             qa-ios.log
+            android/core/build/test-results/test/**
           retention-days: 14
 
       # Failure-only: a green night is silent. Same bot + chat as the scraper

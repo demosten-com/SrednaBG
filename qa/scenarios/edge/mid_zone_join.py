@@ -39,20 +39,20 @@ from ...device import current as current_device
 from ...drive import pump
 from ...events import HistoryDump, TtsSpeak, ZoneStateChange
 from ...runner import RunContext, Scenario, step_lambda
-from ._helpers import DEFAULT_ZONE, base_plan, resolve_zone, scenario_setup, scenario_teardown
+from ._helpers import base_plan, resolve_zone, scenario_setup, scenario_teardown
 
-ZONE = DEFAULT_ZONE
+ZONE = "silent_join"
 # Drop the generated approach plus the first stretch of the zone, so the very
 # first fix the app ever sees is already well past the entry camera — far past
 # START_WITNESS_ARC_M, and past ENTRY_CONFIRM_DISTANCE_M too, so the candidate
 # still confirms (this must reach Unmeasured, not merely stay Outside).
-SKIP_S = 120.0
 
 
 def build() -> Scenario:
     zone_id = resolve_zone(ZONE)
-    full = base_plan(zone_id, speed_kmh=120).compressed(2.0)
-    plan = full.slice(int(SKIP_S * 1000), full.duration_ms)
+    full = base_plan(zone_id).compressed(2.0)
+    # Start a third of the way through the selected long route.
+    plan = full.slice(full.duration_ms // 3, full.duration_ms)
     # Baseline History count, captured before the drive — see (d) above.
     baseline: list[int] = []
 
@@ -143,6 +143,7 @@ def build() -> Scenario:
             )
 
     return Scenario(
+        zone_ids=(zone_id,),
         name="edge.mid_zone_join",
         steps=[
             step_lambda("setup", setup),

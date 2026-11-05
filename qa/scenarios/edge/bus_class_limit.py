@@ -43,17 +43,13 @@ from ...runner import RunContext, Scenario, step_lambda
 from ...speech_numbers import words
 from ._helpers import load_zone, resolve_zone, scenario_setup, scenario_teardown
 
-ZONE = "struma-dyakovo-south"  # short zone with car (140) != bus (100)
-CLASS_LIMIT = 100  # speed_limits.bus — the BE/C1/D class
-CAR_LIMIT = 140
-SPEED_KMH = 120.0  # over the class limit, under the car limit
-SPEED_MS = SPEED_KMH / 3.6
+ZONE = "bus_limits"
 INTERVAL_S = 1.0
 APPROACH_M = 500.0
 EXIT_TAIL_M = 300.0
 
 
-def _build_fixes(zone_id: str) -> list[tuple[float, float, float]]:
+def _build_fixes(zone_id: str, speed_ms: float) -> list[tuple[float, float, float]]:
     """(lat, lng, bearing) per fix at a constant cruise, 1 Hz: approach →
     full zone → short exit tail."""
     zone = load_zone(zone_id)
@@ -69,7 +65,7 @@ def _build_fixes(zone_id: str) -> list[tuple[float, float, float]]:
         cl[0][0], cl[0][1], (entry_bearing + 180) % 360, APPROACH_M)
     exit_end = geo.destination_point(cl[-1][0], cl[-1][1], exit_bearing, EXIT_TAIL_M)
 
-    step_m = SPEED_MS * INTERVAL_S
+    step_m = speed_ms * INTERVAL_S
     pts = list(geo.resample_polyline([approach_start, cl[0]], step_m))
     pts += list(geo.resample_polyline(cl, step_m))[1:]
     pts += list(geo.resample_polyline([cl[-1], exit_end], step_m))[1:]
@@ -82,14 +78,14 @@ def _build_fixes(zone_id: str) -> list[tuple[float, float, float]]:
     return fixes
 
 
-def _feed(fixes: list[tuple[float, float, float]]) -> None:
+def _feed(fixes: list[tuple[float, float, float]], speed_ms: float) -> None:
     d = device_mod.current()
     next_slot = time.monotonic()
     for lat, lng, brg in fixes:
         delay = next_slot - time.monotonic()
         if delay > 0:
             time.sleep(delay)
-        d.feed_point(lat, lng, SPEED_MS, brg)
+        d.feed_point(lat, lng, speed_ms, brg)
         next_slot += INTERVAL_S
 
 
@@ -103,23 +99,27 @@ def _dump_ui_xml() -> str:
     ).stdout
 
 
-def _assert_badge_shows_class_limit() -> None:
+def _assert_badge_shows_class_limit(class_limit: int, car_limit: int) -> None:
     xml = _dump_ui_xml()
-    if not re.search(rf'\b{CLASS_LIMIT}\b', xml):
+    if not re.search(rf'\b{class_limit}\b', xml):
         raise AssertionError(
-            f"UI dump has no '{CLASS_LIMIT}' while in-zone as bus — "
+            f"UI dump has no '{class_limit}' while in-zone as bus — "
             "the limit badge did not resolve the BE/C1/D class limit"
         )
-    if re.search(rf'(?:Speed limit|Ограничение)[ :]*{CAR_LIMIT}\b', xml):
+    if re.search(rf'(?:Speed limit|Ограничение)[ :]*{car_limit}\b', xml):
         raise AssertionError(
-            f"UI dump shows the car limit {CAR_LIMIT} while vehicle type is "
+            f"UI dump shows the car limit {car_limit} while vehicle type is "
             "bus — the vehicle type fell through to the car limit"
         )
 
 
 def build() -> Scenario:
     zone_id = resolve_zone(ZONE)
-    fixes = _build_fixes(zone_id)
+    limits = load_zone(zone_id)["speed_limits"]
+    class_limit, car_limit = limits["bus"], limits["car"]
+    speed_kmh = (class_limit + car_limit) / 2
+    speed_ms = speed_kmh / 3.6
+    fixes = _build_fixes(zone_id, speed_ms)
     drive_s = len(fixes) * INTERVAL_S
     mid = len(fixes) // 2  # solidly mid-zone (approach is ~15% of the route)
 
@@ -127,7 +127,7 @@ def build() -> Scenario:
         scenario_setup(ctx, settings_id="S5")  # bus class, EN voice
 
     def drive_and_check_badge(ctx: RunContext) -> None:
-        _feed(fixes[:mid])
+        _feed(fixes[:mid], speed_ms)
         # Order matters: the entry is announced from the detector's entry
         # *candidate*, i.e. BEFORE the confirmed Outside->InZone transition (see
         # edge.provisional_entry). `expect` discards everything it drains, so
@@ -138,11 +138,11 @@ def build() -> Scenario:
             TtsSpeak,
             # Speeds are spelled into words before TTS (see qa/speech_numbers.py).
             where=lambda e: (
-                words(CLASS_LIMIT, False) in e.text or words(CLASS_LIMIT, True) in e.text
+                words(class_limit, False) in e.text or words(class_limit, True) in e.text
             )
             and ("limit" in e.text.lower() or "Ограничение" in e.text),
             within_s=15,
-            description=f"entry announcement speaks the class limit {CLASS_LIMIT}",
+            description=f"entry announcement speaks the class limit {class_limit}",
         )
         expect(
             ctx.obs,
@@ -152,8 +152,8 @@ def build() -> Scenario:
             description=f"enter {zone_id} as bus",
         )
         if device_mod.current().platform == "android":
-            _assert_badge_shows_class_limit()
-        _feed(fixes[mid:])
+            _assert_badge_shows_class_limit(class_limit, car_limit)
+        _feed(fixes[mid:], speed_ms)
 
     def asserts(ctx: RunContext) -> None:
         expect(
@@ -162,11 +162,12 @@ def build() -> Scenario:
             where=lambda e: "Warning" in e.text or "Внимание" in e.text,
             within_s=30,
             description=(
-                f"over-limit warning at {SPEED_KMH:.0f} km/h vs class limit {CLASS_LIMIT}"
+                f"over-limit warning at {speed_kmh:.0f} km/h vs class limit {class_limit}"
             ),
         )
 
     return Scenario(
+        zone_ids=(zone_id,),
         name="edge.bus_class_limit",
         steps=[
             step_lambda("setup", setup),

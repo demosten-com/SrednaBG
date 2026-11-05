@@ -30,7 +30,7 @@ def build() -> Scenario:
     # Splice on the UNCOMPRESSED plan and compress LAST — rebuilding
     # TrackPoints from a compressed plan drops `sim_offset_ms` and doubles
     # the fed speed on the return leg (see wrong_direction.py).
-    fwd = base_plan(resolve_zone(DEFAULT_ZONE), speed_kmh=110, exit_km=2)
+    fwd = base_plan(resolve_zone(DEFAULT_ZONE), exit_km=2)
     # Reverse: start from after the original exit, traverse backward.
     last_ms = fwd.duration_ms
     rev_pts = [

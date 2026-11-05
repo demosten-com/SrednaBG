@@ -33,7 +33,7 @@ from ._helpers import DEFAULT_ZONE, base_plan, resolve_zone, scenario_setup, sce
 def build() -> Scenario:
     # Within the limit — the only announcement is the Outside→InZone entry,
     # which is by construction the cold start of a focus session.
-    plan = base_plan(resolve_zone(DEFAULT_ZONE), speed_kmh=120).compressed(2.0)
+    plan = base_plan(resolve_zone(DEFAULT_ZONE)).compressed(2.0)
     entry_plan = plan.slice(0, int(plan.duration_ms * 0.4))
 
     def setup(ctx: RunContext) -> None:

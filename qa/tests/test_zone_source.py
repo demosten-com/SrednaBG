@@ -87,7 +87,7 @@ class SnapshotTests(unittest.TestCase):
 
     def test_download_keeps_the_payload_and_reports_its_identity(self):
         payload = {"version": "2026-09-28T06:12:03Z", "hash": "sha256:abc",
-                   "zones": [{"id": "a-01-east"}, {"id": "a-02-east"}]}
+                   "zones": list(bundled().values())[:2]}
         with tempfile.TemporaryDirectory() as tmp, \
                 mock.patch.object(zone_source, "_get_json", return_value=payload):
             snap = zone_source.download_snapshot(Path(tmp) / "nested" / "zones-live.json")

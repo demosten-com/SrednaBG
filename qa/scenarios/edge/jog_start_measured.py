@@ -26,8 +26,8 @@ longest opening jog (`longest_jog_zone`). The jog is a data defect, and the
 scraper keeps fixing them — the served feed lost `i3-02-north`'s on 2026-09-28,
 leaving 80 m on `i6-01-east` as the longest. A scenario pinned to one zone dies
 the night its defect is repaired upstream; this one moves to the worst jog that
-is still really being served, and fails loudly (`MIN_JOG_M`) only once none is
-left, which is the day to retire it.
+is still really being served. If no jog reaches `MIN_JOG_M`, the live case is
+reported as not applicable; the fixed native regression still runs nightly.
 
 Asserts:
   (a) `InZone` is reached for the zone — a genuine approach still measures,
@@ -137,13 +137,10 @@ def longest_jog_zone() -> dict:
     """The zone of the catalog under test with the longest opening jog."""
     zone = max(zone_source.zones_by_id().values(), key=jog_length_m)
     if jog_length_m(zone) < MIN_JOG_M:
-        raise AssertionFailure(
-            f"no zone in the catalog opens with a backwards jog of {MIN_JOG_M:.0f} m "
-            f"or more (longest: {zone['id']}, {jog_length_m(zone):.0f} m) — ISSUE-001 "
-            f"is gone from the data, and this scenario would silently degrade into "
-            f"an ordinary drive. Retire it.",
-            None,
-        )
+        from ...zone_selection import NotApplicable
+        raise NotApplicable(
+            f"no zone opens with a backwards jog of {MIN_JOG_M:.0f} m or more; "
+            "fixed native ISSUE-001 regressions still run")
     return zone
 
 
@@ -238,6 +235,7 @@ def build() -> Scenario:
             )
 
     return Scenario(
+        zone_ids=(zone_id,),
         name="edge.jog_start_measured",
         steps=[
             step_lambda("setup", setup),

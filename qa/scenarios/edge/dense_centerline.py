@@ -35,7 +35,7 @@ from ...events import ZoneStateChange
 from ...runner import RunContext, Scenario, step_lambda
 from ._helpers import load_zone, resolve_zone, scenario_setup, scenario_teardown
 
-ZONE = "struma-dyakovo-south"
+ZONE = "dense_centerline"
 SPEED_MS = 30.0          # 108 km/h, under the 140 limit; > avg segment so the
                          # old integrator over-counts at the 1 Hz feed cadence.
 INTERVAL_S = 1.0
@@ -120,6 +120,7 @@ def build() -> Scenario:
                 ctx.obs)
 
     return Scenario(
+        zone_ids=(zone_id,),
         name="edge.dense_centerline",
         steps=[
             step_lambda("setup", setup),

@@ -17,32 +17,32 @@ import time
 
 from ... import device as device_mod
 from ... import settings as settings_mod
-from ... import zone_source
+from ... import zone_source, zone_selection
 from ...drive import DrivePlan
 from ..bulk_loader import BulkScenarioSpec, _ensure_gpx
 from ...drive import parse_gpx
 
-# АМ Тракия, Вакарел – Ихтиман (an anchor, see qa/fixtures/zone_anchors.yaml):
-# real-fixture-backed in the core unit tests and used by the
-# smoke suite, car limit 140 km/h — a clean, well-behaved traversal to record.
-ZONE = "trakiya-vakarel-ihtiman-east"
-WITHIN_LIMIT_KMH = 120.0  # < 140 car limit → the record's verdict is "within".
-
 
 def zone_id() -> str:
-    """Today's id for `ZONE` in the catalog under test — call from `build()`."""
-    return zone_source.resolve(ZONE)
+    """A current section long enough for a meaningful History record."""
+    return zone_selection.select("history")["id"]
+
+
+def within_limit_kmh(zone_id: str) -> float:
+    return max(10, zone_source.zones_by_id()[zone_id]["speed_limits"]["car"] - 20)
 
 
 def zone_plan(
     zone_id: str,
-    speed_kmh: float = WITHIN_LIMIT_KMH,
+    speed_kmh: float | None = None,
     *,
     approach_km: float = 1.0,
     exit_km: float = 0.5,
     compression: float = 6.0,
 ) -> DrivePlan:
     """A compressed drive through one zone (approach → zone → exit)."""
+    if speed_kmh is None:
+        speed_kmh = within_limit_kmh(zone_id)
     spec = BulkScenarioSpec(
         name=f"history.{zone_id}",
         zone_id=zone_id,
@@ -59,7 +59,7 @@ def begin_tracking(ctx, *, retention: str) -> None:
     """Foreground, pin the history retention, start tracking, settle."""
     device_mod.current().start_main()
     time.sleep(2.0)
-    # Force car so the recorded limit/verdict is the 140 car limit.
+    # Force car so the recorded verdict uses the same limit as the route.
     settings_mod.set_setting("vehicle_type", "car", obs=ctx.obs)
     settings_mod.set_setting("history_retention", retention, obs=ctx.obs)
     settings_mod.start_tracking()

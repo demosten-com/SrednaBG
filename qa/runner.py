@@ -55,6 +55,9 @@ class Scenario:
     setup: Optional[Step] = None
     teardown: Optional[Step] = None
     timeout_s: float = 300.0
+    skip_reason: str = ""
+    zone_ids: tuple[str, ...] = ()
+    category: str = ""
 
 
 @dataclass
@@ -71,6 +74,13 @@ class ScenarioResult:
     # a JUnit <error> rather than a <failure> so suite health distinguishes
     # "assertion didn't hold" from "something blew up".
     errored: bool = False
+    skip_reason: str = ""
+    zone_ids: tuple[str, ...] = ()
+    category: str = ""
+
+    @property
+    def failed(self) -> bool:
+        return not self.passed and not self.skip_reason
 
 
 class SuiteRunner:
@@ -111,6 +121,13 @@ class SuiteRunner:
             pass
 
     def run(self, scenario: Scenario) -> ScenarioResult:
+        if scenario.skip_reason:
+            result = ScenarioResult(
+                name=scenario.name, passed=False, duration_s=0,
+                skip_reason=scenario.skip_reason, zone_ids=scenario.zone_ids,
+                category=scenario.category)
+            self.results.append(result)
+            return result
         # Fresh slice of events for this scenario.
         self.obs.clear()
         # Clear the crash buffer so `expect_crash_free` in teardown only sees
@@ -188,6 +205,7 @@ class SuiteRunner:
             failure_step=int(outcome["step"]) if failure_msg else -1,
             recent_logs=self.obs.snapshot_recent(200),
             errored=errored,
+            zone_ids=scenario.zone_ids, category=scenario.category,
         )
         self.results.append(result)
         return result

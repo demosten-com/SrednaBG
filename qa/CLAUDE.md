@@ -34,7 +34,7 @@ Android depends on `android/`'s debug-only `DebugSyncReceiver` and `DebugControl
 
 ```bash
 python qa/srednabg_qa.py --suite smoke           # ~5 min — 1 zone + 1 sync + parser self-test
-python qa/srednabg_qa.py --suite representative  # ~30 min — 6 hand-picked zones × 4 settings combos + sync set
+python qa/srednabg_qa.py --suite representative  # ~30 min — up to 6 live-selected zones × 4 settings combos + sync set
 python qa/srednabg_qa.py --suite scenarios       # ~20 min — edge cases (stop, dropout, off-ramp, U-turn, swap, auto-stop, dense-centerline, stop-silences-TTS, noisy-fix-rejected, parallel-motorway, mid-zone-join, …)
 python qa/srednabg_qa.py --suite history         # ~7 min — History: records a traversal, retention=none records nothing, retention key round-trips (cross-platform)
 python qa/srednabg_qa.py --suite sync            # ~5 min — zones happy + all-usable (served-data tripwire) + toggle-off + freshness + remote-older (recency gate) + offline; map disabled-gate
@@ -85,28 +85,50 @@ Conversely, a **bundled** run against a device that has already synced can
 disagree with it about ids — clear app data offline first (as `validate-zones.sh`
 does) or use `--zones live`.
 
-#### Zone anchors — never hardcode a zone id in a scenario
+#### Catalog-driven coverage
 
-Scenarios that need one *particular* stretch of road name it by an anchor from
-`qa/fixtures/zone_anchors.yaml` (a point on the carriageway + direction, optional
-`min_length_m`) and call `resolve_zone(ANCHOR)` **inside `build()`** — never at
-import time, because the catalog switches after modules may be imported.
-`edge/_helpers.py` exports the two common ones:
+`qa/zone_selection.py` selects inputs by their prerequisites in the active
+catalog. Every served zone gets a mandatory `full-zones` traversal with S1;
+entry and exit must name the target zone, including direct camera handovers.
+A neighbour's traversal cannot satisfy coverage. The representative matrix adds
+S1–S4 on up to six zones selected deterministically for road class, direction,
+limits, length and road-name diversity. The legacy representative YAMLs are not
+read by the runtime planner.
 
-- `DEFAULT_ZONE` — АМ Тракия, Вакарел – Ихтиман east. Long, has a westbound
-  twin; used by the mid-zone manoeuvres.
-- `ISOLATED_ENTRY_ZONE` — АМ Тракия, Щърково – Цалапица east. For scenarios that
-  assert on the **approach and entry** (`provisional_entry*`): nothing else
-  begins or ends at its entry camera. Вакарел – Ихтиман stopped being usable for
-  that on 2026-09-21: the new Крушовица – Вакарел ends at its entry camera (the
-  2 km lead-in is now an `Unmeasured` drive through that zone), and the westbound
-  Вакарел – Крушовица starts 21 m away — where the stored centerline's backwards
-  first segment (23 m @ 303°) makes the synthetic drive look westbound for one
-  fix and the app, correctly, announces that zone. A route artefact, not an app
-  bug (a car doesn't reverse at the camera), but it doubled the entry line.
+Edge/history builders select by role: a long motorway, an isolated approach,
+a dense centerline, differing vehicle limits, or a section suitable for History.
+Speeds and expected limits are derived from the selected zone where the assertion
+requires them. Call selectors inside `build()`, after live data has been pinned.
 
-An anchor that stops matching exactly one zone, or resolves to a zone shorter
-than `min_length_m`, raises `ZoneAnchorError` naming what to re-point.
+Only an explicit `NotApplicable` prerequisite becomes a skipped test. For
+example, absent Kocherinovo geometry or no remaining backwards opening jog is
+not an app failure. Malformed catalogs, ambiguous anchors, unexpected builder
+exceptions, failed assertions and sync failures remain red. Never catch a broad
+exception and convert it to a skip. `ScenarioResult.skip_reason` is neither a
+pass nor a failure; JUnit, Markdown and failure notifications count it separately.
+The native Android/iOS core regression suites run nightly on fixed inputs, so
+live data can stop containing a historical bug's geometry without retiring its
+regression protection.
+
+The nightly constructs the drive plan immediately after pinning, before running
+hours of routes, and saves `plan.json`. `coverage.json` lists every served id,
+actual full-zone attempts and passes, selected scenario inputs and skip reasons.
+An unfiltered nightly/full-zones run fails if any served zone lacks an attempted
+mandatory traversal. A filtered diagnostic run reports its partial coverage.
+
+CI captures one validated snapshot immediately before launching the two harnesses:
+
+```bash
+python -m qa.zone_source --download qa/reports/zones-live.json
+python qa/srednabg_qa.py --platform android --suite nightly --zones live \
+  --zones-snapshot qa/reports/zones-live.json --reports-dir qa/reports/android
+```
+
+Both devices must re-fetch a feed matching that hash. If publication races with
+pinning, the run fails explicitly rather than claiming cross-platform results
+from different catalogs. Each platform keeps the exact shared snapshot in its
+report directory; periodic sync remains frozen until cleanup. Standalone live
+runs without `--zones-snapshot` capture and pin their own current catalog.
 
 #### Product flavors (`--flavor`)
 
@@ -254,7 +276,7 @@ done — linting".
     (`uiauto.scroll_viewport_bottom` — the Scaffold clips content above the
     bottom nav bar, so display height is the wrong reference) and raises rather
     than asserting on an off-screen region.
-  - `jog_start_measured.py` — the positive-path companion to the above on an ISSUE-001 zone (a centerline that opens with a backwards jog). A genuine approach there projects onto the far end of the jog on its first matching fix, so it must still be **measured**: the run asserts `InZone` opens and `Unmeasured` never appears. **The zone is picked from the catalog under test** (`longest_jog_zone`), not named: the jog is a data defect the scraper keeps repairing — the served feed lost `i3-02-north`'s 121 m jog on 2026-09-28, leaving 80 m on `i6-01-east` as the longest — so a pinned zone dies the night its defect is fixed upstream. It fails loudly only when no zone has a jog ≥ `MIN_JOG_M` left (retire it then). Caveat: only a jog > 100 m separates `START_WITNESS_ARC_M` = 200 from 100; on shorter jogs that discrimination rests on the core unit test `ZoneUnmeasuredTest."a zone whose centerline starts with a backwards jog is still measurable"`.
+  - `jog_start_measured.py` — the positive-path companion to the above on an ISSUE-001 zone (a centerline that opens with a backwards jog). A genuine approach there projects onto the far end of the jog on its first matching fix, so it must still be **measured**: the run asserts `InZone` opens and `Unmeasured` never appears. **The zone is picked from the catalog under test** (`longest_jog_zone`), not named: the jog is a data defect the scraper keeps repairing — the served feed lost `i3-02-north`'s 121 m jog on 2026-09-28, leaving 80 m on `i6-01-east` as the longest — so a pinned zone dies the night its defect is fixed upstream. If no live zone has a jog ≥ `MIN_JOG_M` left, the live scenario is reported as not applicable; the fixed core regression still runs nightly. Caveat: only a jog > 100 m separates `START_WITNESS_ARC_M` = 200 from 100; on shorter jogs that discrimination rests on the core unit test `ZoneUnmeasuredTest."a zone whose centerline starts with a backwards jog is still measurable"`.
 
 ## Manual zone feeding + full-zone direction validation (Android, debug build)
 
@@ -310,13 +332,13 @@ Three standalone adb tools (not part of `srednabg_qa.py`; they talk straight to
   can't false-pass. `validate-zones.sh` can't catch this: it STOPs between zones,
   never producing the cross-zone transition.
 
-Why this exists: the `scenarios/bulk/` suite drives the **centerline point order**
-and only asserts "some zone was entered", so it **cannot** catch a zone stored
-end-first (its `polylineBearing` points the wrong way → the app matches the
-opposite-direction sibling and flaps; observed live: `europa-01-north` matched
-`europa-01-south`). `validate-zones.sh` drives the true direction and checks the
-entered **id**, so that data class fails loudly. Root cause was unaligned server
-data; the scraper's `align_centerline_to_endpoints` aligns the bundle.
+These standalone tools originally caught a gap in bulk QA: it drove raw
+centerline order and accepted entry into any zone. The bulk suite now also
+orients routes by the authored endpoints and requires entry and exit of the
+**intended ID**. `validate-zones.sh` additionally checks dominant traversal and
+announcement counts. The original failure was `europa-01-north` matching
+`europa-01-south` on unaligned server data; the scraper's
+`align_centerline_to_endpoints` aligns the bundle.
 
 **The engine no longer depends on that alignment** (defense in depth): `ZoneDetector`
 orients every centerline `start → end` at construction (`orientCenterlineToStart`),

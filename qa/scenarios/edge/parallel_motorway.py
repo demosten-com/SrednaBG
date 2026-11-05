@@ -41,11 +41,12 @@ from pathlib import Path
 import yaml
 
 from ... import device as device_mod
-from ... import geo
+from ... import geo, zone_source
+from ...zone_selection import NotApplicable, centerline as oriented_centerline
 from ...assertions import AssertionFailure
 from ...events import ProvisionalEntry, TtsSpeak, ZoneStateChange
 from ...runner import RunContext, Scenario, step_lambda
-from ._helpers import load_zone, resolve_zone, scenario_setup, scenario_teardown
+from ._helpers import load_zone, scenario_setup, scenario_teardown
 
 FIXTURE = Path(__file__).resolve().parents[2] / "fixtures" / "a3_kocherinovo_corridor.yaml"
 INTERVAL_S = 1.0
@@ -96,41 +97,41 @@ def _build_fixes(fixture: dict) -> list[tuple[float, float, float]]:
 
 def build() -> Scenario:
     fixture = _load_fixture()
-    zone_id = resolve_zone(fixture["zone"])
+    anchor = zone_source._anchors()[fixture["zone"]]
+    matches = [z for z in zone_source.zones_by_id().values()
+               if z["direction"] == anchor["direction"]
+               and zone_source.distance_to_centerline_m(
+                   *anchor["near"], z["centerline"]) <= zone_source.ANCHOR_TOLERANCE_M]
+    if not matches:
+        raise NotApplicable("Kocherinovo parallel-road zone absent from the live catalog; "
+                            "fixed native anti-phantom regressions still run")
+    zone_id = zone_source.resolve(fixture["zone"])
     speed_ms = float(fixture["speed_kmh"]) / 3.6
     fixes = _build_fixes(fixture)
     drive_s = len(fixes) * INTERVAL_S
 
-    def setup(ctx: RunContext) -> None:
-        # Anti-vacuous guard. Without it this scenario would "pass" the moment
-        # the geometry stopped reproducing the bug — which is exactly the case a
-        # regression test must not silently absorb. So re-derive the *old*
-        # engine's two entry gates here (inside the on-road band AND within
-        # DIRECTION_TOLERANCE_DEG of the zone's end-to-end bearing) and require
-        # that the replay would have tripped them. If a zone-data refresh ever
-        # moves the roads apart or straightens the centerline, this fails loudly
-        # and the fixture gets refreshed from Overpass instead of rotting.
-        zone = load_zone(zone_id)
-        centerline = [(p[0], p[1]) for p in zone["centerline"]]
-        band = float(fixture["on_road_band_m"])
-        whole_line = geo.bearing_deg(
-            centerline[0][0], centerline[0][1], centerline[-1][0], centerline[-1][1]
+    zone = load_zone(zone_id)
+    centerline = [(p[0], p[1]) for p in oriented_centerline(zone)]
+    band = float(fixture["on_road_band_m"])
+    whole_line = geo.bearing_deg(
+        centerline[0][0], centerline[0][1], centerline[-1][0], centerline[-1][1]
+    )
+    would_have_matched = [
+        (lat, lng)
+        for lat, lng, brg in fixes
+        if _point_to_polyline_m(lat, lng, centerline) <= band
+        and _bearing_diff(brg, whole_line) <= DIRECTION_TOLERANCE_DEG
+    ]
+    if not would_have_matched:
+        closest = min(_point_to_polyline_m(lat, lng, centerline) for lat, lng, _ in fixes)
+        raise NotApplicable(
+            f"fixture no longer reproduces the bug: no fix in the A3 corridor clears "
+            f"both of the old entry gates for {zone_id} (closest approach {closest:.0f} m "
+            f"vs a {band:.0f} m band), so this would pass even with the fix reverted. "
+            f"Refresh {FIXTURE.name} from Overpass.",
         )
-        would_have_matched = [
-            (lat, lng)
-            for lat, lng, brg in fixes
-            if _point_to_polyline_m(lat, lng, centerline) <= band
-            and _bearing_diff(brg, whole_line) <= DIRECTION_TOLERANCE_DEG
-        ]
-        if not would_have_matched:
-            closest = min(_point_to_polyline_m(lat, lng, centerline) for lat, lng, _ in fixes)
-            raise AssertionFailure(
-                f"fixture no longer reproduces the bug: no fix in the A3 corridor clears "
-                f"both of the old entry gates for {zone_id} (closest approach {closest:.0f} m "
-                f"vs a {band:.0f} m band), so this would pass even with the fix reverted. "
-                f"Refresh {FIXTURE.name} from Overpass.",
-                ctx.obs,
-            )
+
+    def setup(ctx: RunContext) -> None:
         scenario_setup(ctx, settings_id="S1")
 
     def drive(ctx: RunContext) -> None:
@@ -204,6 +205,7 @@ def build() -> Scenario:
             )
 
     return Scenario(
+        zone_ids=(zone_id,),
         name="edge.parallel_motorway",
         steps=[
             step_lambda("setup", setup),

@@ -34,7 +34,7 @@ from ...drive import DrivePlan, TrackPoint, pump
 from ...events import ZoneStateChange
 from ...runner import RunContext, Scenario, step_lambda
 from ..bulk_loader import _drain_buffered
-from ._helpers import DEFAULT_ZONE, base_plan, resolve_zone, scenario_setup, scenario_teardown
+from ._helpers import base_plan, resolve_zone, scenario_setup, scenario_teardown
 
 # Ceiling on the share of detector updates spent InZone(forbidden zone).
 # Sits ~3× above the benign jog blip (+exit latency) and ~2× below the
@@ -47,8 +47,8 @@ def build() -> Scenario:
     # TrackPoints from a compressed plan drops `sim_offset_ms`, so the pump
     # derived speed over the compressed timeline and fed 220 km/h instead of
     # the encoded 110. compressed() on the final plan keeps the sim timeline.
-    zone_id = resolve_zone(DEFAULT_ZONE)
-    plan = base_plan(zone_id, speed_kmh=110)
+    zone_id = resolve_zone("wrong_direction")
+    plan = base_plan(zone_id)
     # Reverse temporal order — last point first, first point last.
     last_ms = plan.duration_ms
     reversed_pts = [
@@ -83,6 +83,7 @@ def build() -> Scenario:
                 f"reverse traversal", ctx.obs)
 
     return Scenario(
+        zone_ids=(zone_id,),
         name="edge.wrong_direction",
         steps=[
             step_lambda("setup", setup),

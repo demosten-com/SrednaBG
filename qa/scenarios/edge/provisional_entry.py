@@ -43,10 +43,9 @@ from ...assertions import AssertionFailure
 from ...drive import pump
 from ...events import ProvisionalEntry, TtsSpeak, ZoneStateChange
 from ...runner import RunContext, Scenario, step_lambda
-from ._helpers import ISOLATED_ENTRY_ZONE, base_plan, resolve_zone, scenario_setup, scenario_teardown
+from ._helpers import ISOLATED_ENTRY_ZONE, base_plan, load_zone, resolve_zone, scenario_setup, scenario_teardown
 
 ZONE = ISOLATED_ENTRY_ZONE
-SPEED_KMH = 120.0
 APPROACH_KM = 2.0
 # Far enough past the camera that the candidate has confirmed (well over
 # ENTRY_CONFIRM_DISTANCE_M) with room for the confirmed transition to be logged.
@@ -63,8 +62,9 @@ def _is_entry(text: str) -> bool:
 
 def build() -> Scenario:
     zone_id = resolve_zone(ZONE)
-    full = base_plan(zone_id, speed_kmh=SPEED_KMH, approach_km=APPROACH_KM, exit_km=1)
-    cut_ms = int(((APPROACH_KM * 1000 + INTO_ZONE_M) / (SPEED_KMH / 3.6)) * 1000)
+    speed_kmh = max(10, load_zone(zone_id)["speed_limits"]["car"] - 20)
+    full = base_plan(zone_id, speed_kmh=speed_kmh, approach_km=APPROACH_KM, exit_km=1)
+    cut_ms = int(((APPROACH_KM * 1000 + INTO_ZONE_M) / (speed_kmh / 3.6)) * 1000)
     plan = full.slice(0, cut_ms)
 
     def setup(ctx: RunContext) -> None:
@@ -149,6 +149,7 @@ def build() -> Scenario:
             )
 
     return Scenario(
+        zone_ids=(zone_id,),
         name="edge.provisional_entry",
         steps=[
             step_lambda("setup", setup),
